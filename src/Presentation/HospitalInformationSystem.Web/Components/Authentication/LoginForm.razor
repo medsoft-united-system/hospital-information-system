@@ -28,6 +28,14 @@
                    autocomplete="current-password" maxlength="128"/>
         <ValidationMessage For="() => _form.Password"/>
       </div>
+      @if (IsAdministrator)
+      {
+        <div class="mr-field">
+          <label for="totp-code">Код из приложения-аутентификатора</label>
+          <InputText id="totp-code" class="form-control" @bind-Value="_form.TotpCode" inputmode="numeric"
+                     autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required/>
+        </div>
+      }
       <ErrorAlert Message="@_error"/>
       <button type="submit" class="btn btn-primary">@(_busy ? "Вход…" : "Войти")</button>
     </fieldset>
@@ -37,6 +45,10 @@
       @(IsAdministrator ? "Вход для медработников" : "Вход для администратора")
     </a>
   </p>
+  @if (IsAdministrator)
+  {
+    <p><a href="/admin/setup">Первоначальная настройка администратора</a></p>
+  }
 </section>
 
 @code {
@@ -58,7 +70,8 @@
     _error = null;
     try
     {
-      await Authentication.LoginAsync(new LoginRequest(_form.UserName.Trim(), _form.Password, Portal: Portal),
+      await Authentication.LoginAsync(new LoginRequest(_form.UserName.Trim(), _form.Password,
+          IsAdministrator ? _form.TotpCode : null, Portal),
         _cancellation.Token);
       if (!_cancellation.IsCancellationRequested)
         Navigation.NavigateTo(LoginNavigation.GetReturnPath(Portal, ReturnUrl), replace: true);
@@ -79,6 +92,7 @@
     finally
     {
       _form.Password = "";
+      _form.TotpCode = "";
       _busy = false;
     }
   }
@@ -86,6 +100,7 @@
   public void Dispose()
   {
     _form.Password = "";
+    _form.TotpCode = "";
     _cancellation.Cancel();
     _cancellation.Dispose();
   }
@@ -100,5 +115,6 @@
     [Required(ErrorMessage = "Укажите пароль.")]
     [StringLength(128, ErrorMessage = "Пароль: не более 128 символов.")]
     public string Password { get; set; } = "";
+    public string TotpCode { get; set; } = "";
   }
 }

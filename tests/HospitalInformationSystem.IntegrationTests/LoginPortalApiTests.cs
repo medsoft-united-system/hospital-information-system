@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using HospitalInformationSystem.Contracts.Auth;
 using HospitalInformationSystem.Contracts.MedicalWorkers;
+using HospitalInformationSystem.Contracts.Security;
 using Xunit;
 
 namespace HospitalInformationSystem.IntegrationTests;
@@ -21,8 +22,7 @@ public sealed class LoginPortalApiTests(SecureHospitalApiFactory factory) : ICla
         using var client = factory.CreateCookieClient();
         await SetCsrfAsync(client);
 
-        using var response = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(
-            SecureHospitalApiFactory.AdminUserName, SecureHospitalApiFactory.AdminPassword, Portal: portal));
+        using var response = await client.PostAsJsonAsync("/api/auth/login", factory.AdministratorLogin() with { Portal = portal });
 
         response.StatusCode.Should().Be(expected);
         using var session = await client.GetAsync("/api/auth/session");
@@ -30,7 +30,7 @@ public sealed class LoginPortalApiTests(SecureHospitalApiFactory factory) : ICla
         if (expected == HttpStatusCode.OK)
             (await session.Content.ReadFromJsonAsync<SessionDto>())!.Role.Should().Be(ApplicationRoles.Administrator);
         else
-            AssertNoSessionCookie(response);
+            AssertNoRefreshCookie(response);
     }
 
     [Fact]
@@ -38,19 +38,18 @@ public sealed class LoginPortalApiTests(SecureHospitalApiFactory factory) : ICla
     {
         using var administrator = factory.CreateCookieClient();
         await SetCsrfAsync(administrator);
-        using var login = await administrator.PostAsJsonAsync("/api/auth/login", new LoginRequest(
-            SecureHospitalApiFactory.AdminUserName, SecureHospitalApiFactory.AdminPassword));
+        using var login = await administrator.PostAsJsonAsync("/api/auth/login", factory.AdministratorLogin());
         login.EnsureSuccessStatusCode();
         await SetCsrfAsync(administrator);
         using var createdWorker = await administrator.PostAsJsonAsync("/api/medical-workers",
             new SaveMedicalWorkerRequest("Алексей", "Проверочный", "Врач"));
         createdWorker.EnsureSuccessStatusCode();
         var worker = (await createdWorker.Content.ReadFromJsonAsync<MedicalWorkerDto>())!;
-        const string password = "Integration.Portal-Only.6249!";
         var name = "portal." + Guid.NewGuid().ToString("N")[..9];
-        using var createdAccount = await administrator.PostAsJsonAsync("/api/accounts",
-            new CreateAccountRequest(name, password, ApplicationRoles.MedicalWorker, worker.Id));
+        using var createdAccount = await administrator.PostAsJsonAsync($"/api/medical-workers/{worker.Id}/account",
+            new CreateWorkerAccountRequest(name));
         createdAccount.EnsureSuccessStatusCode();
+        var password = (await createdAccount.Content.ReadFromJsonAsync<CreateWorkerAccountResultDto>())!.GeneratedPassword;
         using var client = factory.CreateCookieClient();
         await SetCsrfAsync(client);
 
@@ -58,27 +57,25 @@ public sealed class LoginPortalApiTests(SecureHospitalApiFactory factory) : ICla
             new LoginRequest(name, password, Portal: LoginPortal.Administrator));
 
         rejected.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        AssertNoSessionCookie(rejected);
+        AssertNoRefreshCookie(rejected);
         using var anonymous = await client.GetAsync("/api/auth/session");
         anonymous.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         using var accepted = await client.PostAsJsonAsync("/api/auth/login",
             new LoginRequest(name, password, Portal: LoginPortal.MedicalWorker));
         accepted.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await accepted.Content.ReadFromJsonAsync<SessionDto>())!.Role.Should().Be(ApplicationRoles.MedicalWorker);
+        (await accepted.Content.ReadFromJsonAsync<AuthenticationTokensDto>())!.Session.AccountRole.Should().Be(ApplicationRoles.MedicalWorker);
     }
 
     [Fact]
-    public async Task Login_CookieBackendWithTotpCode_ShouldRejectUnverifiedCode()
+    public async Task Login_IncorrectAdministratorTotp_ShouldRejectUnverifiedCode()
     {
         using var client = factory.CreateCookieClient();
         await SetCsrfAsync(client);
 
-        using var response = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(
-            SecureHospitalApiFactory.AdminUserName, SecureHospitalApiFactory.AdminPassword,
-            TotpCode: "123456", Portal: LoginPortal.Administrator));
+        using var response = await client.PostAsJsonAsync("/api/auth/login", factory.AdministratorLogin() with { TotpCode = "invalid" });
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        AssertNoSessionCookie(response);
+        AssertNoRefreshCookie(response);
         using var session = await client.GetAsync("/api/auth/session");
         session.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -90,9 +87,9 @@ public sealed class LoginPortalApiTests(SecureHospitalApiFactory factory) : ICla
         client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", token.RequestToken);
     }
 
-    private static void AssertNoSessionCookie(HttpResponseMessage response)
+    private static void AssertNoRefreshCookie(HttpResponseMessage response)
     {
         if (response.Headers.TryGetValues("Set-Cookie", out var cookies))
-            cookies.Should().NotContain(cookie => cookie.Contains("MedSoft.Session=", StringComparison.Ordinal));
+            cookies.Should().NotContain(cookie => cookie.Contains("MedSoft.Refresh=", StringComparison.Ordinal));
     }
 }

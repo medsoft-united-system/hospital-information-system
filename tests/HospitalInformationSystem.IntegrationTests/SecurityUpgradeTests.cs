@@ -99,7 +99,8 @@ public sealed class SecurityUpgradeTests
         await apply.Should().ThrowAsync<ArgumentException>().WithMessage("*не уникальны*");
         var report = await service.ReportAsync(CancellationToken.None);
         report.Accounts.Should().OnlyContain(x => x.UserName!.StartsWith("legacy.account."));
-        (await legacy.Db.Database.GetPendingMigrationsAsync()).Should().ContainSingle();
+        (await legacy.Db.Database.GetPendingMigrationsAsync()).Should()
+            .Contain("20261023134841_AddLab2Foundation");
     }
 
     [Fact]

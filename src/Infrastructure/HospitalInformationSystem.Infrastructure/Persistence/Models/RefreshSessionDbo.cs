@@ -6,6 +6,7 @@ public sealed class RefreshSessionDbo
     public Guid UserId { get; set; }
     public Guid FamilyId { get; set; }
     public string TokenHash { get; set; } = string.Empty;
+    public string? AuthenticationVersion { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset ExpiresAtUtc { get; set; }
     public DateTimeOffset? RevokedAtUtc { get; set; }

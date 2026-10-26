@@ -1,4 +1,6 @@
 using HospitalInformationSystem.Application.Abstractions;
+using HospitalInformationSystem.Application.Audit;
+using HospitalInformationSystem.Infrastructure.Audit;
 using HospitalInformationSystem.Application.Common;
 using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using HospitalInformationSystem.Infrastructure.Identity;
@@ -9,7 +11,8 @@ using Npgsql;
 
 namespace HospitalInformationSystem.Infrastructure.Contexts;
 
-public sealed class HospitalDbContext(DbContextOptions<HospitalDbContext> options, TimeProvider? timeProvider = null)
+public sealed class HospitalDbContext(DbContextOptions<HospitalDbContext> options, TimeProvider? timeProvider = null,
+    IAuditActorAccessor? auditActorAccessor = null)
     : IdentityDbContext<HospitalUser, IdentityRole<Guid>, Guid>(options), IUnitOfWork
 {
     public DbSet<MedicalWorkerDbo> MedicalWorkers => Set<MedicalWorkerDbo>();
@@ -39,10 +42,17 @@ public sealed class HospitalDbContext(DbContextOptions<HospitalDbContext> option
         CancellationToken cancellationToken)
     {
         RejectHistoryChanges();
-        UpdateAccountTimestamps();
+        var securityChanges = new TrackedSecurityChanges(this, timeProvider ?? TimeProvider.System,
+            auditActorAccessor ?? new SystemAuditActorAccessor());
+        await using var transaction = securityChanges.HasChanges() && Database.CurrentTransaction is null
+            ? await Database.BeginTransactionAsync(cancellationToken) : null;
         try
         {
-            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+            await securityChanges.AppendAsync(cancellationToken);
+            UpdateAccountTimestamps();
+            var count = await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+            if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+            return count;
         }
         catch (DbUpdateConcurrencyException exception)
         {
@@ -58,25 +68,7 @@ public sealed class HospitalDbContext(DbContextOptions<HospitalDbContext> option
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
-    {
-        RejectHistoryChanges();
-        UpdateAccountTimestamps();
-        try
-        {
-            return base.SaveChanges(acceptAllChangesOnSuccess);
-        }
-        catch (DbUpdateConcurrencyException exception)
-        {
-            throw new BusinessConflictException(
-                "Данные уже изменены другим запросом. Обновите страницу и повторите операцию.", exception);
-        }
-        catch (Exception exception) when (IsDatabaseConflict(exception))
-        {
-            throw new BusinessConflictException(
-                "Сохранение конфликтует с существующей записью, связями или одновременным изменением. Обновите данные и повторите операцию.",
-                exception);
-        }
-    }
+        => SaveChangesAsync(acceptAllChangesOnSuccess, CancellationToken.None).GetAwaiter().GetResult();
 
     private static bool IsDatabaseConflict(Exception exception) =>
         exception.GetBaseException() is PostgresException postgres &&

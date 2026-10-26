@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using FluentAssertions;
 using HospitalInformationSystem.Contracts.Auth;
+using HospitalInformationSystem.Contracts.Security;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Authentication;
 
@@ -151,7 +152,9 @@ public sealed class BrowserSessionHandlerTests
         using var http = CreateClient(state, tokens, (request, _) => Task.FromResult(request.RequestUri!.AbsolutePath switch
         {
             "/api/auth/csrf" => Json(new AntiforgeryTokenDto($"token-{++csrfRequests}")),
-            "/api/auth/login" => Json(current),
+            "/api/auth/login" => Json(new AuthenticationTokensDto("test-access-token", DateTimeOffset.UtcNow.AddMinutes(5),
+                new AuthenticationSessionDto(current.Id, current.UserName, current.Role, current.MedicalWorkerId,
+                    current.MedicalWorkerRole))),
             _ => new HttpResponseMessage(HttpStatusCode.NoContent)
         }));
         var api = new SessionApiClient(http, state, tokens);

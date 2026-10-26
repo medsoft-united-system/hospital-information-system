@@ -13,6 +13,8 @@ public static class WebClientRegistration
         IConfiguration configuration, string environment)
     {
         var mock = UiMockOptions.FromConfiguration(configuration, environment);
+        var apiOrigin = mock.Enabled ? new Uri("https://ui-mock.invalid/")
+            : new Uri(configuration["ApiBaseUrl"] ?? throw new InvalidOperationException("ApiBaseUrl is required."));
         services.AddSingleton(mock);
         services.AddScoped<SessionState>();
         services.AddScoped<AntiforgeryTokenStore>();
@@ -23,14 +25,12 @@ public static class WebClientRegistration
         }
 
         services.AddScoped(provider => new HttpClient(new BrowserSessionHandler(
-            provider.GetRequiredService<SessionState>(), provider.GetRequiredService<AntiforgeryTokenStore>())
+            provider.GetRequiredService<SessionState>(), provider.GetRequiredService<AntiforgeryTokenStore>(), apiOrigin)
         {
             InnerHandler = mock.Enabled ? provider.GetRequiredService<UiMockHttpMessageHandler>() : new HttpClientHandler()
         })
         {
-            BaseAddress = mock.Enabled ? new Uri("https://ui-mock.invalid/")
-                : new Uri(configuration["ApiBaseUrl"]
-                          ?? throw new InvalidOperationException("ApiBaseUrl is required.")),
+            BaseAddress = apiOrigin,
             Timeout = TimeSpan.FromSeconds(20)
         });
 

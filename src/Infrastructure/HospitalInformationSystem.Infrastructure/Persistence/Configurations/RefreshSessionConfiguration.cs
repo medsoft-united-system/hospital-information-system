@@ -20,6 +20,7 @@ public sealed class RefreshSessionConfiguration : IEntityTypeConfiguration<Refre
         builder.Property(x => x.UserId).HasColumnName("user_id");
         builder.Property(x => x.FamilyId).HasColumnName("family_id");
         builder.Property(x => x.TokenHash).HasColumnName("token_hash").HasMaxLength(64).IsRequired();
+        builder.Property(x => x.AuthenticationVersion).HasColumnName("authentication_version").HasMaxLength(64);
         builder.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(x => x.ExpiresAtUtc).HasColumnName("expires_at_utc");
         builder.Property(x => x.RevokedAtUtc).HasColumnName("revoked_at_utc");

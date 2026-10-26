@@ -129,6 +129,64 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.AdministratorSetupChallengeDbo", b =>
+                {
+                    b.Property<Guid>("ChallengeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("challenge_id");
+
+                    b.Property<Guid>("AdministratorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("administrator_user_id");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at_utc");
+
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("failed_attempts");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("password_hash");
+
+                    b.Property<string>("TotpSecretProtected")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)")
+                        .HasColumnName("totp_secret_protected");
+
+                    b.Property<string>("UserName")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("user_name");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("ChallengeId");
+
+                    b.HasIndex("ExpiresAtUtc");
+
+                    b.ToTable("administrator_setup_challenges", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_setup_challenge_attempts", "failed_attempts >= 0");
+
+                            t.HasCheckConstraint("ck_setup_challenge_dates", "expires_at_utc > created_at_utc");
+                        });
+                });
+
             modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.AdministratorSetupStateDbo", b =>
                 {
                     b.Property<int>("Id")
@@ -176,6 +234,40 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_setup_dates", "updated_at_utc >= created_at_utc AND (completed_at_utc IS NULL OR completed_at_utc >= created_at_utc)");
 
                             t.HasCheckConstraint("ck_setup_singleton", "id = 1");
+                        });
+                });
+
+            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.AdministratorTotpVerificationDbo", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("failed_attempts");
+
+                    b.Property<long>("LastAcceptedStep")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_accepted_step");
+
+                    b.Property<DateTimeOffset?>("LockedUntilUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("locked_until_utc");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("administrator_totp_verification", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_totp_failed_attempts", "failed_attempts >= 0");
+
+                            t.HasCheckConstraint("ck_totp_step", "last_accepted_step >= 0");
                         });
                 });
 
@@ -643,6 +735,11 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AuthenticationVersion")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("authentication_version");
+
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at_utc");
@@ -849,6 +946,15 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("AdministratorUserId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.AdministratorTotpVerificationDbo", b =>
+                {
+                    b.HasOne("HospitalInformationSystem.Infrastructure.Identity.HospitalUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalRecordDbo", b =>

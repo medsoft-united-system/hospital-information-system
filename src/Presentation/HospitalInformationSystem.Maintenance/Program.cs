@@ -3,18 +3,25 @@ using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Maintenance;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using HospitalInformationSystem.Maintenance;
+using Microsoft.Extensions.Options;
 
-if (args.Length is < 1 or > 2 || args[0] is not ("report" or "apply") || args[0] == "apply" && args.Length != 2)
+if (args.Length == 0 || args[0] != "benchmark-password-hashing" &&
+    (args.Length > 2 || args[0] is not ("report" or "apply") || args[0] == "apply" && args.Length != 2))
 {
     Console.Error.WriteLine("Из корня репозитория: dotnet run --project src/Presentation/HospitalInformationSystem.Maintenance -- report [report.json] | apply plan.json");
+    Console.Error.WriteLine("Измерение KDF без БД: benchmark-password-hashing [--iterations 5] [--output benchmark.json] [--memory-kib 65536] [--algorithm-iterations 3] [--parallelism 1]");
     return 2;
 }
 
 try
 {
     var configuration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
+        .AddJsonFile("src/Presentation/HospitalInformationSystem.Api/appsettings.json", optional: true)
         .AddJsonFile("src/Presentation/HospitalInformationSystem.Api/appsettings.Local.json", optional: true)
         .AddEnvironmentVariables().Build();
+    if (args[0] == "benchmark-password-hashing")
+        return await PasswordHashingBenchmarkCommand.RunAsync(args[1..], configuration, CancellationToken.None);
     var connectionString = configuration.GetConnectionString("Postgres");
     if (string.IsNullOrWhiteSpace(connectionString))
         throw new InvalidOperationException("Задайте ConnectionStrings__Postgres или локальный appsettings.Local.json API. Запускайте команду из корня репозитория.");
@@ -27,7 +34,7 @@ try
         var plan = JsonSerializer.Deserialize<SecurityUpgradePlan>(await File.ReadAllTextAsync(args[1]), jsonOptions)
             ?? throw new ArgumentException("Пустой план перехода.");
         await service.ApplyAsync(plan, CancellationToken.None);
-        Console.WriteLine("План применён. Предметные данные и UUID сохранены. KDF/TOTP/JWT подключаются следующими этапами.");
+        Console.WriteLine("План применён. Предметные данные и UUID сохранены. Готовность входа проверяется отдельно через первоначальную настройку и TOTP.");
     }
     else
     {
@@ -37,7 +44,7 @@ try
     }
     return 0;
 }
-catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or IOException or JsonException)
+catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or IOException or JsonException or OptionsValidationException)
 {
     Console.Error.WriteLine(exception.Message);
     return 1;

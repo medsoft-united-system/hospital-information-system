@@ -4,7 +4,7 @@ public sealed class ApiTransportSecurityMiddleware(RequestDelegate next, IWebHos
 {
     public async Task InvokeAsync(HttpContext context)
     {
-        if (!environment.IsDevelopment() && !environment.IsEnvironment("Testing") && !context.Request.IsHttps)
+        if (!environment.IsEnvironment("Testing") && !context.Request.IsHttps)
         {
             await Results.Problem(statusCode: StatusCodes.Status400BadRequest,
                 title: "Для подключения требуется HTTPS.").ExecuteAsync(context);

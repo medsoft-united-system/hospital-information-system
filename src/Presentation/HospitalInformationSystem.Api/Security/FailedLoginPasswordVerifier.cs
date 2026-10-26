@@ -7,12 +7,12 @@ namespace HospitalInformationSystem.Api.Security;
 public sealed class FailedLoginPasswordVerifier
 {
     private readonly HospitalUser _user = new();
-    private readonly PasswordHasher<HospitalUser> _hasher;
+    private readonly Argon2idPasswordHasher _hasher;
     private readonly string _hash;
 
-    public FailedLoginPasswordVerifier(IOptions<PasswordHasherOptions> options)
+    public FailedLoginPasswordVerifier(IOptions<Argon2idOptions> options)
     {
-        _hasher = new PasswordHasher<HospitalUser>(options);
+        _hasher = new Argon2idPasswordHasher(options);
         _hash = _hasher.HashPassword(_user, Guid.NewGuid().ToString());
     }
 

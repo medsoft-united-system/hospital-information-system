@@ -130,9 +130,10 @@ public sealed class MedicalRecordsApiTests(MedicalRecordsApiFactory factory)
         foreach (var operation in operations)
         {
             var response = await SendWithHeader(operation.Method, operation.Url, invalidAuthor, operation.Body);
-            await Expect(response, HttpStatusCode.BadRequest);
+            var expected = kind is "missing" or "malformed" ? HttpStatusCode.Forbidden : HttpStatusCode.BadRequest;
+            await Expect(response, expected);
             response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
-            (await response.Content.ReadFromJsonAsync<ProblemDetails>())!.Status.Should().Be(400);
+            (await response.Content.ReadFromJsonAsync<ProblemDetails>())!.Status.Should().Be((int)expected);
         }
 
         (await Current(record.Id)).Should().BeEquivalentTo(before);

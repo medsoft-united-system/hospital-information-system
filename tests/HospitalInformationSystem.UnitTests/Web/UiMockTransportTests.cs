@@ -81,10 +81,10 @@ public sealed class UiMockTransportTests
         using var fixture = new Fixture();
         fixture.State.SwitchPersona(UiMockPersona.Nurse);
         var records = new MedicalRecordsApiClient(fixture.Http);
-        var record = await records.CreateAsync(UiMockState.PatientWithoutRecordId, UiMockState.NurseId,
+        var record = await records.CreateAsync(UiMockState.PatientWithoutRecordId,
             CancellationToken.None);
 
-        var action = () => records.AddDiagnosisAsync(record.Id, UiMockState.DiagnosisId, UiMockState.NurseId,
+        var action = () => records.AddDiagnosisAsync(record.Id, UiMockState.DiagnosisId,
             CancellationToken.None);
 
         (await action.Should().ThrowAsync<ApiException>()).Which.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -99,16 +99,16 @@ public sealed class UiMockTransportTests
         using var fixture = new Fixture();
         fixture.State.SwitchPersona(UiMockPersona.Doctor);
         var records = new MedicalRecordsApiClient(fixture.Http);
-        await records.AddDiagnosisAsync(UiMockState.MedicalRecordId, UiMockState.DiagnosisId, UiMockState.DoctorId,
+        await records.AddDiagnosisAsync(UiMockState.MedicalRecordId, UiMockState.DiagnosisId,
             CancellationToken.None);
-        await records.AddPrescriptionAsync(UiMockState.MedicalRecordId, "Контроль утром", UiMockState.DoctorId,
+        await records.AddPrescriptionAsync(UiMockState.MedicalRecordId, "Контроль утром",
             CancellationToken.None);
         var before = (await records.FindForPatientAsync(UiMockState.PatientWithRecordId, CancellationToken.None))!;
         var at = (await records.GetHistoryAsync(before.Id, CancellationToken.None)).Last().OccurredAtUtc;
         await Task.Delay(10);
 
         await records.ReplacePrescriptionAsync(before.Id, before.Prescriptions.Single().Id, "Контроль вечером",
-            UiMockState.DoctorId, CancellationToken.None);
+            CancellationToken.None);
         var current = (await records.FindForPatientAsync(before.PatientId, CancellationToken.None))!;
         var history = await records.GetHistoryAsync(before.Id, CancellationToken.None);
         var snapshot = await records.GetSnapshotAsync(before.Id, at, CancellationToken.None);

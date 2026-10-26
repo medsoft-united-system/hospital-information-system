@@ -2,22 +2,32 @@
 @page "/medical/patients/{Id:guid}"
 @attribute [Authorize(Roles = ApplicationRoles.MedicalWorker)]
 @using HospitalInformationSystem.Contracts.Patients
+@using HospitalInformationSystem.Contracts.Security
 @implements IDisposable
 @inject PatientsApiClient Api
 @inject NavigationManager Navigation
+@inject SessionState Session
 
 <PageTitle>@(Id is null ? "Новый пациент" : "Карточка пациента") · Учебная HIS</PageTitle>
 <a class="back-link" href="/medical/patients">
   <Icon Name="arrow"/>
   К списку пациентов</a>
 <div class="page-heading">
-  <div><h1>@(Id is null ? "Новый пациент" : "Редактирование пациента")</h1>
+  <div><h1>@(Id is null ? "Новый пациент" : CanManagePatients ? "Редактирование пациента" : "Карточка пациента")</h1>
     <p>Регистрационные данные пациента лечебного учреждения.</p></div>
 </div>
 <ErrorAlert Message="@_error"/>
 @if (_loading)
 {
   <div class="surface empty-state" role="status">Загрузка карточки…</div>
+}
+else if (Id is null && !CanManagePatients)
+{
+  <section class="surface empty-state">
+    <h2>Создание пациентов недоступно</h2>
+    <p>Пациентов могут добавлять врач и медицинская сестра. Ваша роль позволяет просматривать реестр и ЭМК.</p>
+    <a class="btn btn-outline-primary" href="/medical/patients">К списку пациентов</a>
+  </section>
 }
 else if (_model is not null)
 {
@@ -36,7 +46,7 @@ else if (_model is not null)
         </span>
         <a class="btn btn-outline-primary" href="/medical/patients/@Id/medical-record">
           <Icon Name="record"/>
-          @(_patient?.HasMedicalRecord == true ? "Открыть ЭМК" : "Создать ЭМК")
+          @(_patient?.HasMedicalRecord == true ? "Открыть ЭМК" : CanManagePatients ? "Создать ЭМК" : "К экрану ЭМК")
         </a>
       }
       <div class="profile-note">
@@ -44,9 +54,13 @@ else if (_model is not null)
         <p>Электронная карта ведётся на отдельном экране пациента.</p></div>
     </aside>
     <section class="surface edit-surface" aria-label="Редактирование данных">
+      @if (!CanManagePatients)
+      {
+        <p class="field-hint" role="status">Данные доступны только для просмотра.</p>
+      }
       <EditForm Model="_model" OnValidSubmit="SaveAsync">
         <DataAnnotationsValidator/>
-        <fieldset disabled="@_busy">
+        <fieldset disabled="@(_busy || !CanManagePatients)">
           <div class="form-section">
             <div class="section-title"><span class="step-number">01</span>
               <div><h2>Личные данные</h2>
@@ -98,12 +112,15 @@ else if (_model is not null)
           </div>
           <div class="form-actions">
             <a class="btn btn-light" href="/medical/patients">Отмена</a>
-            <button type="submit" class="btn btn-primary">
-              <Icon Name="check"/> @(_busy ? "Сохранение…" : "Сохранить")</button>
+            @if (CanManagePatients)
+            {
+              <button type="submit" class="btn btn-primary">
+                <Icon Name="check"/> @(_busy ? "Сохранение…" : "Сохранить")</button>
+            }
           </div>
         </fieldset>
       </EditForm>
-      @if (Id is not null)
+      @if (Id is not null && CanManagePatients)
       {
         <div class="delete-section">
           <div><strong>Пациент выбыл?</strong>
@@ -114,7 +131,7 @@ else if (_model is not null)
           </button>
         </div>
       }
-      @if (_confirmDelete)
+      @if (_confirmDelete && CanManagePatients)
       {
         <div class="confirm-panel" role="alertdialog" aria-labelledby="patient-edit-delete-title">
           <div>
@@ -150,6 +167,11 @@ else
   private CancellationTokenSource? _routeCancellation;
   private Guid? _loadedId;
 
+  private bool CanManagePatients => SessionPermissions.CanManagePatients(Session.Current is { } current
+    ? new AuthenticationSessionDto(current.Id, current.UserName, current.Role, current.MedicalWorkerId,
+      current.MedicalWorkerRole)
+    : null);
+
   private static string Today => DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
 
   protected override async Task OnParametersSetAsync()
@@ -175,6 +197,11 @@ else
     _patient = null;
     _model = null;
     _confirmDelete = false;
+    if (Id is null && !CanManagePatients)
+    {
+      _loading = false;
+      return;
+    }
     try
     {
       var patient = Id is { } id ? await Api.GetAsync(id, token) : null;
@@ -255,7 +282,7 @@ else
 
   private async Task ExecuteAsync(Func<CancellationToken, Task> action)
   {
-    if (_busy || _routeCancellation is null || _disposed)
+    if (_busy || _routeCancellation is null || _disposed || !CanManagePatients)
     {
       return;
     }

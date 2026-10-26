@@ -12,7 +12,7 @@ using HospitalInformationSystem.Contracts.MedicalWorkers;
 using HospitalInformationSystem.Contracts.Patients;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Identity;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using HospitalInformationSystem.Infrastructure.Identity.Tokens;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -24,7 +24,6 @@ namespace HospitalInformationSystem.IntegrationTests;
 
 public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : IClassFixture<SecureHospitalApiFactory>
 {
-    private const string DoctorPassword = "Integration.Doctor-Only.6249!";
     private const string CsrfHeader = "X-CSRF-TOKEN";
 
     [Theory]
@@ -44,13 +43,13 @@ public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : ICl
     }
 
     [Fact]
-    public async Task Login_ValidCredentials_ShouldIssueHttpOnlyCookieAndAuthenticatedSession()
+    public async Task Login_ValidCredentials_ShouldIssueRs256AccessAndHttpOnlyRefresh()
     {
         using var client = factory.CreateCookieClient();
         await RefreshCsrfAsync(client);
 
         var response = await client.PostAsJsonAsync("/api/auth/login",
-            new LoginRequest(SecureHospitalApiFactory.AdminUserName, SecureHospitalApiFactory.AdminPassword));
+            factory.AdministratorLogin());
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         response.Headers.CacheControl!.NoStore.Should().BeTrue();
@@ -68,8 +67,7 @@ public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : ICl
     public async Task LoginAndMutate_MissingAntiforgeryToken_ShouldRejectRequest()
     {
         using var client = factory.CreateCookieClient();
-        var credentials = new LoginRequest(SecureHospitalApiFactory.AdminUserName,
-            SecureHospitalApiFactory.AdminPassword);
+        var credentials = factory.AdministratorLogin();
         (await client.PostAsJsonAsync("/api/auth/login", credentials)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         await LoginAsync(client, credentials);
         client.DefaultRequestHeaders.Remove(CsrfHeader);
@@ -88,7 +86,7 @@ public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : ICl
         using var administrator = await CreateAdminClientAsync();
         var doctor = await CreateDoctorAccountAsync(administrator);
         using var clinician = factory.CreateCookieClient();
-        await LoginAsync(clinician, new LoginRequest(doctor.UserName, DoctorPassword));
+        await LoginAsync(clinician, new LoginRequest(doctor.Account.UserName, doctor.GeneratedPassword));
 
         (await administrator.GetAsync("/api/patients")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await clinician.GetAsync("/api/accounts")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -100,13 +98,13 @@ public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : ICl
     }
 
     [Fact]
-    public async Task MutateRecord_ForgedAuthor_ShouldRejectOtherWorkerIdentity()
+    public async Task MutateRecord_ForgedAuthor_ShouldUseAuthenticatedWorkerIdentity()
     {
         using var administrator = await CreateAdminClientAsync();
         var doctor = await CreateDoctorAccountAsync(administrator);
         var other = await CreateWorkerAsync(administrator);
         using var clinician = factory.CreateCookieClient();
-        await LoginAsync(clinician, new LoginRequest(doctor.UserName, DoctorPassword));
+        await LoginAsync(clinician, new LoginRequest(doctor.Account.UserName, doctor.GeneratedPassword));
         var createdPatient = await clinician.PostAsJsonAsync("/api/patients", new SavePatientRequest("Елена", "Пациент",
             null, new DateOnly(2000, 1, 1), AdministrativeSex.Female, null));
         createdPatient.EnsureSuccessStatusCode();
@@ -116,13 +114,13 @@ public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : ICl
 
         var forged = await clinician.SendAsync(request);
 
-        forged.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await clinician.GetAsync($"/api/patients/{patient.Id}/medical-record")).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        using var valid = new HttpRequestMessage(HttpMethod.Post, $"/api/patients/{patient.Id}/medical-record");
-        valid.Headers.Add("X-Medical-Worker-Id", doctor.MedicalWorkerId.ToString());
-        var created = await clinician.SendAsync(valid);
-        created.StatusCode.Should().Be(HttpStatusCode.Created);
-        (await created.Content.ReadFromJsonAsync<MedicalRecordDto>())!.PatientId.Should().Be(patient.Id);
+        forged.StatusCode.Should().Be(HttpStatusCode.Created);
+        var record = (await forged.Content.ReadFromJsonAsync<MedicalRecordDto>())!;
+        record.PatientId.Should().Be(patient.Id);
+        var history = (await clinician.GetFromJsonAsync<MedicalRecordHistoryEventDto[]>(
+            $"/api/medical-records/{record.Id}/history"))!;
+        history.Should().ContainSingle().Which.PerformedByMedicalWorkerId.Should()
+            .Be(doctor.Account.MedicalWorkerId.GetValueOrDefault());
     }
 
     [Fact]
@@ -142,10 +140,10 @@ public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : ICl
         using var administrator = await CreateAdminClientAsync();
         var doctor = await CreateDoctorAccountAsync(administrator);
         using var clinician = factory.CreateCookieClient();
-        await LoginAsync(clinician, new LoginRequest(doctor.UserName, DoctorPassword));
+        await LoginAsync(clinician, new LoginRequest(doctor.Account.UserName, doctor.GeneratedPassword));
         (await clinician.GetAsync("/api/patients")).EnsureSuccessStatusCode();
 
-        (await administrator.DeleteAsync($"/api/medical-workers/{doctor.MedicalWorkerId}"))
+        (await administrator.DeleteAsync($"/api/medical-workers/{doctor.Account.MedicalWorkerId}"))
             .StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         (await clinician.GetAsync("/api/auth/session")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -155,25 +153,25 @@ public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : ICl
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task UpdateAccount_ChangedRoleOrWorkerBinding_ShouldRevokeStaleCookie(bool changeRole)
+    public async Task UpdateAccount_ChangedRoleOrWorkerBinding_ShouldRevokeStaleAccess(bool changeRole)
     {
         using var administrator = await CreateAdminClientAsync();
         var doctor = await CreateDoctorAccountAsync(administrator);
         var other = await CreateWorkerAsync(administrator);
         using var clinician = factory.CreateCookieClient();
-        await LoginAsync(clinician, new LoginRequest(doctor.UserName, DoctorPassword));
+        await LoginAsync(clinician, new LoginRequest(doctor.Account.UserName, doctor.GeneratedPassword));
 
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
             if (changeRole)
             {
-                var binding = await db.UserRoles.SingleAsync(item => item.UserId == doctor.Id);
+                var binding = await db.UserRoles.SingleAsync(item => item.UserId == doctor.Account.Id);
                 db.UserRoles.Remove(binding);
             }
             else
             {
-                var user = await db.Users.SingleAsync(item => item.Id == doctor.Id);
+                var user = await db.Users.SingleAsync(item => item.Id == doctor.Account.Id);
                 user.MedicalWorkerId = other.Id;
             }
             await db.SaveChangesAsync();
@@ -190,41 +188,41 @@ public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : ICl
         var doctor = await CreateDoctorAccountAsync(administrator);
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
-        var user = await db.Set<HospitalUser>().AsNoTracking().SingleAsync(x => x.Id == doctor.Id);
-        user.PasswordHash.Should().NotBeNullOrWhiteSpace().And.NotBe(DoctorPassword);
+        var user = await db.Set<HospitalUser>().AsNoTracking().SingleAsync(x => x.Id == doctor.Account.Id);
+        user.PasswordHash.Should().NotBeNullOrWhiteSpace().And.NotBe(doctor.GeneratedPassword);
         var users = scope.ServiceProvider.GetRequiredService<UserManager<HospitalUser>>();
-        (await users.CheckPasswordAsync(user, DoctorPassword)).Should().BeTrue();
+        (await users.CheckPasswordAsync(user, doctor.GeneratedPassword)).Should().BeTrue();
         using var client = factory.CreateCookieClient();
         await RefreshCsrfAsync(client);
         for (var attempt = 0; attempt < users.Options.Lockout.MaxFailedAccessAttempts; attempt++)
         {
-            var response = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(doctor.UserName, "Wrong-password!"));
+            var response = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(doctor.Account.UserName, "Wrong-password!"));
             response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         }
 
-        var locked = await db.Set<HospitalUser>().AsNoTracking().SingleAsync(x => x.Id == doctor.Id);
+        var locked = await db.Set<HospitalUser>().AsNoTracking().SingleAsync(x => x.Id == doctor.Account.Id);
         locked.LockoutEnd.Should().BeAfter(DateTimeOffset.UtcNow);
-        var correctButLocked = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(doctor.UserName, DoctorPassword));
+        var correctButLocked = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(doctor.Account.UserName, doctor.GeneratedPassword));
         correctButLocked.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task UpdatePasswordOrStamp_ExistingSession_ShouldRevokeCookiesImmediately(bool changePassword)
+    public async Task UpdatePasswordOrStamp_ExistingSession_ShouldRevokeAccessImmediately(bool changePassword)
     {
         using var administrator = await CreateAdminClientAsync();
         var doctor = await CreateDoctorAccountAsync(administrator);
         using var clinician = factory.CreateCookieClient();
-        await LoginAsync(clinician, new LoginRequest(doctor.UserName, DoctorPassword));
+        await LoginAsync(clinician, new LoginRequest(doctor.Account.UserName, doctor.GeneratedPassword));
         (await clinician.GetAsync("/api/patients")).EnsureSuccessStatusCode();
 
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var users = scope.ServiceProvider.GetRequiredService<UserManager<HospitalUser>>();
-            var user = (await users.FindByIdAsync(doctor.Id.ToString()))!;
+            var user = (await users.FindByIdAsync(doctor.Account.Id.ToString()))!;
             var result = changePassword
-                ? await users.ChangePasswordAsync(user, DoctorPassword, "Updated.Doctor-Password.6249!")
+                ? await users.ChangePasswordAsync(user, doctor.GeneratedPassword, "Updated.Doctor-Password.6249!")
                 : await users.UpdateSecurityStampAsync(user);
             result.Succeeded.Should().BeTrue();
         }
@@ -232,28 +230,19 @@ public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : ICl
         (await clinician.GetAsync("/api/auth/session")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await clinician.GetAsync("/api/patients")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         using var freshClient = factory.CreateCookieClient();
-        await LoginAsync(freshClient, new LoginRequest(doctor.UserName,
-            changePassword ? "Updated.Doctor-Password.6249!" : DoctorPassword));
+        await LoginAsync(freshClient, new LoginRequest(doctor.Account.UserName,
+            changePassword ? "Updated.Doctor-Password.6249!" : doctor.GeneratedPassword));
         (await freshClient.GetAsync("/api/patients")).EnsureSuccessStatusCode();
     }
 
     [Fact]
-    public async Task Send_AuthenticatedRequest_ShouldPreserveFixedSessionExpiration()
+    public async Task Send_AuthenticatedRequest_ShouldPreserveFixedAccessExpiration()
     {
-        var clock = new MutableTimeProvider();
-        using var timedFactory = factory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
-            services.Configure<CookieAuthenticationOptions>(IdentityConstants.ApplicationScheme,
-                options => options.TimeProvider = clock)));
-        using var client = timedFactory.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false, HandleCookies = true
-        });
-        await LoginAsync(client,
-            new LoginRequest(SecureHospitalApiFactory.AdminUserName, SecureHospitalApiFactory.AdminPassword));
+        using var client = await CreateAdminClientAsync();
 
-        clock.Advance(TimeSpan.FromMinutes(20));
+        factory.AdvanceTime(TimeSpan.FromMinutes(4));
         (await client.GetAsync("/api/accounts")).EnsureSuccessStatusCode();
-        clock.Advance(TimeSpan.FromMinutes(11));
+        factory.AdvanceTime(TimeSpan.FromMinutes(2));
 
         (await client.GetAsync("/api/auth/session")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -261,7 +250,8 @@ public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : ICl
     [Fact]
     public async Task Send_ProductionPlainHttp_ShouldRejectAnonymousEndpoints()
     {
-        using var productionFactory = factory.WithWebHostBuilder(builder => builder.UseEnvironment("Production"));
+        using var productionFactory = factory.WithWebHostBuilder(builder => builder.UseEnvironment("Production")
+            .ConfigureServices(services => services.PostConfigure<JwtTokenOptions>(options => options.AllowEphemeralKeys = true)));
         using var client = productionFactory.CreateClient(new WebApplicationFactoryClientOptions
         {
             BaseAddress = new Uri("http://localhost"), AllowAutoRedirect = false, HandleCookies = true
@@ -276,7 +266,8 @@ public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : ICl
     [Fact]
     public async Task Login_ProductionHttps_ShouldUseHostOnlySecureCookies()
     {
-        using var productionFactory = factory.WithWebHostBuilder(builder => builder.UseEnvironment("Production"));
+        using var productionFactory = factory.WithWebHostBuilder(builder => builder.UseEnvironment("Production")
+            .ConfigureServices(services => services.PostConfigure<JwtTokenOptions>(options => options.AllowEphemeralKeys = true)));
         using var client = productionFactory.CreateClient(new WebApplicationFactoryClientOptions
         {
             BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false, HandleCookies = true
@@ -287,14 +278,14 @@ public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : ICl
         client.DefaultRequestHeaders.Add(CsrfHeader, antiforgery.RequestToken);
 
         using var response = await client.PostAsJsonAsync("/api/auth/login",
-            new LoginRequest(SecureHospitalApiFactory.AdminUserName, SecureHospitalApiFactory.AdminPassword));
+            factory.AdministratorLogin());
 
         response.EnsureSuccessStatusCode();
         var antiforgeryCookie = csrf.Headers.GetValues("Set-Cookie")
             .Single(cookie => cookie.StartsWith("__Host-MedSoft.Antiforgery=", StringComparison.Ordinal));
-        var sessionCookie = response.Headers.GetValues("Set-Cookie")
-            .Single(cookie => cookie.StartsWith("__Host-MedSoft.Session=", StringComparison.Ordinal));
-        foreach (var cookie in new[] { antiforgeryCookie, sessionCookie })
+        var refreshCookie = response.Headers.GetValues("Set-Cookie")
+            .Single(cookie => cookie.StartsWith("__Host-MedSoft.Refresh=", StringComparison.Ordinal));
+        foreach (var cookie in new[] { antiforgeryCookie, refreshCookie })
         {
             cookie.Should().Contain("secure").And.Contain("httponly").And.Contain("path=/");
             cookie.Should().NotContain("domain=");
@@ -360,7 +351,7 @@ public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : ICl
     {
         var client = factory.CreateCookieClient();
         await LoginAsync(client,
-            new LoginRequest(SecureHospitalApiFactory.AdminUserName, SecureHospitalApiFactory.AdminPassword));
+            factory.AdministratorLogin());
         return client;
     }
 
@@ -379,13 +370,13 @@ public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : ICl
         client.DefaultRequestHeaders.Add(CsrfHeader, token.RequestToken);
     }
 
-    private static async Task<AccountDto> CreateDoctorAccountAsync(HttpClient administrator)
+    private static async Task<CreateWorkerAccountResultDto> CreateDoctorAccountAsync(HttpClient administrator)
     {
         var worker = await CreateWorkerAsync(administrator);
-        var response = await administrator.PostAsJsonAsync("/api/accounts", new CreateAccountRequest(
-            "doctor." + Guid.NewGuid().ToString("N")[..9], DoctorPassword, ApplicationRoles.MedicalWorker, worker.Id));
+        var response = await administrator.PostAsJsonAsync($"/api/medical-workers/{worker.Id}/account", new CreateWorkerAccountRequest(
+            "doctor." + Guid.NewGuid().ToString("N")[..9]));
         response.EnsureSuccessStatusCode();
-        return (await response.Content.ReadFromJsonAsync<AccountDto>())!;
+        return (await response.Content.ReadFromJsonAsync<CreateWorkerAccountResultDto>())!;
     }
 
     private static async Task<MedicalWorkerDto> CreateWorkerAsync(HttpClient administrator)
@@ -396,12 +387,4 @@ public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : ICl
         return (await response.Content.ReadFromJsonAsync<MedicalWorkerDto>())!;
     }
 
-    private sealed class MutableTimeProvider : TimeProvider
-    {
-        private DateTimeOffset _now = DateTimeOffset.UtcNow;
-
-        public override DateTimeOffset GetUtcNow() => _now;
-
-        public void Advance(TimeSpan amount) => _now += amount;
-    }
 }

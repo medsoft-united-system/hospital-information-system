@@ -29,23 +29,23 @@ public sealed class AccountModelApiTests(SecureHospitalApiFactory factory) : ICl
         using var administrator = await CreateAdminClientAsync();
         var worker = await CreateWorkerAsync(administrator);
         var name = new string('a', length - 3) + "123";
-        var before = DateTimeOffset.UtcNow;
+        var before = factory.Services.GetRequiredService<TimeProvider>().GetUtcNow();
 
-        using var response = await administrator.PostAsJsonAsync("/api/accounts",
-            new CreateAccountRequest(name, Password, ApplicationRoles.MedicalWorker, worker.Id));
+        using var response = await administrator.PostAsJsonAsync($"/api/medical-workers/{worker.Id}/account",
+            new CreateWorkerAccountRequest(name));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var account = (await response.Content.ReadFromJsonAsync<AccountDto>())!;
+        var account = (await response.Content.ReadFromJsonAsync<CreateWorkerAccountResultDto>())!.Account;
         account.UserName.Should().Be(name);
         account.IsActive.Should().BeTrue();
-        account.CreatedAtUtc.Offset.Should().Be(TimeSpan.Zero);
-        account.CreatedAtUtc.Should().BeOnOrAfter(before).And.BeOnOrBefore(DateTimeOffset.UtcNow);
-        account.UpdatedAtUtc.Should().BeOnOrAfter(account.CreatedAtUtc);
+        account.CreatedAt.Offset.Should().Be(TimeSpan.Zero);
+        account.CreatedAt.Should().BeOnOrAfter(before).And.BeOnOrBefore(factory.Services.GetRequiredService<TimeProvider>().GetUtcNow());
+        account.UpdatedAt.Should().BeOnOrAfter(account.CreatedAt);
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
         var user = await db.Users.AsNoTracking().SingleAsync(item => item.Id == account.Id);
-        user.CreatedAtUtc.Should().BeCloseTo(account.CreatedAtUtc, TimeSpan.FromMicroseconds(1));
-        user.UpdatedAtUtc.Should().BeCloseTo(account.UpdatedAtUtc, TimeSpan.FromMicroseconds(1));
+        user.CreatedAtUtc.Should().BeCloseTo(account.CreatedAt, TimeSpan.FromMicroseconds(1));
+        user.UpdatedAtUtc.Should().BeCloseTo(account.UpdatedAt, TimeSpan.FromMicroseconds(1));
         user.IsAdministrator.Should().BeFalse();
     }
 
@@ -59,8 +59,8 @@ public sealed class AccountModelApiTests(SecureHospitalApiFactory factory) : ICl
         using var administrator = await CreateAdminClientAsync();
         var worker = await CreateWorkerAsync(administrator);
 
-        using var response = await administrator.PostAsJsonAsync("/api/accounts",
-            new CreateAccountRequest(name, Password, ApplicationRoles.MedicalWorker, worker.Id));
+        using var response = await administrator.PostAsJsonAsync($"/api/medical-workers/{worker.Id}/account",
+            new CreateWorkerAccountRequest(name));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         await using var scope = factory.Services.CreateAsyncScope();
@@ -92,7 +92,7 @@ public sealed class AccountModelApiTests(SecureHospitalApiFactory factory) : ICl
         using var response = await administrator.PostAsJsonAsync("/api/accounts",
             new CreateAccountRequest("second.admin", Password, ApplicationRoles.Administrator, null));
 
-        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        response.StatusCode.Should().Be(HttpStatusCode.Gone);
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
         (await db.Users.CountAsync(item => item.IsAdministrator)).Should().Be(1);
@@ -112,10 +112,10 @@ public sealed class AccountModelApiTests(SecureHospitalApiFactory factory) : ICl
         using var client = factory.CreateCookieClient();
         await SetCsrfAsync(client);
 
-        using var login = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(account.UserName, Password));
+        using var login = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(account.Account.UserName, account.GeneratedPassword));
 
         login.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await login.Content.ReadFromJsonAsync<SessionDto>())!.MedicalWorkerRole.Should().Be(role);
+        (await login.Content.ReadFromJsonAsync<AuthenticationTokensDto>())!.Session.MedicalWorkerRole.Should().Be(role);
         var session = (await client.GetFromJsonAsync<SessionDto>("/api/auth/session"))!;
         session.MedicalWorkerRole.Should().Be(role);
     }
@@ -128,14 +128,14 @@ public sealed class AccountModelApiTests(SecureHospitalApiFactory factory) : ICl
         var account = await CreateAccountAsync(administrator, worker.Id);
         using var client = factory.CreateCookieClient();
         await SetCsrfAsync(client);
-        using var login = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(account.UserName, Password));
+        using var login = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(account.Account.UserName, account.GeneratedPassword));
         login.EnsureSuccessStatusCode();
         (await client.GetAsync("/api/patients")).EnsureSuccessStatusCode();
 
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
-            var user = await db.Users.SingleAsync(item => item.Id == account.Id);
+            var user = await db.Users.SingleAsync(item => item.Id == account.Account.Id);
             user.IsActive = false;
             await db.SaveChangesAsync();
         }
@@ -144,19 +144,18 @@ public sealed class AccountModelApiTests(SecureHospitalApiFactory factory) : ICl
         (await client.GetAsync("/api/auth/session")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         using var fresh = factory.CreateCookieClient();
         await SetCsrfAsync(fresh);
-        using var denied = await fresh.PostAsJsonAsync("/api/auth/login", new LoginRequest(account.UserName, Password));
+        using var denied = await fresh.PostAsJsonAsync("/api/auth/login", new LoginRequest(account.Account.UserName, account.GeneratedPassword));
         denied.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await fresh.GetAsync("/api/auth/session")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        var listed = (await administrator.GetFromJsonAsync<AccountDto[]>("/api/accounts"))!;
-        listed.Single(item => item.Id == account.Id).IsActive.Should().BeFalse();
+        var listed = (await administrator.GetFromJsonAsync<AccountDetailsDto[]>("/api/accounts"))!;
+        listed.Single(item => item.Id == account.Account.Id).IsActive.Should().BeFalse();
     }
 
     private async Task<HttpClient> CreateAdminClientAsync()
     {
         var client = factory.CreateCookieClient();
         await SetCsrfAsync(client);
-        using var login = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(
-            SecureHospitalApiFactory.AdminUserName, SecureHospitalApiFactory.AdminPassword));
+        using var login = await client.PostAsJsonAsync("/api/auth/login", factory.AdministratorLogin());
         login.EnsureSuccessStatusCode();
         await SetCsrfAsync(client);
         return client;
@@ -178,12 +177,12 @@ public sealed class AccountModelApiTests(SecureHospitalApiFactory factory) : ICl
         return (await response.Content.ReadFromJsonAsync<MedicalWorkerDto>())!;
     }
 
-    private static async Task<AccountDto> CreateAccountAsync(HttpClient administrator, Guid workerId)
+    private static async Task<CreateWorkerAccountResultDto> CreateAccountAsync(HttpClient administrator, Guid workerId)
     {
-        using var response = await administrator.PostAsJsonAsync("/api/accounts", new CreateAccountRequest(
-            "sec." + Guid.NewGuid().ToString("N")[..12], Password, ApplicationRoles.MedicalWorker, workerId));
+        using var response = await administrator.PostAsJsonAsync($"/api/medical-workers/{workerId}/account", new CreateWorkerAccountRequest(
+            "sec." + Guid.NewGuid().ToString("N")[..12]));
         response.StatusCode.Should().Be(HttpStatusCode.Created, "API response: {0}",
             await response.Content.ReadAsStringAsync());
-        return (await response.Content.ReadFromJsonAsync<AccountDto>())!;
+        return (await response.Content.ReadFromJsonAsync<CreateWorkerAccountResultDto>())!;
     }
 }

@@ -11,19 +11,20 @@ public sealed class IdentityBootstrapper(
     UserManager<HospitalUser> users,
     AccountService accounts)
 {
+    public async Task InitializeRolesAsync(CancellationToken cancellationToken)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(1296385107, 1)", cancellationToken);
+        await EnsureRolesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
     public async Task InitializeAsync(string? userName, string? password,
         CancellationToken cancellationToken)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(1296385107, 1)", cancellationToken);
-        foreach (var role in new[] { ApplicationRoles.Administrator, ApplicationRoles.MedicalWorker })
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (await roles.RoleExistsAsync(role)) continue;
-            var result = await roles.CreateAsync(new IdentityRole<Guid>(role) { Id = Guid.NewGuid() });
-            if (!result.Succeeded)
-                throw new InvalidOperationException("Не удалось создать роли приложения.");
-        }
+        await EnsureRolesAsync(cancellationToken);
 
         if ((await users.GetUsersInRoleAsync(ApplicationRoles.Administrator)).Count == 0)
         {
@@ -34,5 +35,18 @@ public sealed class IdentityBootstrapper(
                 ApplicationRoles.Administrator, null), cancellationToken);
         }
         await transaction.CommitAsync(cancellationToken);
+    }
+
+    private async Task EnsureRolesAsync(CancellationToken cancellationToken)
+    {
+        foreach (var role in new[] { ApplicationRoles.Administrator, ApplicationRoles.MedicalWorker })
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (await roles.RoleExistsAsync(role)) continue;
+            var result = await roles.CreateAsync(new IdentityRole<Guid>(role) { Id = Guid.NewGuid() });
+            if (!result.Succeeded)
+                throw new InvalidOperationException("Не удалось создать роли приложения.");
+        }
+
     }
 }

@@ -163,24 +163,27 @@ public sealed class GatewayContractTests
     }
 
     [Fact]
-    public async Task MutateMedicalRecord_AuthenticatedSession_ShouldDeriveAuthorForEveryChange()
+    public async Task MutateMedicalRecord_AuthenticatedSession_ShouldUseServerIdentityWithoutAuthorHeaders()
     {
-        var authors = new List<string>();
+        var requests = 0;
         using var http = CreateHttp((request, _) =>
         {
-            authors.Add(request.Headers.GetValues("X-Medical-Worker-Id").Single());
+            request.Headers.Contains("X-Medical-Worker-Id").Should().BeFalse();
+            requests++;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent));
         });
         var state = new SessionState();
         var firstAuthor = Guid.NewGuid();
         var secondAuthor = Guid.NewGuid();
         var gateway = new MedicalRecordsGateway(new MedicalRecordsApiClient(http), state);
-        state.SetSession(new SessionDto(Guid.NewGuid(), "first", ApplicationRoles.MedicalWorker, firstAuthor));
+        state.SetSession(new SessionDto(Guid.NewGuid(), "first", ApplicationRoles.MedicalWorker, firstAuthor,
+            MedicalWorkerRole.Doctor));
         await gateway.AddPrescriptionAsync(Guid.NewGuid(), "Учебное назначение", CancellationToken.None);
-        state.SetSession(new SessionDto(Guid.NewGuid(), "second", ApplicationRoles.MedicalWorker, secondAuthor));
+        state.SetSession(new SessionDto(Guid.NewGuid(), "second", ApplicationRoles.MedicalWorker, secondAuthor,
+            MedicalWorkerRole.Doctor));
         await gateway.AddPrescriptionAsync(Guid.NewGuid(), "Другое назначение", CancellationToken.None);
 
-        authors.Should().Equal(firstAuthor.ToString(), secondAuthor.ToString());
+        requests.Should().Be(2);
     }
 
     [Theory]
@@ -212,8 +215,8 @@ public sealed class GatewayContractTests
     [InlineData(MedicalWorkerRole.LaboratoryTechnician, false, false)]
     [InlineData(MedicalWorkerRole.Other, false, false)]
     [InlineData((MedicalWorkerRole)999, false, false)]
-    [InlineData(null, true, true)]
-    public async Task MutateMedicalRecord_KnownOrLegacyRole_ShouldRespectPermissionsAndCompatibility(
+    [InlineData(null, false, false)]
+    public async Task MutateMedicalRecord_KnownOrMissingRole_ShouldRespectPermissions(
         MedicalWorkerRole? role, bool canCreate, bool canEdit)
     {
         var sends = 0;

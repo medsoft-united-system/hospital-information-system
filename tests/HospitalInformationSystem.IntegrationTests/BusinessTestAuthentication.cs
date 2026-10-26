@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using HospitalInformationSystem.Contracts.Auth;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -26,11 +27,15 @@ internal static class BusinessTestAuthentication
     }
 
     public static void AddBusinessTestAuthentication(this IWebHostBuilder builder) =>
-        builder.ConfigureTestServices(services => services.AddAuthentication(options =>
+        builder.ConfigureTestServices(services =>
+        {
+            services.AddScoped<IAuthorizationHandler, BusinessMedicalRoleHandler>();
+            services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = Scheme;
                 options.DefaultChallengeScheme = Scheme;
                 options.DefaultForbidScheme = Scheme;
             })
-            .AddScheme<AuthenticationSchemeOptions, BusinessTestAuthenticationHandler>(Scheme, _ => { }));
+            .AddScheme<AuthenticationSchemeOptions, BusinessTestAuthenticationHandler>(Scheme, _ => { });
+        });
 }
