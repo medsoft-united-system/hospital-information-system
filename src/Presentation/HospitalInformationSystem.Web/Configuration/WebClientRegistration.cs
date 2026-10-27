@@ -14,10 +14,11 @@ public static class WebClientRegistration
     {
         var mock = UiMockOptions.FromConfiguration(configuration, environment);
         var apiOrigin = mock.Enabled ? new Uri("https://ui-mock.invalid/")
-            : new Uri(configuration["ApiBaseUrl"] ?? throw new InvalidOperationException("ApiBaseUrl is required."));
+            : RequireApiOrigin(configuration["ApiBaseUrl"]);
         services.AddSingleton(mock);
         services.AddScoped<SessionState>();
         services.AddScoped<AntiforgeryTokenStore>();
+        services.AddScoped<AuthenticationOperationCoordinator>();
         if (mock.Enabled)
         {
             services.AddScoped<UiMockState>();
@@ -25,7 +26,8 @@ public static class WebClientRegistration
         }
 
         services.AddScoped(provider => new HttpClient(new BrowserSessionHandler(
-            provider.GetRequiredService<SessionState>(), provider.GetRequiredService<AntiforgeryTokenStore>(), apiOrigin)
+            provider.GetRequiredService<SessionState>(), provider.GetRequiredService<AntiforgeryTokenStore>(),
+            provider.GetRequiredService<AuthenticationOperationCoordinator>(), apiOrigin)
         {
             InnerHandler = mock.Enabled ? provider.GetRequiredService<UiMockHttpMessageHandler>() : new HttpClientHandler()
         })
@@ -45,5 +47,15 @@ public static class WebClientRegistration
         services.AddScoped<IAuditGateway, AuditGateway>();
         services.AddScoped<IMedicalRecordsGateway, MedicalRecordsGateway>();
         return services;
+    }
+
+    private static Uri RequireApiOrigin(string? address)
+    {
+        if (!Uri.TryCreate(address, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps ||
+            uri.UserInfo.Length != 0 || uri.AbsolutePath != "/" || uri.Query.Length != 0 ||
+            uri.Fragment.Length != 0 || uri.Host.Contains('*'))
+            throw new InvalidOperationException(
+                "ApiBaseUrl должен содержать абсолютный HTTPS-адрес API без пути, параметров и учётных данных.");
+        return uri;
     }
 }

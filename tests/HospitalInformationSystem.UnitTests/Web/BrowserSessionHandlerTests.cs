@@ -149,6 +149,7 @@ public sealed class BrowserSessionHandlerTests
         var state = new SessionState();
         var tokens = new AntiforgeryTokenStore();
         var csrfRequests = 0;
+        var operations = new AuthenticationOperationCoordinator();
         using var http = CreateClient(state, tokens, (request, _) => Task.FromResult(request.RequestUri!.AbsolutePath switch
         {
             "/api/auth/csrf" => Json(new AntiforgeryTokenDto($"token-{++csrfRequests}")),
@@ -156,8 +157,8 @@ public sealed class BrowserSessionHandlerTests
                 new AuthenticationSessionDto(current.Id, current.UserName, current.Role, current.MedicalWorkerId,
                     current.MedicalWorkerRole))),
             _ => new HttpResponseMessage(HttpStatusCode.NoContent)
-        }));
-        var api = new SessionApiClient(http, state, tokens);
+        }), operations);
+        var api = new SessionApiClient(http, state, tokens, operations);
 
         await api.LoginAsync(new LoginRequest("doctor", "Doctor-Test-2026!"), CancellationToken.None);
 
@@ -219,8 +220,10 @@ public sealed class BrowserSessionHandlerTests
     }
 
     private static HttpClient CreateClient(SessionState state, AntiforgeryTokenStore tokens,
-        Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send) =>
-        new(new BrowserSessionHandler(state, tokens) { InnerHandler = new ResponseHandler(send) })
+        Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send,
+        AuthenticationOperationCoordinator? operations = null) =>
+        new(new BrowserSessionHandler(state, tokens, operations ?? new AuthenticationOperationCoordinator())
+        { InnerHandler = new ResponseHandler(send) })
         {
             BaseAddress = new Uri("http://localhost:5200/")
         };
