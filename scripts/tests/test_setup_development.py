@@ -78,6 +78,70 @@ class SetupDevelopmentTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(setup_development.read_database_password(self.env_path), password)
 
+    def test_compose_assignment_prefixes_reuse_the_saved_password(self):
+        password = " Existing.Database-Aa1! "
+        for prefix in ("export POSTGRES_PASSWORD=", "POSTGRES_PASSWORD = ", "  POSTGRES_PASSWORD="):
+            with self.subTest(prefix=prefix):
+                self.env_path.write_text(prefix + json.dumps(password) + "\n")
+                before = self.env_path.read_bytes()
+
+                result = self.run_setup()
+
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.env_path.read_bytes(), before)
+                self.assertEqual(setup_development.read_database_password(self.env_path), password)
+                config = json.loads(self.local.read_text())
+                self.assertIn('Password="' + password + '"', config["ConnectionStrings"]["Postgres"])
+                self.assertNotIn(password, result.stdout + result.stderr)
+                self.local.unlink()
+
+    def test_duplicate_passwords_are_rejected_without_creating_local_settings(self):
+        first = "First.Database-Aa1!"
+        second = "Second.Database-Aa1!"
+        self.env_path.write_text("POSTGRES_PASSWORD=" + first + "\nPOSTGRES_PASSWORD=" + second + "\n")
+        before = self.env_path.read_bytes()
+
+        result = self.run_setup()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("несколько POSTGRES_PASSWORD", result.stderr)
+        self.assertFalse(self.local.exists())
+        self.assertEqual(self.env_path.read_bytes(), before)
+        self.assertNotIn(first, result.stdout + result.stderr)
+        self.assertNotIn(second, result.stdout + result.stderr)
+
+    def test_duplicate_password_formats_are_rejected_when_settings_already_exist(self):
+        first = "First.Database-Aa1!"
+        second = "Second.Database-Aa1!"
+        self.assertEqual(self.run_setup(first).returncode, 0)
+        for prefix in ("export POSTGRES_PASSWORD=", "POSTGRES_PASSWORD = ", "  POSTGRES_PASSWORD="):
+            with self.subTest(prefix=prefix):
+                self.env_path.write_text("POSTGRES_PASSWORD=" + first + "\n" + prefix + second + "\n")
+                before = self.local.read_bytes(), self.env_path.read_bytes()
+
+                result = self.run_setup()
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("несколько POSTGRES_PASSWORD", result.stderr)
+                self.assertEqual((self.local.read_bytes(), self.env_path.read_bytes()), before)
+                self.assertNotIn(first, result.stdout + result.stderr)
+                self.assertNotIn(second, result.stdout + result.stderr)
+
+    def test_unterminated_or_multiline_quoted_passwords_do_not_create_settings(self):
+        for value in ("'Synthetic.First\nSynthetic.Last'", '"Synthetic.First\nSynthetic.Last"',
+                      "'Synthetic.Unterminated", '"Synthetic.Unterminated'):
+            with self.subTest(value=value):
+                self.env_path.write_text("POSTGRES_PASSWORD=" + value + "\n")
+                before = self.env_path.read_bytes()
+
+                result = self.run_setup()
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("одной строке", result.stderr)
+                self.assertFalse(self.local.exists())
+                self.assertEqual(self.env_path.read_bytes(), before)
+                self.assertNotIn("Synthetic.", result.stdout + result.stderr)
+
     def test_invalid_passwords_do_not_create_partial_settings(self):
         for password in ["replace-with-a-random-local-password", "bad\npassword", "bad\rpassword"]:
             with self.subTest(password=password):

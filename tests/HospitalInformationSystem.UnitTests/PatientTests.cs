@@ -60,4 +60,53 @@ public sealed class PatientTests
             (AdministrativeSex)123, null, Now);
         act.Should().Throw<DomainValidationException>();
     }
+
+    [Fact]
+    public void Create_FutureBirthDate_ShouldRejectInput()
+    {
+        var act = () => PatientFactory.Create("Елена", "Соколова", null,
+            DateOnly.FromDateTime(Now.UtcDateTime).AddDays(1), AdministrativeSex.Female, null, Now);
+
+        act.Should().Throw<DomainValidationException>().WithMessage("*Дата рождения*");
+    }
+
+    [Fact]
+    public void Update_FutureBirthDate_ShouldPreservePatient()
+    {
+        var patient = PatientFactory.Create("Елена", "Соколова", null, new DateOnly(1985, 3, 12),
+            AdministrativeSex.Female, null, Now);
+        var act = () => PatientService.Update(patient, "Мария", "Петрова", "Ивановна",
+            DateOnly.FromDateTime(Now.UtcDateTime).AddDays(1), AdministrativeSex.Unknown, "Обновлено", Now);
+
+        act.Should().Throw<DomainValidationException>();
+        patient.FirstName.Should().Be("Елена");
+        patient.LastName.Should().Be("Соколова");
+        patient.MiddleName.Should().BeNull();
+        patient.BirthDate.Should().Be(new DateOnly(1985, 3, 12));
+        patient.Sex.Should().Be(AdministrativeSex.Female);
+        patient.Comment.Should().BeNull();
+        patient.UpdatedAtUtc.Should().Be(Now);
+    }
+
+    [Fact]
+    public void Create_UtcTodayBirthDate_ShouldAcceptInput()
+    {
+        var now = new DateTimeOffset(2026, 10, 5, 1, 0, 0, TimeSpan.FromHours(3));
+        var today = DateOnly.FromDateTime(now.UtcDateTime);
+
+        var patient = PatientFactory.Create("Елена", "Соколова", null, today,
+            AdministrativeSex.Female, null, now);
+
+        patient.BirthDate.Should().Be(today);
+    }
+
+    [Fact]
+    public void Create_TomorrowInUtcButTodayInOffset_ShouldRejectInput()
+    {
+        var now = new DateTimeOffset(2026, 10, 5, 1, 0, 0, TimeSpan.FromHours(3));
+        var act = () => PatientFactory.Create("Елена", "Соколова", null, new DateOnly(2026, 10, 5),
+            AdministrativeSex.Female, null, now);
+
+        act.Should().Throw<DomainValidationException>();
+    }
 }

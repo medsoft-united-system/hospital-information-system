@@ -3,6 +3,7 @@ import argparse
 import getpass
 import json
 import os
+import re
 import secrets
 import subprocess
 import sys
@@ -19,21 +20,26 @@ def write_private(path, contents):
 def read_database_password(path):
     if not path.exists():
         return None
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if not line.startswith("POSTGRES_PASSWORD="):
-            continue
-        value = line.split("=", 1)[1].strip()
-        if value.startswith("'") and value.endswith("'"):
-            value = value[1:-1].replace("\\'", "'")
-        elif value.startswith('"') and value.endswith('"'):
-            value = json.loads(value)
-            if "$" in value.replace("$$", ""):
-                raise ValueError("Интерполяция переменных в пароле .env не поддерживается. Укажите буквальный пароль.")
-            value = value.replace("$$", "$")
-        elif "$" in value or " #" in value:
-            raise ValueError("Заключите пароль .env в кавычки: интерполяция и inline-комментарии не поддерживаются.")
-        return value
-    return None
+    declarations = [match.group(1).strip()
+                    for line in path.read_text(encoding="utf-8").splitlines()
+                    if (match := re.fullmatch(r"\s*(?:export\s+)?POSTGRES_PASSWORD\s*=\s*(.*)", line))]
+    if len(declarations) > 1:
+        raise ValueError("В .env найдено несколько POSTGRES_PASSWORD. Оставьте единственное значение; файлы не изменены.")
+    if not declarations:
+        return None
+    value = declarations[0]
+    if value.startswith(("'", '"')) and not value.endswith(value[0]):
+        raise ValueError("Пароль .env должен быть полностью записан в одной строке с закрывающей кавычкой.")
+    if value.startswith("'") and value.endswith("'"):
+        value = value[1:-1].replace("\\'", "'")
+    elif value.startswith('"') and value.endswith('"'):
+        value = json.loads(value)
+        if "$" in value.replace("$$", ""):
+            raise ValueError("Интерполяция переменных в пароле .env не поддерживается. Укажите буквальный пароль.")
+        value = value.replace("$$", "$")
+    elif "$" in value or " #" in value:
+        raise ValueError("Заключите пароль .env в кавычки: интерполяция и inline-комментарии не поддерживаются.")
+    return value
 
 
 def existing_database():

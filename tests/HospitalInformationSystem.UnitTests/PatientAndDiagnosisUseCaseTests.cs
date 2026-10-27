@@ -21,9 +21,11 @@ namespace HospitalInformationSystem.UnitTests;
 
 public sealed class PatientAndDiagnosisUseCaseTests
 {
+    private static readonly DateTimeOffset CreatedAt = new(2026, 10, 4, 12, 0, 0, TimeSpan.Zero);
+
     private static Patient NewPatient() =>
         PatientFactory.Create("Елена", "Соколова", null, new DateOnly(1985, 3, 12),
-            AdministrativeSex.Female, null, DateTimeOffset.UnixEpoch);
+            AdministrativeSex.Female, null, CreatedAt);
 
     [Fact]
     public async Task DeletePatient_ExistingMedicalRecord_ShouldRejectDeletion()
@@ -84,7 +86,7 @@ public sealed class PatientAndDiagnosisUseCaseTests
     public async Task UpdatePatient_ValidChanges_ShouldCopyDomainChangesBeforeSaving()
     {
         var patient = NewPatient();
-        var now = DateTimeOffset.UnixEpoch.AddDays(1);
+        var now = CreatedAt.AddDays(1);
         var clock = new Mock<TimeProvider>();
         clock.Setup(x => x.GetUtcNow()).Returns(now);
         var repository = new Mock<IPatientRepository>(MockBehavior.Strict);

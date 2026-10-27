@@ -167,7 +167,12 @@ else
   private CancellationTokenSource? _routeCancellation;
   private Guid? _loadedId;
 
-  private static string Today => DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+  private bool CanManagePatients => SessionPermissions.CanManagePatients(Session.Current is { } current
+    ? new AuthenticationSessionDto(current.Id, current.UserName, current.Role, current.MedicalWorkerId,
+      current.MedicalWorkerRole)
+    : null);
+
+  private static string Today => DateTime.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
 
   protected override async Task OnParametersSetAsync()
   {
