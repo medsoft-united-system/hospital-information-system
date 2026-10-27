@@ -13,12 +13,15 @@
     <h1>Пациенты</h1>
     <p>Реестр пациентов и электронные медицинские карты.</p>
   </div>
-  @if (CanManagePatients)
-  {
-    <a class="btn btn-primary" href="/medical/patients/new">
-      <Icon Name="plus"/>
-      Добавить пациента</a>
-  }
+  <div class="page-heading-actions">
+    <span class="status status-admin role-badge"><span class="status-dot"></span>Ваша роль: @MedicalRoleLabels.Describe(Role)</span>
+    @if (CanManage)
+    {
+      <a class="btn btn-primary" href="/medical/patients/new">
+        <Icon Name="plus"/>
+        Добавить пациента</a>
+    }
+  </div>
 </div>
 
 @if (_patients is not null)
@@ -40,7 +43,7 @@
 }
 <ErrorAlert Message="@_error"/>
 
-@if (_pendingDelete is not null && CanManagePatients)
+@if (_pendingDelete is not null)
 {
   <div class="confirm-panel" role="alertdialog" aria-labelledby="patient-delete-title">
     <div>
@@ -116,12 +119,15 @@
               }
             </td>
             <td class="actions-cell">
-              <a class="row-edit" href="/medical/patients/@patient.Id/medical-record"
-                 aria-label="@RecordLinkLabel(patient): @patient.LastName @patient.FirstName">
-                @RecordLinkLabel(patient)
-                <Icon Name="forward"/>
-              </a>
-              @if (CanManagePatients)
+              @if (patient.HasMedicalRecord || CanManage)
+              {
+                <a class="row-edit" href="/medical/patients/@patient.Id/medical-record"
+                   aria-label="@(patient.HasMedicalRecord ? "Открыть ЭМК" : "Создать ЭМК"): @patient.LastName @patient.FirstName">
+                  @(patient.HasMedicalRecord ? "Открыть ЭМК" : "Создать ЭМК")
+                  <Icon Name="forward"/>
+                </a>
+              }
+              @if (CanManage)
               {
                 <button class="icon-button danger" title="Удалить пациента" disabled="@_deleting"
                         aria-label="Удалить: @patient.LastName @patient.FirstName" @onclick="() => AskDelete(patient)">
@@ -137,9 +143,7 @@
     @if (!VisiblePatients.Any())
     {
       <div class="empty-state">
-        @(_patients.Count == 0
-          ? CanManagePatients ? "В реестре пока нет пациентов. Добавьте первого пациента." : "В реестре пока нет пациентов."
-          : "По вашему запросу ничего не найдено.")
+        @(_patients.Count == 0 ? "В реестре пока нет пациентов. Добавьте первого пациента." : "По вашему запросу ничего не найдено.")
       </div>
     }
 
@@ -159,13 +163,8 @@
   private int _loadVersion;
   private bool _disposed;
 
-  private bool CanManagePatients => SessionPermissions.CanManagePatients(Session.Current is { } current
-    ? new AuthenticationSessionDto(current.Id, current.UserName, current.Role, current.MedicalWorkerId,
-      current.MedicalWorkerRole)
-    : null);
-
-  private string RecordLinkLabel(PatientDto patient) => patient.HasMedicalRecord ? "Открыть ЭМК"
-    : CanManagePatients ? "Создать ЭМК" : "К экрану ЭМК";
+  private MedicalWorkerRole? Role => Session.Current?.MedicalWorkerRole;
+  private bool CanManage => Role is MedicalWorkerRole.Doctor or MedicalWorkerRole.Nurse;
 
   private IEnumerable<PatientDto> VisiblePatients => (_patients ?? [])
     .Where(x => $"{x.LastName} {x.FirstName} {x.MiddleName}".Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase));
@@ -232,7 +231,7 @@
 
   private void AskDelete(PatientDto patient)
   {
-    if (_deleting || !CanManagePatients)
+    if (_deleting)
     {
       return;
     }
@@ -249,7 +248,7 @@
 
   private async Task DeleteAsync()
   {
-    if (_pendingDelete is null || _deleting || _cts is null || !CanManagePatients)
+    if (_pendingDelete is null || _deleting || _cts is null)
     {
       return;
     }

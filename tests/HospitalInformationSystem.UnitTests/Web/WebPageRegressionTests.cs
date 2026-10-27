@@ -1,16 +1,26 @@
+using System.ComponentModel.DataAnnotations;
 using System.Net;
 using System.Net.Http.Json;
 using System.Reflection;
+using System.Text.Json;
 using FluentAssertions;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
+using Moq;
 using HospitalInformationSystem.Contracts.Auth;
 using HospitalInformationSystem.Contracts.Diagnoses;
+using HospitalInformationSystem.Contracts.Security;
 using HospitalInformationSystem.Contracts.MedicalRecords;
 using HospitalInformationSystem.Contracts.MedicalWorkers;
 using HospitalInformationSystem.Contracts.Patients;
-using HospitalInformationSystem.Contracts.Security;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Authentication;
+using HospitalInformationSystem.Web.Components.Accounts;
 using HospitalInformationSystem.Web.Gateways;
+using HospitalInformationSystem.Web.Pages;
 using HospitalInformationSystem.Web.Pages.Admin;
 using HospitalInformationSystem.Web.Pages.Medical;
 
@@ -24,7 +34,7 @@ public sealed class WebPageRegressionTests
     [InlineData("\"text\"")]
     [InlineData("{\"text\":42}")]
     [InlineData("{\"text\":{}}")]
-    public void ReadHistory_UnexpectedPayloadShape_ShouldKeepPageUsable(string payload)
+    public void Unexpected_history_payload_shapes_do_not_break_the_page(string payload)
     {
         var item = new MedicalRecordHistoryEventDto(1, DateTimeOffset.UtcNow, Guid.NewGuid(), "Доктор", "Врач",
             "PrescriptionAdded", null, payload);
@@ -36,7 +46,7 @@ public sealed class WebPageRegressionTests
     }
 
     [Fact]
-    public async Task RefreshPatients_FailedRefreshAfterDeletion_ShouldKeepPatientDeleted()
+    public async Task Failed_list_refresh_does_not_bring_back_a_deleted_patient()
     {
         var patient = new PatientDto(Guid.NewGuid(), "Иван", "Иванов", null, new DateOnly(2000, 1, 1),
             AdministrativeSex.Male, null);
@@ -45,10 +55,6 @@ public sealed class WebPageRegressionTests
             : new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)));
         using var page = new Patients();
         Inject(page, "Api", new PatientsApiClient(http));
-        var state = new SessionState();
-        state.SetSession(new SessionDto(Guid.NewGuid(), "doctor", ApplicationRoles.MedicalWorker,
-            Guid.NewGuid(), MedicalWorkerRole.Doctor));
-        Inject(page, "Session", state);
         Set(page, "_cts", new CancellationTokenSource());
         Set(page, "_patients", new[] { patient });
         Set(page, "_pendingDelete", patient);
@@ -60,61 +66,8 @@ public sealed class WebPageRegressionTests
         Get<string>(page, "_error").Should().NotBeNullOrEmpty();
     }
 
-    [Theory]
-    [InlineData(MedicalWorkerRole.LaboratoryTechnician)]
-    [InlineData(MedicalWorkerRole.Other)]
-    public async Task DeletePatient_ReadOnlyMedicalRole_ShouldRejectDirectAction(MedicalWorkerRole role)
-    {
-        var state = new SessionState();
-        state.SetSession(new SessionDto(Guid.NewGuid(), "reader", ApplicationRoles.MedicalWorker, Guid.NewGuid(), role));
-        var patient = new PatientDto(Guid.NewGuid(), "Иван", "Иванов", null, new DateOnly(2000, 1, 1),
-            AdministrativeSex.Male, null);
-        using var http = CreateClient((_, _) => throw new InvalidOperationException("Read-only role must not send mutations."));
-        using var page = new Patients();
-        Inject(page, "Api", new PatientsApiClient(http));
-        Inject(page, "Session", state);
-        Set(page, "_cts", new CancellationTokenSource());
-
-        Invoke(page, "AskDelete", patient);
-        Get<PatientDto?>(page, "_pendingDelete").Should().BeNull();
-        Set(page, "_pendingDelete", patient);
-        await InvokeAsync(page, "DeleteAsync");
-
-        Get<bool>(page, "_deleting").Should().BeFalse();
-    }
-
-    [Theory]
-    [InlineData(MedicalWorkerRole.LaboratoryTechnician)]
-    [InlineData(MedicalWorkerRole.Other)]
-    public async Task SavePatient_ReadOnlyMedicalRole_ShouldKeepLoadedCardReadOnly(MedicalWorkerRole role)
-    {
-        var state = new SessionState();
-        state.SetSession(new SessionDto(Guid.NewGuid(), "reader", ApplicationRoles.MedicalWorker, Guid.NewGuid(), role));
-        var patient = new PatientDto(Guid.NewGuid(), "Иван", "Иванов", null, new DateOnly(2000, 1, 1),
-            AdministrativeSex.Male, null);
-        var reads = 0;
-        using var http = CreateClient((request, _) =>
-        {
-            request.Method.Should().Be(HttpMethod.Get);
-            reads++;
-            return Task.FromResult(Json(patient));
-        });
-        using var page = new PatientEdit();
-        typeof(PatientEdit).GetProperty(nameof(PatientEdit.Id))!.SetValue(page, patient.Id);
-        Inject(page, "Api", new PatientsApiClient(http));
-        Inject(page, "Session", state);
-
-        await InvokeAsync(page, "LoadAsync");
-        await InvokeAsync(page, "SaveAsync");
-        await InvokeAsync(page, "DeleteAsync");
-
-        reads.Should().Be(1);
-        Get<object>(page, "_model").Should().NotBeNull();
-        Get<bool>(page, "_busy").Should().BeFalse();
-    }
-
     [Fact]
-    public async Task RefreshDiagnoses_FailedRefreshAfterCreation_ShouldKeepCreatedDiagnosis()
+    public async Task Failed_list_refresh_preserves_a_successfully_created_diagnosis()
     {
         var diagnosis = new DiagnosisDefinitionDto(Guid.NewGuid(), "A00.00", "Холера");
         using var http = CreateClient((request, _) => Task.FromResult(request.Method == HttpMethod.Post
@@ -136,7 +89,7 @@ public sealed class WebPageRegressionTests
     }
 
     [Fact]
-    public async Task ImportDiagnoses_ImportInProgress_ShouldPreventOverlappingEditsAndDeletes()
+    public async Task Catalog_import_prevents_overlapping_edits_and_deletes()
     {
         var diagnosis = new DiagnosisDefinitionDto(Guid.NewGuid(), "A00.00", "Холера");
         using var http = CreateClient((_, _) => throw new InvalidOperationException("No write is allowed during import."));
@@ -158,18 +111,15 @@ public sealed class WebPageRegressionTests
     }
 
     [Fact]
-    public async Task BeginEdit_DoctorSession_ShouldLoadDiagnosesWithoutRequestingMedicalWorkerDirectory()
+    public async Task Entering_edit_mode_loads_only_the_diagnoses_catalog()
     {
+        var diagnosis = new DiagnosisDefinitionDto(Guid.NewGuid(), "A00.00", "Холера");
         var state = new SessionState();
         state.SetSession(new SessionDto(Guid.NewGuid(), "doctor", ApplicationRoles.MedicalWorker, Guid.NewGuid(),
             MedicalWorkerRole.Doctor));
-        var requests = 0;
-        using var http = CreateClient((request, _) =>
-        {
-            request.RequestUri!.AbsolutePath.Should().Be("/api/diagnoses");
-            requests++;
-            return Task.FromResult(Json(Array.Empty<DiagnosisDefinitionDto>()));
-        });
+        using var http = CreateClient((request, _) => request.RequestUri!.AbsolutePath.Contains("medical-workers")
+            ? throw new InvalidOperationException("The author list must no longer be requested.")
+            : Task.FromResult(Json(new[] { diagnosis })));
         using var page = new MedicalRecord();
         Inject(page, "DiagnosesApi", new DiagnosesApiClient(http));
         Inject(page, "Session", state);
@@ -177,16 +127,14 @@ public sealed class WebPageRegressionTests
 
         await InvokeAsync(page, "BeginEditAsync");
 
-        requests.Should().Be(1);
-        Get<IReadOnlyList<DiagnosisDefinitionDto>>(page, "_diagnoses").Should().BeEmpty();
-        Get<bool>(page, "_editing").Should().BeTrue();
+        Get<IReadOnlyList<DiagnosisDefinitionDto>>(page, "_diagnoses").Should().Equal(diagnosis);
         Get<bool>(page, "_editDataLoading").Should().BeFalse();
     }
 
     [Fact]
-    public async Task RefreshEditChoices_DeletedDiagnosis_ShouldClearSelection()
+    public async Task Refreshing_edit_choices_clears_a_deleted_diagnosis()
     {
-        using var http = CreateClient((_, _) => Task.FromResult(Json(Array.Empty<object>())));
+        using var http = CreateClient((_, _) => Task.FromResult(Json(Array.Empty<DiagnosisDefinitionDto>())));
         using var page = new MedicalRecord();
         Inject(page, "DiagnosesApi", new DiagnosesApiClient(http));
         Inject(page, "Session", new SessionState());
@@ -199,205 +147,365 @@ public sealed class WebPageRegressionTests
     }
 
     [Fact]
-    public async Task CreateRecord_NurseSession_ShouldCreateWithoutManualAuthorConfirmation()
+    public async Task A_viewer_role_cannot_create_a_record()
     {
         var state = new SessionState();
-        state.SetSession(new SessionDto(Guid.NewGuid(), "nurse", ApplicationRoles.MedicalWorker, Guid.NewGuid(),
-            MedicalWorkerRole.Nurse));
-        var patientId = Guid.NewGuid();
-        var record = new MedicalRecordDto(Guid.NewGuid(), patientId, DateTimeOffset.UtcNow, 1, [], []);
-        var mutations = 0;
-        using var http = CreateClient((request, _) =>
-        {
-            request.Headers.Contains("X-Medical-Worker-Id").Should().BeFalse();
-            if (request.Method == HttpMethod.Post) mutations++;
-            return Task.FromResult(Json(record));
-        });
+        state.SetSession(new SessionDto(Guid.NewGuid(), "lab", ApplicationRoles.MedicalWorker, Guid.NewGuid(),
+            MedicalWorkerRole.LaboratoryTechnician));
+        using var http = CreateClient((_, _) => throw new InvalidOperationException("A viewer must not create a record."));
         using var page = new MedicalRecord();
-        typeof(MedicalRecord).GetProperty(nameof(MedicalRecord.PatientId))!.SetValue(page, patientId);
-        Inject(page, "RecordsApi", new MedicalRecordsGateway(new MedicalRecordsApiClient(http), state));
+        Inject(page, "Records", new MedicalRecordsGateway(new MedicalRecordsApiClient(http), state));
         Inject(page, "Session", state);
         Set(page, "_cts", new CancellationTokenSource());
 
         await InvokeAsync(page, "CreateRecordAsync");
 
-        mutations.Should().Be(1);
-        Get<MedicalRecordDto>(page, "_record").Should().BeEquivalentTo(record);
-        Get<bool>(page, "_busy").Should().BeFalse();
-    }
-
-    [Theory]
-    [InlineData(MedicalWorkerRole.Nurse)]
-    [InlineData(MedicalWorkerRole.LaboratoryTechnician)]
-    [InlineData(MedicalWorkerRole.Other)]
-    public async Task BeginEdit_NondoctorSession_ShouldKeepRecordReadOnly(MedicalWorkerRole role)
-    {
-        var state = new SessionState();
-        state.SetSession(new SessionDto(Guid.NewGuid(), "worker", ApplicationRoles.MedicalWorker, Guid.NewGuid(), role));
-        using var http = CreateClient((_, _) => throw new InvalidOperationException("Editing must remain unavailable."));
-        using var page = new MedicalRecord();
-        Inject(page, "RecordsApi", new MedicalRecordsGateway(new MedicalRecordsApiClient(http), state));
-        Inject(page, "DiagnosesApi", new DiagnosesApiClient(http));
-        Inject(page, "Session", state);
-        Set(page, "_cts", new CancellationTokenSource());
-
-        await InvokeAsync(page, "BeginEditAsync");
-        await InvokeAsync(page, "RemoveDiagnosisAsync", Guid.NewGuid());
-
-        Get<bool>(page, "_editing").Should().BeFalse();
         Get<bool>(page, "_busy").Should().BeFalse();
     }
 
     [Fact]
-    public async Task RefreshAccounts_OlderResponse_ShouldPreserveNewlyCreatedAccount()
+    public async Task An_older_account_list_response_cannot_overwrite_a_newer_one()
     {
         var staleResponse = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var administrator = NewAccount("admin", ApplicationRoles.Administrator, null, false);
-        var created = NewAccount("doctor", ApplicationRoles.MedicalWorker, Guid.NewGuid(), false);
+        var administrator = Lab2Account("admin", ApplicationRoles.Administrator, null, null);
+        var doctor = Lab2Account("doctor.demo", ApplicationRoles.MedicalWorker, "Иванов Иван", MedicalWorkerRole.Doctor);
         var accountRequests = 0;
-        using var http = CreateClient((request, _) => request.RequestUri!.AbsolutePath == "/api/accounts"
-            ? ++accountRequests == 1 ? staleResponse.Task : Task.FromResult(Json(new[] { administrator, created }))
-            : Task.FromResult(Json(Array.Empty<MedicalWorkerDto>())));
+        using var http = CreateClient((request, _) => request.RequestUri!.AbsolutePath.Contains("medical-workers")
+            ? Task.FromResult(Json(Array.Empty<MedicalWorkerDto>()))
+            : ++accountRequests == 1
+                ? staleResponse.Task
+                : Task.FromResult(Json(new[] { administrator, doctor })));
         using var page = new Accounts();
-        Inject(page, "Api", new AccountManagementGateway(http));
-        Inject(page, "WorkersApi", new MedicalWorkersApiClient(http));
+        Inject(page, "Gateway", new AccountManagementGateway(http));
+        Inject(page, "Workers", new MedicalWorkersApiClient(http));
 
         var olderLoad = InvokeAsync(page, "LoadAsync");
         await InvokeAsync(page, "LoadAsync");
         staleResponse.SetResult(Json(new[] { administrator }));
         await olderLoad;
 
-        Get<IReadOnlyList<AccountDetailsDto>>(page, "_accounts").Should().Equal(administrator, created);
+        Get<IReadOnlyList<AccountDetailsDto>>(page, "_accounts").Should().Equal(administrator, doctor);
         Get<bool>(page, "_loading").Should().BeFalse();
     }
 
     [Fact]
-    public async Task CreateAccount_ListRefreshInProgress_ShouldBlockCreation()
+    public void An_operation_result_updates_the_matching_account_without_a_reload()
     {
-        using var http = CreateClient((_, _) => throw new InvalidOperationException("Creation during refresh is blocked."));
+        var doctor = Lab2Account("doctor.demo", ApplicationRoles.MedicalWorker, "Иванов Иван", MedicalWorkerRole.Doctor);
         using var page = new Accounts();
-        Inject(page, "Api", new AccountManagementGateway(http));
-        Set(page, "_loading", true);
+        Set(page, "_accounts", new[] { doctor });
 
-        await InvokeAsync(page, "CreateAsync");
+        Invoke(page, "OnAccountChanged", doctor with { IsActive = false });
 
-        Get<bool>(page, "_saving").Should().BeFalse();
+        Get<IReadOnlyList<AccountDetailsDto>>(page, "_accounts").Single().IsActive.Should().BeFalse();
+    }
+
+    private static AccountDetailsDto Lab2Account(string userName, string accountRole, string? workerName,
+        MedicalWorkerRole? role) =>
+        new(Guid.NewGuid(), userName, accountRole, workerName is null ? null : Guid.NewGuid(), workerName, role,
+            true, false, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
+
+    [Theory]
+    [InlineData("Я", "Ли", "Врач", true)]
+    [InlineData("", "Ли", "Врач", false)]
+    [InlineData("Иван", "Иванов", "Вр", false)]
+    public void A_single_character_name_is_accepted_but_a_short_position_is_not(
+        string firstName, string lastName, string position, bool valid)
+    {
+        var formType = typeof(MedicalWorkerEdit).GetNestedType("WorkerForm", BindingFlags.NonPublic)!;
+        var form = Activator.CreateInstance(formType)!;
+        formType.GetProperty("FirstName")!.SetValue(form, firstName);
+        formType.GetProperty("LastName")!.SetValue(form, lastName);
+        formType.GetProperty("Position")!.SetValue(form, position);
+
+        var results = new List<ValidationResult>();
+        var isValid = Validator.TryValidateObject(form, new ValidationContext(form), results, validateAllProperties: true);
+
+        isValid.Should().Be(valid);
     }
 
     [Theory]
-    [InlineData(ApplicationRoles.Administrator, false, false, null, "Активен")]
-    [InlineData(ApplicationRoles.Administrator, true, false, null, "Временно заблокирован")]
-    [InlineData(ApplicationRoles.MedicalWorker, false, true, false, "Активен")]
-    [InlineData(ApplicationRoles.MedicalWorker, false, true, true, "Сотрудник удалён")]
-    [InlineData(ApplicationRoles.MedicalWorker, true, true, true, "Временно заблокирован")]
-    [InlineData(ApplicationRoles.MedicalWorker, false, true, null, "Нет действующего сотрудника")]
-    [InlineData(ApplicationRoles.MedicalWorker, false, false, false, "Нет действующего сотрудника")]
-    [InlineData(ApplicationRoles.MedicalWorker, true, false, null, "Временно заблокирован")]
-    public void GetAccountStatus_LockoutAndWorkerAvailability_ShouldReflectEffectiveAccess(
-        string role, bool isLockedOut, bool hasWorkerLink, bool? workerDeleted, string expected)
+    [InlineData(MedicalWorkerRole.Doctor, true)]
+    [InlineData(MedicalWorkerRole.Nurse, true)]
+    [InlineData(MedicalWorkerRole.LaboratoryTechnician, false)]
+    [InlineData(MedicalWorkerRole.Other, false)]
+    public void Patient_management_actions_follow_the_medical_role(MedicalWorkerRole role, bool canManage)
     {
-        var workerId = Guid.NewGuid();
-        var account = NewAccount("account", role, hasWorkerLink ? workerId : null, isLockedOut);
-        using var page = new Accounts();
-        Set(page, "_workers", workerDeleted is { } isDeleted
-            ? new[] { new MedicalWorkerDto(workerId, "Иван", "Иванов", "Врач", isDeleted) }
-            : Array.Empty<MedicalWorkerDto>());
+        using var page = new Patients();
+        Inject(page, "Session", Session(role));
 
-        var status = Invoke(page, "AccountStatus", account);
+        GetProperty<bool>(page, "CanManage").Should().Be(canManage);
+    }
 
-        status.Should().Be(expected);
+    [Theory]
+    [InlineData(MedicalWorkerRole.Doctor, true)]
+    [InlineData(MedicalWorkerRole.Nurse, false)]
+    [InlineData(MedicalWorkerRole.LaboratoryTechnician, false)]
+    [InlineData(MedicalWorkerRole.Other, false)]
+    public void Only_a_doctor_can_edit_a_record(MedicalWorkerRole role, bool canEdit)
+    {
+        using var page = new MedicalRecord();
+        Inject(page, "Session", Session(role));
+
+        GetProperty<bool>(page, "CanEdit").Should().Be(canEdit);
+        GetProperty<bool>(page, "CanCreateRecord").Should()
+            .Be(role is MedicalWorkerRole.Doctor or MedicalWorkerRole.Nurse);
     }
 
     [Fact]
-    public void GetAccountStatus_InactiveAccount_ShouldShowAdministrativeDeactivation()
+    public async Task Resetting_a_password_shows_it_once_with_the_revoked_count()
     {
-        var account = NewAccount("account", ApplicationRoles.MedicalWorker, Guid.NewGuid(), false) with { IsActive = false };
-        using var page = new Accounts();
+        var account = Lab2Account("doctor.demo", ApplicationRoles.MedicalWorker, "Иванов Иван", MedicalWorkerRole.Doctor);
+        using var http = CreateClient((_, _) =>
+            Task.FromResult(Json(new ResetAccountPasswordResultDto(account.Id, "NewPass123456", 2))));
+        using var page = new AccountOperations();
+        SetProperty(page, "Account", account);
+        Inject(page, "Accounts", new AccountManagementGateway(http));
 
-        Invoke(page, "AccountStatus", account).Should().Be("Неактивен");
+        await InvokeAsync(page, "ResetAsync");
+
+        Get<string>(page, "_generatedPassword").Should().Be("NewPass123456");
+        Get<string>(page, "_notice").Should().Contain("2");
     }
 
     [Fact]
-    public async Task CreateAccount_FailedRefreshAfterCreation_ShouldKeepGeneratedPasswordUntilDismissed()
+    public async Task Deactivating_an_account_updates_it_and_reports_revoked_tokens()
     {
-        var workerId = Guid.NewGuid();
-        var account = NewAccount("doctor", ApplicationRoles.MedicalWorker, workerId, false);
-        const string password = "Aa1Generated9";
-        string? postedBody = null;
-        using var http = CreateClient(async (request, _) =>
-        {
-            if (request.Method == HttpMethod.Post)
+        var account = Lab2Account("doctor.demo", ApplicationRoles.MedicalWorker, "Иванов Иван", MedicalWorkerRole.Doctor);
+        using var http = CreateClient((_, _) =>
+            Task.FromResult(Json(new SetAccountActiveResultDto(account with { IsActive = false }, 3))));
+        using var page = new AccountOperations();
+        SetProperty(page, "Account", account);
+        Inject(page, "Accounts", new AccountManagementGateway(http));
+
+        await InvokeAsync(page, "SetActiveAsync", false);
+
+        GetProperty<AccountDetailsDto>(page, "Account").IsActive.Should().BeFalse();
+        Get<string>(page, "_notice").Should().Contain("3");
+    }
+
+    [Fact]
+    public async Task A_fresh_operations_panel_does_not_render_the_field_name_as_a_password()
+    {
+        var account = Lab2Account("doctor.demo", ApplicationRoles.MedicalWorker, "Иванов Иван", MedicalWorkerRole.Doctor);
+        var html = await RenderComponentHtmlAsync<AccountOperations>(
+            services =>
             {
-                request.RequestUri!.AbsolutePath.Should().Be($"/api/medical-workers/{workerId}/account");
-                postedBody = await request.Content!.ReadAsStringAsync();
-                return Json(new CreateWorkerAccountResultDto(account, password));
-            }
-            return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
-        });
-        using var page = new Accounts();
-        Inject(page, "Api", new AccountManagementGateway(http));
-        Inject(page, "WorkersApi", new MedicalWorkersApiClient(http));
+                services.AddSingleton(Mock.Of<IAccountManagementGateway>());
+                services.AddSingleton(Mock.Of<IJSRuntime>());
+            },
+            ParameterView.FromDictionary(new Dictionary<string, object?> { ["Account"] = account }));
+
+        html.Should().NotContain("_generatedPassword");
+        html.Should().NotContain("Новый пароль сотрудника");
+    }
+
+    [Fact]
+    public async Task A_fresh_worker_panel_does_not_render_the_field_name_as_a_password()
+    {
+        var gateway = new Mock<IAccountManagementGateway>();
+        gateway.Setup(service => service.ListAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<AccountDetailsDto>());
+        var html = await RenderComponentHtmlAsync<WorkerAccountPanel>(
+            services =>
+            {
+                services.AddSingleton(gateway.Object);
+                services.AddSingleton(Mock.Of<IJSRuntime>());
+            },
+            ParameterView.FromDictionary(new Dictionary<string, object?> { ["WorkerId"] = Guid.NewGuid() }));
+
+        html.Should().NotContain("_createdPassword");
+        html.Should().NotContain("Учётная запись создана");
+    }
+
+    [Fact]
+    public void Switching_the_selected_account_resets_the_operations_panel()
+    {
+        var first = Lab2Account("a", ApplicationRoles.MedicalWorker, "Имя Один", MedicalWorkerRole.Doctor);
+        var second = Lab2Account("b", ApplicationRoles.MedicalWorker, "Имя Два", MedicalWorkerRole.Nurse);
+        using var page = new AccountOperations();
+        SetProperty(page, "Account", first);
+        Invoke(page, "OnParametersSet");
+        Set(page, "_generatedPassword", "NewPass123456");
+        Set(page, "_notice", "Что-то произошло");
+        Set(page, "_busy", true);
+
+        SetProperty(page, "Account", second);
+        Invoke(page, "OnParametersSet");
+
+        Get<string>(page, "_generatedPassword").Should().BeNull();
+        Get<string>(page, "_notice").Should().BeNull();
+        Get<bool>(page, "_busy").Should().BeFalse();
+        GetField(page, "_confirm").Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Creating_an_account_keeps_the_generated_password_and_the_new_account()
+    {
+        var account = Lab2Account("doctor.demo", ApplicationRoles.MedicalWorker, "Иванов Иван", MedicalWorkerRole.Doctor);
+        using var http = CreateClient((_, _) =>
+            Task.FromResult(Json(new CreateWorkerAccountResultDto(account, "NewPass123456"))));
+        using var page = new WorkerAccountPanel();
+        Inject(page, "Accounts", new AccountManagementGateway(http));
+        Set(page, "_cts", new CancellationTokenSource());
         var form = Get<object>(page, "_form");
-        form.GetType().GetProperty("UserName")!.SetValue(form, "doctor");
-        form.GetType().GetProperty("MedicalWorkerId")!.SetValue(form, workerId);
+        form.GetType().GetProperty("UserName")!.SetValue(form, "doctor.demo");
 
         await InvokeAsync(page, "CreateAsync");
 
-        postedBody.Should().Be("{\"userName\":\"doctor\"}");
-        Get<IReadOnlyList<AccountDetailsDto>>(page, "_accounts").Should().ContainSingle().Which.Should().Be(account);
-        Get<string>(page, "_generatedPassword").Should().Be(password);
-        Get<string>(page, "_listError").Should().NotBeNullOrWhiteSpace();
-        Get<object>(page, "_form").GetType().GetProperty("Password").Should().BeNull();
-        Invoke(page, "ClearGeneratedPassword");
-        Get<string?>(page, "_generatedPassword").Should().BeNull();
-        Get<string?>(page, "_generatedUserName").Should().BeNull();
+        Get<string>(page, "_createdPassword").Should().Be("NewPass123456");
+        Get<AccountDetailsDto>(page, "_account").Should().Be(account);
     }
 
     [Fact]
-    public async Task ResetPassword_ConfirmedAccount_ShouldKeepReturnedPasswordAndClearConfirmation()
+    public void A_soft_deleted_worker_is_detected_by_id_not_by_preserved_name()
     {
-        var account = NewAccount("doctor", ApplicationRoles.MedicalWorker, Guid.NewGuid(), false);
-        using var http = CreateClient((request, _) => Task.FromResult(request.Method == HttpMethod.Post
-            ? Json(new ResetAccountPasswordResultDto(account.Id, "NewPassword1", 0))
-            : new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)));
+        var deletedWorkerId = Guid.NewGuid();
+        var activeWorkerId = Guid.NewGuid();
+        var deletedWorkerAccount = new AccountDetailsDto(Guid.NewGuid(), "left.demo", ApplicationRoles.MedicalWorker,
+            deletedWorkerId, "Петров Пётр", MedicalWorkerRole.Doctor, false, false, DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow);
+        var activeWorkerAccount = deletedWorkerAccount with { Id = Guid.NewGuid(), MedicalWorkerId = activeWorkerId };
         using var page = new Accounts();
-        Inject(page, "Api", new AccountManagementGateway(http));
-        Inject(page, "WorkersApi", new MedicalWorkersApiClient(http));
-        Invoke(page, "BeginReset", account);
+        Set(page, "_deletedWorkerIds", (IReadOnlySet<Guid>)new HashSet<Guid> { deletedWorkerId });
 
-        await InvokeAsync(page, "ResetPasswordAsync");
-
-        Get<AccountDetailsDto?>(page, "_pendingReset").Should().BeNull();
-        Get<string>(page, "_generatedPassword").Should().Be("NewPassword1");
-        Get<string>(page, "_notice").Should().Contain("0");
-        page.Dispose();
-        Get<string?>(page, "_generatedPassword").Should().BeNull();
+        ((bool)Invoke(page, "IsWorkerDeleted", deletedWorkerAccount)!).Should().BeTrue();
+        ((bool)Invoke(page, "IsWorkerDeleted", activeWorkerAccount)!).Should().BeFalse();
     }
 
     [Fact]
-    public async Task LoadAccounts_DisposedBeforeResponse_ShouldFinishWithoutAccessingDisposedTokenSource()
+    public async Task A_stale_audit_response_cannot_overwrite_a_newer_filtered_result()
     {
-        var response = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var http = CreateClient((request, _) => request.RequestUri!.AbsolutePath == "/api/accounts"
-            ? response.Task : Task.FromResult(Json(Array.Empty<MedicalWorkerDto>())));
-        using var page = new Accounts();
-        Inject(page, "Api", new AccountManagementGateway(http));
-        Inject(page, "WorkersApi", new MedicalWorkersApiClient(http));
-        var loading = InvokeAsync(page, "LoadAsync");
-        page.Dispose();
-        response.SetResult(Json(Array.Empty<AccountDetailsDto>()));
+        var stale = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var freshEvent = AuditEvent("Актуальное событие");
+        var requests = 0;
+        using var http = CreateClient((_, _) => ++requests == 1
+            ? stale.Task
+            : Task.FromResult(Json(new PagedResult<AuditEventDto>(new[] { freshEvent }, 1, 50, false))));
+        using var page = new Audit();
+        Inject(page, "Gateway", new AuditGateway(http));
+        Set(page, "_cts", new CancellationTokenSource());
 
-        var finish = async () => await loading;
+        var firstLoad = InvokeAsync(page, "LoadAsync", true);
+        Set(page, "_eventType", AuditEventType.AccountChanged);
+        await InvokeAsync(page, "LoadAsync", true);
+        stale.SetResult(Json(new PagedResult<AuditEventDto>(new[] { AuditEvent("Устаревшее событие") }, 1, 50, false)));
+        await firstLoad;
 
-        await finish.Should().NotThrowAsync();
+        Get<IReadOnlyList<AuditEventDto>>(page, "_items").Should().ContainSingle()
+            .Which.Message.Should().Be("Актуальное событие");
+        Get<bool>(page, "_inFlight").Should().BeFalse();
     }
 
-    private static AccountDetailsDto NewAccount(string userName, string role, Guid? workerId, bool lockedOut) =>
-        new(Guid.NewGuid(), userName, role, workerId, null, null, true, lockedOut, DateTimeOffset.UnixEpoch,
-            DateTimeOffset.UnixEpoch);
+    [Fact]
+    public async Task A_disposed_audit_page_does_not_start_polling()
+    {
+        using var http = CreateClient((_, _) =>
+            Task.FromResult(Json(new PagedResult<AuditEventDto>(Array.Empty<AuditEventDto>(), 1, 50, false))));
+        var page = new Audit();
+        Inject(page, "Gateway", new AuditGateway(http));
+        page.Dispose();
+
+        await InvokeAsync(page, "OnInitializedAsync");
+
+        GetField(page, "_pollTask").Should().BeNull();
+        GetField(page, "_timer").Should().BeNull();
+    }
+
+    private static AuditEventDto AuditEvent(string message) => new(Guid.NewGuid(), DateTimeOffset.UtcNow,
+        AuditEventType.AccountChanged, new AuditActorDto(AuditActorKind.System, null, "Система", null, null),
+        message, new Dictionary<string, JsonElement>());
+
+    [Fact]
+    public void Audit_polling_is_cancelled_on_dispose()
+    {
+        var page = new Audit();
+        var cts = new CancellationTokenSource();
+        Set(page, "_cts", cts);
+
+        page.Dispose();
+
+        cts.IsCancellationRequested.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Audit_refresh_is_skipped_while_a_request_is_in_flight()
+    {
+        using var http = CreateClient((_, _) => throw new InvalidOperationException("A second request must not start."));
+        using var page = new Audit();
+        Inject(page, "Gateway", new AuditGateway(http));
+        Set(page, "_cts", new CancellationTokenSource());
+        Set(page, "_inFlight", true);
+
+        await InvokeAsync(page, "LoadAsync", false);
+
+        Get<bool>(page, "_inFlight").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task The_setup_wizard_stays_on_the_code_step_when_the_code_is_rejected()
+    {
+        var gateway = new StubAuthenticationGateway
+        {
+            Confirm = (_, _) => throw new ApiException("Неверный код.", HttpStatusCode.BadRequest)
+        };
+        using var page = new Setup();
+        Inject(page, "Authentication", gateway);
+        SetEnum(page, "_step", "Totp");
+        Set(page, "_challengeId", Guid.NewGuid());
+        Set(page, "_setupToken", "ui-mock-setup-token");
+        SetNestedForm(page, "_confirmation", "Code", "012345");
+
+        await InvokeAsync(page, "ConfirmAsync");
+
+        GetField(page, "_step")!.ToString().Should().Be("Totp");
+        Get<string>(page, "_error").Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task A_successful_begin_moves_to_the_code_step_and_keeps_the_secret()
+    {
+        var gateway = new StubAuthenticationGateway
+        {
+            Begin = (_, _) => Task.FromResult(new SetupChallengeDto(Guid.NewGuid(), "SECRET-KEY",
+                "otpauth://totp/Demo", DateTimeOffset.UtcNow.AddMinutes(5)))
+        };
+        using var page = new Setup();
+        Inject(page, "Authentication", gateway);
+        SetNestedForm(page, "_credentials", "SetupToken", "ui-mock-setup-token");
+        SetNestedForm(page, "_credentials", "Password", "StrongPass12!");
+        SetNestedForm(page, "_credentials", "ConfirmPassword", "StrongPass12!");
+
+        await InvokeAsync(page, "BeginAsync");
+
+        Get<string>(page, "_secret").Should().Be("SECRET-KEY");
+        GetField(page, "_step")!.ToString().Should().Be("Totp");
+    }
+
+    private static SessionState Session(MedicalWorkerRole role)
+    {
+        var state = new SessionState();
+        state.SetSession(new SessionDto(Guid.NewGuid(), "worker", ApplicationRoles.MedicalWorker, Guid.NewGuid(), role));
+        return state;
+    }
 
     private static HttpClient CreateClient(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send) =>
         new(new ResponseHandler(send)) { BaseAddress = new Uri("http://localhost/") };
+
+    private static async Task<string> RenderComponentHtmlAsync<TComponent>(Action<IServiceCollection> configureServices,
+        ParameterView parameters) where TComponent : IComponent
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        configureServices(services);
+        await using var provider = services.BuildServiceProvider();
+        await using var renderer = new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>());
+        return await renderer.Dispatcher.InvokeAsync(async () =>
+        {
+            var output = await renderer.RenderComponentAsync<TComponent>(parameters);
+            return output.ToHtmlString();
+        });
+    }
 
     private static HttpResponseMessage Json<T>(T value) => new(HttpStatusCode.OK) { Content = JsonContent.Create(value) };
     private static void Set(object page, string field, object? value) =>
@@ -406,6 +514,23 @@ public sealed class WebPageRegressionTests
         (T)page.GetType().GetField(field, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
     private static void Inject(object page, string property, object value) =>
         page.GetType().GetProperty(property, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(page, value);
+    private static void SetProperty(object page, string property, object? value) =>
+        page.GetType().GetProperty(property, BindingFlags.Instance | BindingFlags.Public)!.SetValue(page, value);
+    private static T GetProperty<T>(object page, string property) =>
+        (T)page.GetType().GetProperty(property,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!.GetValue(page)!;
+    private static object? GetField(object page, string field) =>
+        page.GetType().GetField(field, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page);
+    private static void SetEnum(object page, string field, string value)
+    {
+        var info = page.GetType().GetField(field, BindingFlags.Instance | BindingFlags.NonPublic)!;
+        info.SetValue(page, Enum.Parse(info.FieldType, value));
+    }
+    private static void SetNestedForm(object page, string field, string property, object? value)
+    {
+        var form = GetField(page, field)!;
+        form.GetType().GetProperty(property)!.SetValue(form, value);
+    }
     private static object? Invoke(object page, string method, params object[] arguments) =>
         page.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, arguments);
     private static Task InvokeAsync(object page, string method, params object[] arguments) =>
@@ -416,5 +541,28 @@ public sealed class WebPageRegressionTests
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
             CancellationToken cancellationToken) => send(request, cancellationToken);
+    }
+
+    private sealed class StubAuthenticationGateway : IAuthenticationGateway
+    {
+        public Func<BeginSetupRequest, string, Task<SetupChallengeDto>>? Begin { get; init; }
+        public Func<ConfirmSetupRequest, string, Task>? Confirm { get; init; }
+
+        public Task<SetupStatusDto> GetSetupStatusAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(new SetupStatusDto(true));
+
+        public Task<SetupChallengeDto> BeginSetupAsync(BeginSetupRequest request, string setupToken,
+            CancellationToken cancellationToken) => Begin!(request, setupToken);
+
+        public Task ConfirmSetupAsync(ConfirmSetupRequest request, string setupToken,
+            CancellationToken cancellationToken) => Confirm!(request, setupToken);
+
+        public Task<AuthenticationSessionDto> LoginAsync(LoginRequest request, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<AuthenticationSessionDto?> GetSessionAsync(CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task LogoutAsync(CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 }

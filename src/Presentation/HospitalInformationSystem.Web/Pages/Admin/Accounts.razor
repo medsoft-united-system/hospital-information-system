@@ -1,331 +1,247 @@
 @page "/admin/accounts"
 @using HospitalInformationSystem.Contracts.Security
-@using HospitalInformationSystem.Web.Gateways
+@using HospitalInformationSystem.Web.Components.Accounts
 @attribute [Authorize(Roles = ApplicationRoles.Administrator)]
 @implements IDisposable
-@inject IAccountManagementGateway Api
-@inject MedicalWorkersApiClient WorkersApi
+@inject HospitalInformationSystem.Web.Gateways.IAccountManagementGateway Gateway
+@inject HospitalInformationSystem.Web.ApiClients.MedicalWorkersApiClient Workers
 
 <PageTitle>Учётные записи · Учебная HIS</PageTitle>
+<div class="eyebrow"><span class="eyebrow-line"></span> ДОСТУП К СИСТЕМЕ</div>
 <div class="page-heading">
-  <div><h1>Учётные записи</h1><p>Доступ к системе и связь с медработниками.</p></div>
+  <div><h1>Учётные записи</h1>
+    <p>Доступ сотрудников к системе и связь с медработниками.</p></div>
+  <a class="btn btn-primary" href="/admin/medical-workers">
+    <Icon Name="plus"/>
+    Создать учётную запись</a>
 </div>
-<section class="surface" aria-labelledby="account-create-title">
-  <div class="registry-heading">
-    <div><h2 id="account-create-title">Новая учётная запись медработника</h2>
-      <p>Выберите действующего сотрудника. Пароль создаст сервер и покажет один раз.</p></div>
-  </div>
-  <EditForm Model="_form" OnValidSubmit="CreateAsync">
-    <DataAnnotationsValidator/>
-    <fieldset disabled="@(_saving || _loading || _workers is null)">
-      <div class="form-grid">
-        <div>
-          <label for="account-name">Логин</label>
-          <InputText id="account-name" class="form-control" @bind-Value="_form.UserName" minlength="3" maxlength="16" autocomplete="off"/>
-          <ValidationMessage For="() => _form.UserName"/>
-        </div>
-        <div>
-          <label for="account-worker">Медработник</label>
-          <InputSelect id="account-worker" class="form-control" @bind-Value="_form.MedicalWorkerId">
-            <option value="">— выберите медработника —</option>
-            @foreach (var worker in AvailableWorkers())
-            {
-              <option value="@worker.Id">@worker.LastName @worker.FirstName — @worker.Position</option>
-            }
-          </InputSelect>
-          <ValidationMessage For="() => _form.MedicalWorkerId"/>
-        </div>
-      </div>
-      <p class="field-hint">У сотрудника может быть один аккаунт. Логин: 3–16 символов, латинские буквы, цифры и знаки <code>._-@@+</code>.</p>
-      <button type="submit" class="btn btn-primary">@(_saving ? "Сохранение…" : "Создать учётную запись")</button>
-    </fieldset>
-  </EditForm>
-</section>
+<p class="field-hint">Учётная запись создаётся из карточки сотрудника: откройте медработника и добавьте ему доступ.
+  Самостоятельный аккаунт без сотрудника создать нельзя.</p>
 
-<ErrorAlert Message="@_formError"/>
-@if (_notice is not null)
-{
-  <p role="status">@_notice</p>
-}
-@if (_generatedPassword is not null)
-{
-  <section class="surface" aria-labelledby="generated-password-title">
-    <h2 id="generated-password-title">Пароль для @_generatedUserName</h2>
-    <p>Передайте пароль сотруднику. После закрытия его нельзя посмотреть повторно.</p>
-    <p><code aria-label="Сгенерированный пароль">@_generatedPassword</code></p>
-    <button type="button" class="btn btn-outline-primary" @onclick="ClearGeneratedPassword">Пароль сохранён — закрыть</button>
-  </section>
-}
-@if (_pendingReset is { } resetAccount)
-{
-  <div class="confirm-panel" role="alertdialog" aria-labelledby="reset-password-title" aria-describedby="reset-password-description">
-    <div><strong id="reset-password-title">Сбросить пароль @resetAccount.UserName?</strong>
-      <p id="reset-password-description">Прежний пароль перестанет действовать. Активные сеансы будут отозваны.</p></div>
-    <div class="button-row">
-      <button type="button" class="btn btn-danger" disabled="@_saving" @onclick="ResetPasswordAsync">Сбросить пароль</button>
-      <button type="button" class="btn btn-light" disabled="@_saving" @onclick="CancelPendingAction">Отмена</button>
-    </div>
-  </div>
-}
-@if (_pendingActivity is { } activityAccount)
-{
-  <div class="confirm-panel" role="alertdialog" aria-labelledby="account-activity-title" aria-describedby="account-activity-description">
-    <div><strong id="account-activity-title">@(activityAccount.IsActive ? "Деактивировать" : "Активировать") @activityAccount.UserName?</strong>
-      <p id="account-activity-description">@(activityAccount.IsActive ? "Доступ будет закрыт, активные сеансы отозваны." : "Сотрудник сможет войти снова. Прежние сеансы не восстановятся.")</p></div>
-    <div class="button-row">
-      <button type="button" class="btn btn-primary" disabled="@_saving" @onclick="SetActiveAsync">Подтвердить</button>
-      <button type="button" class="btn btn-light" disabled="@_saving" @onclick="CancelPendingAction">Отмена</button>
-    </div>
-  </div>
-}
 <ErrorAlert Message="@_listError"/>
-<section class="surface" aria-labelledby="accounts-title">
+
+<section class="surface" aria-label="Учётные записи">
   <div class="registry-heading">
-    <div><h2 id="accounts-title">Пользователи системы</h2><p>Активность аккаунта и временная блокировка отображаются отдельно.</p></div>
-    <button class="btn btn-outline-primary" disabled="@(_loading || _saving)" @onclick="LoadAsync">Обновить</button>
+    <div><h2>Пользователи системы</h2>
+      <p>Список учётных записей и их состояние.</p></div>
+    <button class="btn btn-outline-primary" disabled="@_loading" @onclick="LoadAsync">Обновить</button>
   </div>
+  <div class="table-toolbar">
+    <div class="search-field">
+      <Icon Name="search"/>
+      <input type="search" aria-label="Поиск по логину или сотруднику" placeholder="Логин или сотрудник"
+             @bind="_search" @bind:event="oninput"/></div>
+    <label class="checkbox-label" for="activity-filter">Активность:
+      <select id="activity-filter" class="form-control activity-filter" @bind="_activityFilter">
+        <option value="@ActivityFilter.All">Все</option>
+        <option value="@ActivityFilter.Active">Только активные</option>
+        <option value="@ActivityFilter.Inactive">Только неактивные</option>
+      </select>
+    </label>
+  </div>
+  <p class="field-hint toolbar-note">Поиск и фильтр применяются к уже загруженному списку.</p>
   @if (_loading)
   {
     <div class="empty-state" role="status">Загрузка учётных записей…</div>
   }
-  else if (_accounts is not null)
+  else if (_accounts is null)
   {
-    <div class="table-responsive"><table class="table mr-table">
-      <thead><tr><th scope="col">Логин</th><th scope="col">Роль</th><th scope="col">Медработник</th><th scope="col">Статус</th><th scope="col">Действия</th></tr></thead>
-      <tbody>
-      @foreach (var account in _accounts)
-      {
-        <tr @key="account.Id">
-          <td data-label="Логин">@account.UserName</td>
-          <td data-label="Роль">@AccountRole(account)</td>
-          <td data-label="Медработник">@(account.MedicalWorkerName ?? "—")</td>
-          <td data-label="Статус">@AccountStatus(account)</td>
-          <td data-label="Действия">
-            @if (account.AccountRole == ApplicationRoles.MedicalWorker)
-            {
-              <div class="button-row">
-                <button type="button" class="btn btn-outline-primary" disabled="@(_saving || _loading)" @onclick="() => BeginReset(account)">Сбросить пароль</button>
-                <button type="button" class="btn btn-light" disabled="@(_saving || _loading || !CanChangeActivity(account))" @onclick="() => BeginActivity(account)">@(account.IsActive ? "Деактивировать" : "Активировать")</button>
-              </div>
-            }
-          </td>
-        </tr>
-      }
-      </tbody>
-    </table></div>
-    @if (_accounts.Count == 0)
-    {
-      <div class="empty-state">Учётные записи не найдены.</div>
-    }
+    <div class="empty-state"><h2>Не удалось загрузить список</h2>
+      <p>Проверьте подключение к серверу и повторите попытку.</p>
+      <button class="btn btn-outline-primary" @onclick="LoadAsync">Повторить</button>
+    </div>
   }
   else
   {
-    <div class="empty-state">Не удалось загрузить учётные записи. Повторите загрузку.</div>
+    <div class="table-responsive">
+      <table class="table mr-table">
+        <thead>
+        <tr>
+          <th scope="col">Логин</th>
+          <th scope="col">Сотрудник</th>
+          <th scope="col">Роль</th>
+          <th scope="col">Создана</th>
+          <th scope="col">Статус</th>
+          <th scope="col" class="actions-cell">Действия</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var account in VisibleAccounts)
+        {
+          <tr @key="account.Id" class="@(account.Id == _selectedId ? "selected-row" : "")">
+            <td data-label="Логин">@account.UserName</td>
+            <td data-label="Сотрудник">@(account.MedicalWorkerName ?? "—")</td>
+            <td data-label="Роль">
+              @if (IsAdministrator(account))
+              {
+                <span class="status status-admin"><span class="status-dot"></span>Администратор</span>
+              }
+              else
+              {
+                @MedicalRoleLabels.Describe(account.MedicalWorkerRole)
+              }
+            </td>
+            <td data-label="Создана">@account.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+            <td data-label="Статус">
+              <span class="status @(account.IsActive ? "status-active" : "status-deleted")">
+                <span class="status-dot"></span>@(account.IsActive ? "Активна" : "Деактивирована")
+              </span>
+              @if (account.IsLockedOut)
+              {
+                <span class="status status-warning"><span class="status-dot"></span>Временно заблокирована</span>
+              }
+            </td>
+            <td class="actions-cell">
+              @if (IsAdministrator(account))
+              {
+                <span class="field-hint">Единственный администратор</span>
+              }
+              else
+              {
+                <button class="row-edit" @onclick="() => Select(account.Id)">
+                  @(account.Id == _selectedId ? "Скрыть" : "Управление")
+                  <Icon Name="forward"/>
+                </button>
+              }
+            </td>
+          </tr>
+        }
+        </tbody>
+      </table>
+    </div>
+    @if (!VisibleAccounts.Any())
+    {
+      <div class="empty-state">
+        @(_accounts.Count == 0 ? "Учётные записи ещё не созданы." : "По условиям поиска ничего не найдено.")
+      </div>
+    }
+    <div class="table-footer"><span>Показано @VisibleAccounts.Count() из @_accounts.Count записей</span></div>
   }
 </section>
 
+@if (SelectedAccount is { } selected && !IsAdministrator(selected))
+{
+  <section class="surface account-panel" aria-label="Управление учётной записью">
+    <div class="registry-heading">
+      <div><h2>@selected.UserName</h2>
+        <p>@(selected.MedicalWorkerName ?? "Сотрудник не указан") · @MedicalRoleLabels.Describe(selected.MedicalWorkerRole)</p></div>
+      <button class="btn btn-light" @onclick="() => _selectedId = null">Закрыть</button>
+    </div>
+    <AccountOperations @key="selected.Id" Account="selected" WorkerDeleted="@IsWorkerDeleted(selected)"
+                       OnChanged="OnAccountChanged"/>
+  </section>
+}
+
 @code {
-  private AccountForm _form = new();
   private IReadOnlyList<AccountDetailsDto>? _accounts;
-  private IReadOnlyList<MedicalWorkerDto>? _workers;
+  private IReadOnlySet<Guid> _deletedWorkerIds = new HashSet<Guid>();
   private readonly CancellationTokenSource _cancellation = new();
-  private bool _disposed;
-  private bool _loading;
-  private bool _saving;
+  private bool _loading = true;
   private int _loadVersion;
-  private string? _formError;
   private string? _listError;
-  private string? _notice;
-  private string? _generatedPassword;
-  private string? _generatedUserName;
-  private AccountDetailsDto? _pendingReset;
-  private AccountDetailsDto? _pendingActivity;
+  private string _search = "";
+  private ActivityFilter _activityFilter = ActivityFilter.All;
+  private Guid? _selectedId;
+
+  private enum ActivityFilter
+  {
+    All,
+    Active,
+    Inactive
+  }
+
+  private AccountDetailsDto? SelectedAccount => _accounts?.FirstOrDefault(account => account.Id == _selectedId);
+
+  private IEnumerable<AccountDetailsDto> VisibleAccounts => (_accounts ?? [])
+    .Where(account => MatchesActivity(account) && MatchesSearch(account));
+
+  private bool MatchesActivity(AccountDetailsDto account) => _activityFilter switch
+  {
+    ActivityFilter.Active => account.IsActive,
+    ActivityFilter.Inactive => !account.IsActive,
+    _ => true
+  };
+
+  private bool MatchesSearch(AccountDetailsDto account)
+  {
+    var term = _search.Trim();
+    if (term.Length == 0)
+    {
+      return true;
+    }
+
+    return $"{account.UserName} {account.MedicalWorkerName}".Contains(term, StringComparison.OrdinalIgnoreCase);
+  }
+
+  private static bool IsAdministrator(AccountDetailsDto account) => account.AccountRole == ApplicationRoles.Administrator;
+
+  private bool IsWorkerDeleted(AccountDetailsDto account) =>
+    account.MedicalWorkerId is { } workerId && _deletedWorkerIds.Contains(workerId);
 
   protected override Task OnInitializedAsync() => LoadAsync();
 
   private async Task LoadAsync()
   {
-    if (_disposed) return;
-    var token = _cancellation.Token;
     var version = ++_loadVersion;
     _loading = true;
     _listError = null;
     try
     {
-      var accountsTask = Api.ListAsync(token);
-      var workersTask = WorkersApi.ListAsync(includeDeleted: true, token);
-      await Task.WhenAll(accountsTask, workersTask);
-      if (!_disposed && version == _loadVersion)
+      var accounts = await Gateway.ListAsync(_cancellation.Token);
+      var workers = await Workers.ListAsync(true, _cancellation.Token);
+      if (_cancellation.IsCancellationRequested || version != _loadVersion)
       {
-        _accounts = await accountsTask;
-        _workers = await workersTask;
-      }
-    }
-    catch (OperationCanceledException) when (_disposed || token.IsCancellationRequested) { }
-    catch (ApiException exception)
-    {
-      if (!_disposed && version == _loadVersion) _listError = exception.Message;
-    }
-    catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
-    {
-      if (!_disposed && version == _loadVersion) _listError = "Не удалось загрузить учётные записи. Повторите попытку.";
-    }
-    finally
-    {
-      if (!_disposed && version == _loadVersion) _loading = false;
-    }
-  }
-
-  private Task CreateAsync()
-  {
-    var workerId = _form.MedicalWorkerId;
-    var userName = _form.UserName.Trim();
-    return MutateAsync(async token =>
-    {
-      if (workerId is null || workerId == Guid.Empty)
-      {
-        _formError = "Выберите действующего медработника.";
         return;
       }
-      var result = await Api.CreateForWorkerAsync(workerId.Value, new CreateWorkerAccountRequest(userName), token);
-      if (_disposed) return;
-      _accounts = (_accounts ?? []).Append(result.Account).ToArray();
-      _generatedPassword = result.GeneratedPassword;
-      _generatedUserName = result.Account.UserName;
-      _notice = $"Учётная запись {result.Account.UserName} создана.";
-      _form = new AccountForm();
-      await LoadAsync();
-    });
-  }
 
-  private Task ResetPasswordAsync()
-  {
-    var account = _pendingReset;
-    return MutateAsync(async token =>
+      _accounts = accounts;
+      _deletedWorkerIds = workers
+        .Where(worker => worker.IsDeleted)
+        .Select(worker => worker.Id)
+        .ToHashSet();
+      if (_selectedId is { } id && accounts.All(account => account.Id != id))
+      {
+        _selectedId = null;
+      }
+    }
+    catch (OperationCanceledException) when (_cancellation.IsCancellationRequested)
     {
-      if (account is null) return;
-      var result = await Api.ResetPasswordAsync(account.Id, token);
-      if (_disposed) return;
-      _pendingReset = null;
-      _generatedPassword = result.GeneratedPassword;
-      _generatedUserName = account.UserName;
-      _notice = $"Пароль сброшен. Отозвано активных сеансов: {result.RevokedRefreshTokenCount}.";
-      await LoadAsync();
-    });
-  }
-
-  private Task SetActiveAsync()
-  {
-    var account = _pendingActivity;
-    return MutateAsync(async token =>
-    {
-      if (account is null) return;
-      var result = await Api.SetActiveAsync(account.Id, !account.IsActive, token);
-      if (_disposed) return;
-      _pendingActivity = null;
-      _accounts = (_accounts ?? []).Select(item => item.Id == result.Account.Id ? result.Account : item).ToArray();
-      _notice = $"Аккаунт {(result.Account.IsActive ? "активирован" : "деактивирован")}. Отозвано активных сеансов: {result.RevokedRefreshTokenCount}.";
-      await LoadAsync();
-    });
-  }
-
-  private async Task MutateAsync(Func<CancellationToken, Task> mutation)
-  {
-    if (_saving || _loading || _disposed) return;
-    _saving = true;
-    _formError = null;
-    _notice = null;
-    ClearGeneratedPassword();
-    try { await mutation(_cancellation.Token); }
-    catch (OperationCanceledException) when (_disposed || _cancellation.IsCancellationRequested) { }
+    }
     catch (ApiException exception)
     {
-      if (!_disposed) _formError = exception.Message;
+      if (!_cancellation.IsCancellationRequested && version == _loadVersion)
+      {
+        _listError = exception.Message;
+      }
     }
     catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
     {
-      if (!_disposed) _formError = "Не удалось подтвердить изменение. Обновите список перед повторной попыткой.";
+      if (!_cancellation.IsCancellationRequested && version == _loadVersion)
+      {
+        _listError = "Не удалось загрузить учётные записи. Повторите попытку.";
+      }
     }
     finally
     {
-      if (!_disposed) _saving = false;
+      if (version == _loadVersion)
+      {
+        _loading = false;
+      }
     }
   }
 
-  private IEnumerable<MedicalWorkerDto> AvailableWorkers() => (_workers ?? []).Where(worker => !worker.IsDeleted &&
-    !(_accounts ?? []).Any(account => account.MedicalWorkerId == worker.Id));
+  private void Select(Guid id) => _selectedId = _selectedId == id ? null : id;
 
-  private bool CanChangeActivity(AccountDetailsDto account) => account.IsActive ||
-    _workers?.Any(worker => worker.Id == account.MedicalWorkerId && !worker.IsDeleted) == true;
-
-  private void BeginReset(AccountDetailsDto account)
+  private void OnAccountChanged(AccountDetailsDto account)
   {
-    if (_saving || _loading || _disposed) return;
-    _pendingActivity = null;
-    _pendingReset = account;
-  }
-
-  private void BeginActivity(AccountDetailsDto account)
-  {
-    if (_saving || _loading || _disposed || !CanChangeActivity(account)) return;
-    _pendingReset = null;
-    _pendingActivity = account;
-  }
-
-  private void CancelPendingAction()
-  {
-    if (_saving) return;
-    _pendingReset = null;
-    _pendingActivity = null;
-  }
-
-  private void ClearGeneratedPassword()
-  {
-    _generatedPassword = null;
-    _generatedUserName = null;
-  }
-
-  private static string AccountRole(AccountDetailsDto account) => account.AccountRole == ApplicationRoles.Administrator
-    ? "Администратор"
-    : account.MedicalWorkerRole switch
-    {
-      MedicalWorkerRole.Doctor => "Врач",
-      MedicalWorkerRole.Nurse => "Медсестра / медбрат",
-      MedicalWorkerRole.LaboratoryTechnician => "Лаборант",
-      _ => "Медработник"
-    };
-
-  private string AccountStatus(AccountDetailsDto account)
-  {
-    if (!account.IsActive) return "Неактивен";
-    if (account.IsLockedOut) return "Временно заблокирован";
-    if (account.AccountRole == ApplicationRoles.MedicalWorker)
-    {
-      var worker = _workers?.FirstOrDefault(item => item.Id == account.MedicalWorkerId);
-      if (worker is null) return "Нет действующего сотрудника";
-      if (worker.IsDeleted) return "Сотрудник удалён";
-    }
-    return "Активен";
+    _accounts = (_accounts ?? [])
+      .Select(item => item.Id == account.Id ? account : item)
+      .ToArray();
   }
 
   public void Dispose()
   {
-    if (_disposed) return;
-    _disposed = true;
-    ClearGeneratedPassword();
     _cancellation.Cancel();
     _cancellation.Dispose();
-  }
-
-  private sealed class AccountForm
-  {
-    [Required(ErrorMessage = "Укажите логин.")]
-    [StringLength(AccountUserNameRules.MaxLength, MinimumLength = AccountUserNameRules.MinLength,
-      ErrorMessage = "Логин: от 3 до 16 символов.")]
-    [RegularExpression("[A-Za-z0-9._@+-]+", ErrorMessage = "Логин содержит недопустимые символы.")]
-    public string UserName { get; set; } = "";
-
-    [Required(ErrorMessage = "Выберите действующего медработника.")]
-    public Guid? MedicalWorkerId { get; set; }
   }
 }

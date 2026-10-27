@@ -7,10 +7,9 @@
 @using HospitalInformationSystem.Contracts.Diagnoses
 @using HospitalInformationSystem.Contracts.MedicalRecords
 @using HospitalInformationSystem.Contracts.Security
-@using HospitalInformationSystem.Web.Gateways
 @implements IDisposable
 @inject PatientsApiClient PatientsApi
-@inject IMedicalRecordsGateway RecordsApi
+@inject HospitalInformationSystem.Web.Gateways.IMedicalRecordsGateway Records
 @inject DiagnosesApiClient DiagnosesApi
 @inject SessionState Session
 
@@ -24,6 +23,7 @@
     <h1>@(_patient is null ? "Медицинская карта" : $"{_patient.LastName} {_patient.FirstName}")</h1>
     <p>История диагнозов, назначений и изменений пациента.</p>
   </div>
+  <span class="status status-admin role-badge"><span class="status-dot"></span>Ваша роль: @MedicalRoleLabels.Describe(Role)</span>
 </div>
 
 <ErrorAlert Message="@_loadError"/>
@@ -66,30 +66,20 @@ else
       <div class="registry-heading">
         <div>
           <h2>Карта ещё не создана</h2>
-          <p>Карту может создать врач или медицинская сестра. Автор определяется по текущей учётной записи.</p>
+          <p>Чтобы начать вести диагнозы и назначения, создайте электронную медицинскую карту.</p>
         </div>
         <span class="section-index">ЭМК / НОВАЯ</span>
       </div>
       <div class="mr-create-body">
-        @if (!CanCreateRecord)
+        @if (CanCreateRecord)
         {
-          <p class="field-hint">Ваша роль позволяет просматривать созданные медицинские карты.</p>
-        }
-        else if (!_editing)
-        {
-          <button class="btn btn-primary" @onclick="BeginCreate">
-            <Icon Name="plus"/>
-            Создать ЭМК
+          <button class="btn btn-primary" disabled="@_busy" @onclick="CreateRecordAsync">
+            <Icon Name="plus"/> @(_busy ? "Создание…" : "Создать ЭМК")
           </button>
         }
         else
         {
-          <div class="button-row">
-            <button class="btn btn-primary" disabled="@_busy" @onclick="CreateRecordAsync">
-              <Icon Name="check"/> @(_busy ? "Создание…" : "Создать карту")
-            </button>
-            <button class="btn btn-light" disabled="@_busy" @onclick="CancelEdit">Отмена</button>
-          </div>
+          <p class="field-hint">Создавать карту может врач или медсестра. Ваша роль даёт только просмотр.</p>
         }
         @ActionFeedback
       </div>
@@ -114,18 +104,22 @@ else
         <div class="registry-heading">
           <div>
             <h2>Диагнозы</h2>
-            <p>@(IsEditingRecord ? "Режим редактирования. Изменения сохраняются на сервере." : "Текущие диагнозы карты (только просмотр).")</p>
+            <p>@(_editing ? "Режим редактирования. Изменения сохраняются на сервере." : "Текущие диагнозы карты (только просмотр).")</p>
           </div>
-          @if (IsEditingRecord)
+          @if (_editing)
           {
             <button class="btn btn-light" disabled="@_busy" @onclick="CancelEdit">Выйти из редактирования</button>
           }
-          else if (CanEditRecord)
+          else if (CanEdit)
           {
             <button class="btn btn-primary" @onclick="BeginEditAsync"><Icon Name="edit"/> Редактировать</button>
           }
+          else
+          {
+            <span class="field-hint">Изменять карту может только врач.</span>
+          }
         </div>
-        @if (IsEditingRecord)
+        @if (_editing)
         {
           <div class="mr-edit-form">
             <div class="mr-field mr-field-grow">
@@ -140,7 +134,7 @@ else
                 }
               </select>
             </div>
-            <button class="btn btn-primary" disabled="@(_busy || _editDataLoading || _selectedDiagnosisId is null)"
+            <button class="btn btn-primary" disabled="@(_busy || _selectedDiagnosisId is null)"
                     @onclick="AddDiagnosisAsync">
               <Icon Name="plus"/> Добавить диагноз
             </button>
@@ -153,7 +147,7 @@ else
               <th scope="col">Код</th>
               <th scope="col">Наименование</th>
               <th scope="col">Добавлен</th>
-              @if (IsEditingRecord)
+              @if (_editing)
               {
                 <th scope="col" class="actions-cell">Действия</th>
               }
@@ -166,7 +160,7 @@ else
                 <td data-label="Код"><code>@diagnosis.Code</code></td>
                 <td data-label="Наименование">@diagnosis.Name</td>
                 <td data-label="Добавлен">@FormatLocal(diagnosis.AddedAtUtc)</td>
-                @if (IsEditingRecord)
+                @if (_editing)
                 {
                   <td class="actions-cell">
                     <button class="icon-button danger" title="Удалить диагноз" disabled="@_busy"
@@ -190,18 +184,22 @@ else
         <div class="registry-heading">
           <div>
             <h2>Назначения</h2>
-            <p>@(IsEditingRecord ? "Режим редактирования. Изменения сохраняются на сервере." : "Действующие назначения карты (только просмотр).")</p>
+            <p>@(_editing ? "Режим редактирования. Изменения сохраняются на сервере." : "Действующие назначения карты (только просмотр).")</p>
           </div>
-          @if (IsEditingRecord)
+          @if (_editing)
           {
             <button class="btn btn-light" disabled="@_busy" @onclick="CancelEdit">Выйти из редактирования</button>
           }
-          else if (CanEditRecord)
+          else if (CanEdit)
           {
             <button class="btn btn-primary" @onclick="BeginEditAsync"><Icon Name="edit"/> Редактировать</button>
           }
+          else
+          {
+            <span class="field-hint">Изменять карту может только врач.</span>
+          }
         </div>
-        @if (IsEditingRecord)
+        @if (_editing)
         {
           <div class="mr-edit-form">
             <div class="mr-field mr-field-grow">
@@ -216,7 +214,7 @@ else
               }
             </div>
             <button class="btn btn-primary"
-                    disabled="@(_busy || _editDataLoading || !IsPrescriptionTextValid(_prescriptionText))"
+                    disabled="@(_busy || !IsPrescriptionTextValid(_prescriptionText))"
                     @onclick="AddPrescriptionAsync">
               <Icon Name="plus"/> Добавить назначение
             </button>
@@ -226,7 +224,7 @@ else
           @foreach (var prescription in _record.Prescriptions)
           {
             <li @key="prescription.Id">
-              @if (IsEditingRecord && _replaceId == prescription.Id)
+              @if (_editing && _replaceId == prescription.Id)
               {
                 <div class="mr-field mr-field-grow">
                   <label for="replace-text">Новый текст назначения</label>
@@ -240,7 +238,7 @@ else
                 </div>
                 <div class="button-row">
                   <button class="btn btn-primary"
-                            disabled="@(_busy || _editDataLoading || !IsPrescriptionTextValid(_replaceText))"
+                          disabled="@(_busy || !IsPrescriptionTextValid(_replaceText))"
                           @onclick="() => ReplacePrescriptionAsync(prescription.Id)">
                     <Icon Name="check"/> Сохранить
                   </button>
@@ -253,7 +251,7 @@ else
                   <p class="mr-prescription-text">@prescription.Text</p>
                   <small>Назначено @FormatLocal(prescription.CreatedAtUtc)@(prescription.ReplacesPrescriptionId is null ? "" : " · замена предыдущего")</small>
                 </div>
-                @if (IsEditingRecord)
+                @if (_editing)
                 {
                   <div class="button-row">
                     <button class="btn btn-light" disabled="@_busy"
@@ -401,6 +399,10 @@ else
 @code {
   [Parameter] public Guid PatientId { get; set; }
 
+  private MedicalWorkerRole? Role => Session.Current?.MedicalWorkerRole;
+  private bool CanEdit => Role == MedicalWorkerRole.Doctor;
+  private bool CanCreateRecord => Role is MedicalWorkerRole.Doctor or MedicalWorkerRole.Nurse;
+
   private enum Tab { Diagnoses, Prescriptions, History }
 
   private PatientDto? _patient;
@@ -437,14 +439,6 @@ else
   private Guid? _loadedPatientId;
   private CancellationTokenSource? _cts;
   private bool _disposed;
-
-  private AuthenticationSessionDto? PermissionSession => Session.Current is { } current
-    ? new(current.Id, current.UserName, current.Role, current.MedicalWorkerId, current.MedicalWorkerRole)
-    : null;
-
-  private bool CanCreateRecord => SessionPermissions.CanCreateMedicalRecord(PermissionSession);
-  private bool CanEditRecord => SessionPermissions.CanEditMedicalRecord(PermissionSession);
-  private bool IsEditingRecord => _editing && CanEditRecord;
 
   protected override async Task OnParametersSetAsync()
   {
@@ -496,7 +490,7 @@ else
     try
     {
       var patient = await PatientsApi.GetAsync(PatientId, token);
-      var record = await RecordsApi.FindForPatientAsync(PatientId, token);
+      var record = await Records.FindForPatientAsync(PatientId, token);
       if (!IsCurrent(token))
       {
         return;
@@ -574,7 +568,7 @@ else
     _historyError = null;
     try
     {
-      var history = await RecordsApi.GetHistoryAsync(_record.Id, token);
+      var history = await Records.GetHistoryAsync(_record.Id, token);
       if (!IsCurrent(token) || version != _historyVersion)
       {
         return;
@@ -616,23 +610,13 @@ else
     _historyLoading = false;
   }
 
-  private Task BeginCreate()
-  {
-    if (_busy || !CanCreateRecord)
-    {
-      return Task.CompletedTask;
-    }
-    _editing = true;
-    ClearActionMessages();
-    return Task.CompletedTask;
-  }
-
   private async Task BeginEditAsync()
   {
-    if (_busy || !CanEditRecord)
+    if (!CanEdit)
     {
       return;
     }
+
     _editing = true;
     _replaceId = null;
     _selectedDiagnosisId = null;
@@ -643,7 +627,7 @@ else
 
   private async Task EnsureEditDataAsync()
   {
-    if (_cts is null)
+    if (_cts is null || _tab != Tab.Diagnoses)
     {
       return;
     }
@@ -654,16 +638,17 @@ else
     _diagnoses = null;
     try
     {
-      if (_tab == Tab.Diagnoses)
+      // Загружаем справочник диагнозов заново при каждом входе в редактирование,
+      // чтобы в выпадающем списке не оставались устаревшие варианты.
+      // Отдельный счётчик сеанса (_editDataVersion) защищает от гонки: запоздавший
+      // ответ прежнего входа в редактирование не перезаписывает свежий список.
+      var diagnoses = await DiagnosesApi.ListAsync(token);
+      if (!IsEditDataCurrent(token, version))
       {
-        var diagnoses = await DiagnosesApi.ListAsync(token);
-        if (!IsEditDataCurrent(token, version))
-        {
-          return;
-        }
-
-        _diagnoses = diagnoses;
+        return;
       }
+
+      _diagnoses = diagnoses;
     }
     catch (OperationCanceledException) when (token.IsCancellationRequested)
     {
@@ -679,7 +664,7 @@ else
     {
       if (IsEditDataCurrent(token, version))
       {
-        _actionError = "Не удалось загрузить справочные данные для редактирования.";
+        _actionError = "Не удалось загрузить справочник диагнозов для редактирования.";
       }
     }
     finally
@@ -691,6 +676,8 @@ else
     }
   }
 
+  // Перезагружает справочник диагнозов после ошибки устаревшего выбора
+  // (удалённый диагноз → 404), чтобы список снова был актуален.
   private async Task RefreshEditDataAsync(CancellationToken token)
   {
     var version = ++_editDataVersion;
@@ -711,16 +698,16 @@ else
     catch (Exception e) when (e is ApiException or HttpRequestException or TaskCanceledException
                                 or OperationCanceledException)
     {
-      // Не удалось обновить справочники — оставляем прежние варианты, ошибка уже показана.
+      // Не удалось обновить справочник — оставляем прежние варианты, ошибка уже показана.
     }
   }
 
-  // Загрузка справочников актуальна, только если страница не освобождена, токен не отменён
+  // Загрузка справочника актуальна, только если страница не освобождена, токен не отменён
   // и за время запроса не начался новый сеанс редактирования (не изменился _editDataVersion).
   private bool IsEditDataCurrent(CancellationToken token, int version) =>
     IsCurrent(token) && version == _editDataVersion;
 
-  // Инвалидирует незавершённые загрузки справочников: любой запоздавший ответ отбрасывается.
+  // Инвалидирует незавершённые загрузки справочника: любой запоздавший ответ отбрасывается.
   private void InvalidateEditData()
   {
     _editDataVersion++;
@@ -766,14 +753,21 @@ else
     _replaceText = "";
   }
 
-  private Task CreateRecordAsync() => RunMutationAsync(token =>
-    RecordsApi.CreateAsync(PatientId, token), creating: true);
+  private Task CreateRecordAsync()
+  {
+    if (!CanCreateRecord)
+    {
+      return Task.CompletedTask;
+    }
+
+    return RunMutationAsync(token => Records.CreateAsync(PatientId, token));
+  }
 
   private Task AddDiagnosisAsync() => RunMutationAsync(token =>
-    RecordsApi.AddDiagnosisAsync(_record!.Id, _selectedDiagnosisId!.Value, token));
+    Records.AddDiagnosisAsync(_record!.Id, _selectedDiagnosisId!.Value, token));
 
   private Task RemoveDiagnosisAsync(Guid medicalRecordDiagnosisId) => RunMutationAsync(token =>
-    RecordsApi.RemoveDiagnosisAsync(_record!.Id, medicalRecordDiagnosisId, token));
+    Records.RemoveDiagnosisAsync(_record!.Id, medicalRecordDiagnosisId, token));
 
   private Task AddPrescriptionAsync()
   {
@@ -785,11 +779,11 @@ else
     }
 
     return RunMutationAsync(token =>
-      RecordsApi.AddPrescriptionAsync(_record!.Id, _prescriptionText.Trim(), token));
+      Records.AddPrescriptionAsync(_record!.Id, _prescriptionText.Trim(), token));
   }
 
   private Task CancelPrescriptionAsync(Guid prescriptionId) => RunMutationAsync(token =>
-    RecordsApi.CancelPrescriptionAsync(_record!.Id, prescriptionId, token));
+    Records.CancelPrescriptionAsync(_record!.Id, prescriptionId, token));
 
   private Task ReplacePrescriptionAsync(Guid prescriptionId)
   {
@@ -800,7 +794,7 @@ else
     }
 
     return RunMutationAsync(token =>
-      RecordsApi.ReplacePrescriptionAsync(_record!.Id, prescriptionId, _replaceText.Trim(), token));
+      Records.ReplacePrescriptionAsync(_record!.Id, prescriptionId, _replaceText.Trim(), token));
   }
 
   // Длина назначения после Trim должна совпадать с серверными ограничениями (3–128 символов).
@@ -813,9 +807,9 @@ else
   private static string PrescriptionLengthMessage =>
     $"Назначение должно содержать от {PrescriptionTextMinLength} до {PrescriptionTextMaxLength} символов.";
 
-  private async Task RunMutationAsync(Func<CancellationToken, Task> action, bool creating = false)
+  private async Task RunMutationAsync(Func<CancellationToken, Task> action)
   {
-    if (_busy || _cts is null || !(creating ? CanCreateRecord : CanEditRecord))
+    if (_busy || _cts is null)
     {
       return;
     }
@@ -844,14 +838,25 @@ else
     {
       if (IsCurrent(token))
       {
-        _actionError = e.Message;
         if (e.StatusCode == HttpStatusCode.Conflict)
         {
+          _actionError = e.Message;
           _recordConflict = true;
         }
-        else if (e.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.NotFound)
+        else if (e.StatusCode == HttpStatusCode.Forbidden)
         {
-          await RefreshEditDataAsync(token);
+          // Прав не хватает: выходим из редактирования и не повторяем запрос с другой ролью.
+          _actionError = "Недостаточно прав для этого действия. Доступен только просмотр.";
+          ResetEditState();
+        }
+        else
+        {
+          _actionError = e.Message;
+          if (e.StatusCode == HttpStatusCode.NotFound)
+          {
+            // Вероятно, выбран устаревший диагноз (404) — обновляем справочник.
+            await RefreshEditDataAsync(token);
+          }
         }
       }
     }
@@ -882,7 +887,7 @@ else
   {
     try
     {
-      var record = await RecordsApi.FindForPatientAsync(PatientId, token);
+      var record = await Records.FindForPatientAsync(PatientId, token);
       if (!IsCurrent(token))
       {
         return;
@@ -926,7 +931,7 @@ else
     {
       var local = DateTime.SpecifyKind(snapshotAt, DateTimeKind.Unspecified);
       var at = new DateTimeOffset(local, TimeZoneInfo.Local.GetUtcOffset(local));
-      var snapshot = await RecordsApi.GetSnapshotAsync(_record.Id, at, token);
+      var snapshot = await Records.GetSnapshotAsync(_record.Id, at, token);
       if (IsCurrent(token))
       {
         _snapshot = snapshot;

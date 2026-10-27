@@ -13,21 +13,19 @@
   <Icon Name="arrow"/>
   К списку пациентов</a>
 <div class="page-heading">
-  <div><h1>@(Id is null ? "Новый пациент" : CanManagePatients ? "Редактирование пациента" : "Карточка пациента")</h1>
+  <div><h1>@(Id is null ? "Новый пациент" : (CanManage ? "Редактирование пациента" : "Карточка пациента"))</h1>
     <p>Регистрационные данные пациента лечебного учреждения.</p></div>
+  <span class="status status-admin role-badge"><span class="status-dot"></span>Ваша роль: @MedicalRoleLabels.Describe(Role)</span>
 </div>
+@if (!CanManage)
+{
+  <div class="alert alert-warning" role="status">Ваша роль даёт только просмотр регистрационных данных.
+    Изменять и удалять пациента может врач или медсестра.</div>
+}
 <ErrorAlert Message="@_error"/>
 @if (_loading)
 {
   <div class="surface empty-state" role="status">Загрузка карточки…</div>
-}
-else if (Id is null && !CanManagePatients)
-{
-  <section class="surface empty-state">
-    <h2>Создание пациентов недоступно</h2>
-    <p>Пациентов могут добавлять врач и медицинская сестра. Ваша роль позволяет просматривать реестр и ЭМК.</p>
-    <a class="btn btn-outline-primary" href="/medical/patients">К списку пациентов</a>
-  </section>
 }
 else if (_model is not null)
 {
@@ -44,23 +42,22 @@ else if (_model is not null)
         <span class="status @(_patient?.HasMedicalRecord == true ? "status-active" : "status-deleted")">
           <span class="status-dot"></span>@(_patient?.HasMedicalRecord == true ? "ЭМК есть" : "Нет ЭМК")
         </span>
-        <a class="btn btn-outline-primary" href="/medical/patients/@Id/medical-record">
-          <Icon Name="record"/>
-          @(_patient?.HasMedicalRecord == true ? "Открыть ЭМК" : CanManagePatients ? "Создать ЭМК" : "К экрану ЭМК")
-        </a>
+        @if (_patient?.HasMedicalRecord == true || CanManage)
+        {
+          <a class="btn btn-outline-primary" href="/medical/patients/@Id/medical-record">
+            <Icon Name="record"/>
+            @(_patient?.HasMedicalRecord == true ? "Открыть ЭМК" : "Создать ЭМК")
+          </a>
+        }
       }
       <div class="profile-note">
         <Icon Name="record"/>
         <p>Электронная карта ведётся на отдельном экране пациента.</p></div>
     </aside>
     <section class="surface edit-surface" aria-label="Редактирование данных">
-      @if (!CanManagePatients)
-      {
-        <p class="field-hint" role="status">Данные доступны только для просмотра.</p>
-      }
       <EditForm Model="_model" OnValidSubmit="SaveAsync">
         <DataAnnotationsValidator/>
-        <fieldset disabled="@(_busy || !CanManagePatients)">
+        <fieldset disabled="@(_busy || !CanManage)">
           <div class="form-section">
             <div class="section-title"><span class="step-number">01</span>
               <div><h2>Личные данные</h2>
@@ -111,8 +108,8 @@ else if (_model is not null)
             <p class="field-hint">ФИО — до 64 символов, комментарий — до 32 символов.</p>
           </div>
           <div class="form-actions">
-            <a class="btn btn-light" href="/medical/patients">Отмена</a>
-            @if (CanManagePatients)
+            <a class="btn btn-light" href="/medical/patients">@(CanManage ? "Отмена" : "Назад")</a>
+            @if (CanManage)
             {
               <button type="submit" class="btn btn-primary">
                 <Icon Name="check"/> @(_busy ? "Сохранение…" : "Сохранить")</button>
@@ -120,7 +117,7 @@ else if (_model is not null)
           </div>
         </fieldset>
       </EditForm>
-      @if (Id is not null && CanManagePatients)
+      @if (Id is not null && CanManage)
       {
         <div class="delete-section">
           <div><strong>Пациент выбыл?</strong>
@@ -131,7 +128,7 @@ else if (_model is not null)
           </button>
         </div>
       }
-      @if (_confirmDelete && CanManagePatients)
+      @if (_confirmDelete)
       {
         <div class="confirm-panel" role="alertdialog" aria-labelledby="patient-edit-delete-title">
           <div>
@@ -156,6 +153,9 @@ else
 
 @code {
   [Parameter] public Guid? Id { get; set; }
+
+  private MedicalWorkerRole? Role => Session.Current?.MedicalWorkerRole;
+  private bool CanManage => Role is MedicalWorkerRole.Doctor or MedicalWorkerRole.Nurse;
 
   private PatientForm? _model;
   private PatientDto? _patient;
@@ -197,11 +197,6 @@ else
     _patient = null;
     _model = null;
     _confirmDelete = false;
-    if (Id is null && !CanManagePatients)
-    {
-      _loading = false;
-      return;
-    }
     try
     {
       var patient = Id is { } id ? await Api.GetAsync(id, token) : null;
@@ -254,7 +249,7 @@ else
 
   private Task SaveAsync() => ExecuteAsync(async token =>
   {
-    if (_model is null)
+    if (_model is null || !CanManage)
     {
       return;
     }
@@ -274,7 +269,7 @@ else
 
   private Task DeleteAsync() => ExecuteAsync(async token =>
   {
-    if (Id is { } id)
+    if (Id is { } id && CanManage)
     {
       await Api.DeleteAsync(id, token);
     }
@@ -282,7 +277,7 @@ else
 
   private async Task ExecuteAsync(Func<CancellationToken, Task> action)
   {
-    if (_busy || _routeCancellation is null || _disposed || !CanManagePatients)
+    if (_busy || _routeCancellation is null || _disposed)
     {
       return;
     }
