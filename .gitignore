@@ -1,5 +1,6 @@
 **/bin/
 **/obj/
+**/node_modules/
 .vs/
 .idea/
 .vscode/
@@ -16,6 +17,9 @@ artifacts/
 *.pfx
 *.p12
 *.key
+*.pem
+development-security.json
+*-password.txt
 **/__pycache__/
 *.pyc
 

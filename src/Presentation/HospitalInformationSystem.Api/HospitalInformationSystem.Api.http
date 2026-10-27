@@ -1,11 +1,12 @@
-@baseUrl = http://localhost:5200
+@baseUrl = https://localhost:5201
 @adminUserName = admin
 @adminPassword = {{$processEnv MEDSOFT_ADMIN_PASSWORD}}
+@adminTotpCode = {{$processEnv MEDSOFT_ADMIN_TOTP_CODE}}
 @workerId = 00000000-0000-0000-0000-000000000000
 
 # Выполняйте запросы по порядку в VS Code REST Client с включённым cookie jar.
 # MEDSOFT_ADMIN_PASSWORD задайте локально в окружении REST Client. Не записывайте пароль в этот файл.
-# Сгенерированный пароль admin находится в игнорируемом appsettings.Local.json.
+# Пароль задаётся в /admin/setup. Для каждого входа нужен свежий MEDSOFT_ADMIN_TOTP_CODE.
 
 ### Проверка подключения к БД
 GET {{baseUrl}}/health/ready
@@ -14,65 +15,80 @@ GET {{baseUrl}}/health/ready
 # @name anonymousCsrf
 GET {{baseUrl}}/api/auth/csrf
 
-### Войти как администратор; клиент должен сохранить cookie из ответа
+### Войти как администратор; cookie jar сохраняет refresh, ответ содержит access
+# @name adminLogin
 POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
 X-CSRF-TOKEN: {{anonymousCsrf.response.body.$.requestToken}}
 
 {
   "userName": "{{adminUserName}}",
-  "password": "{{adminPassword}}"
+  "password": "{{adminPassword}}",
+  "totpCode": "{{adminTotpCode}}",
+  "portal": "administrator"
 }
 
 ### После входа получить новый CSRF-токен, связанный с администратором
 # @name adminCsrf
 GET {{baseUrl}}/api/auth/csrf
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
 
 ### Проверить текущую учётную запись и роль
 GET {{baseUrl}}/api/auth/session
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
 
 ### Список включая удалённых
 GET {{baseUrl}}/api/medical-workers?includeDeleted=true
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
 
 ### Создать; скопировать id ответа в workerId ниже
 POST {{baseUrl}}/api/medical-workers
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
 Content-Type: application/json
 X-CSRF-TOKEN: {{adminCsrf.response.body.$.requestToken}}
 
 {
   "firstName": "Александр",
   "lastName": "Орлов",
-  "position": "Врач-терапевт"
+  "position": "Врач-терапевт",
+  "role": "doctor"
 }
 
 ### Подставьте id созданной записи
 GET {{baseUrl}}/api/medical-workers/{{workerId}}
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
 
 ### Изменить
 PUT {{baseUrl}}/api/medical-workers/{{workerId}}
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
 Content-Type: application/json
 X-CSRF-TOKEN: {{adminCsrf.response.body.$.requestToken}}
 
 {
   "firstName": "Александр",
   "lastName": "Орлов",
-  "position": "Врач-хирург"
+  "position": "Врач-хирург",
+  "role": "doctor"
 }
 
 ### Пометить удалённым; связанная учётная запись медработника потеряет доступ
 DELETE {{baseUrl}}/api/medical-workers/{{workerId}}
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
 X-CSRF-TOKEN: {{adminCsrf.response.body.$.requestToken}}
 
 ### 400 ValidationProblemDetails
 POST {{baseUrl}}/api/medical-workers
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
 Content-Type: application/json
 X-CSRF-TOKEN: {{adminCsrf.response.body.$.requestToken}}
 
-{ "firstName": "А", "lastName": "Орлов", "position": "Врач" }
+{ "firstName": "", "lastName": "Орлов", "position": "Врач" }
 
 ### Учётные записи создаются администратором через /admin/accounts в веб-интерфейсе
 GET {{baseUrl}}/api/accounts
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
 
 ### Завершить сеанс; перед следующим входом снова получить анонимный CSRF-токен
 POST {{baseUrl}}/api/auth/logout
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
 X-CSRF-TOKEN: {{adminCsrf.response.body.$.requestToken}}

@@ -1,8 +1,10 @@
 @page "/medical/patients"
 @attribute [Authorize(Roles = ApplicationRoles.MedicalWorker)]
 @using HospitalInformationSystem.Contracts.Patients
+@using HospitalInformationSystem.Contracts.Security
 @implements IDisposable
 @inject PatientsApiClient Api
+@inject SessionState Session
 
 <PageTitle>Пациенты · Учебная HIS</PageTitle>
 <div class="eyebrow"><span class="eyebrow-line"></span> РАБОТА С ПАЦИЕНТАМИ</div>
@@ -11,9 +13,12 @@
     <h1>Пациенты</h1>
     <p>Реестр пациентов и электронные медицинские карты.</p>
   </div>
-  <a class="btn btn-primary" href="/medical/patients/new">
-    <Icon Name="plus"/>
-    Добавить пациента</a>
+  @if (CanManagePatients)
+  {
+    <a class="btn btn-primary" href="/medical/patients/new">
+      <Icon Name="plus"/>
+      Добавить пациента</a>
+  }
 </div>
 
 @if (_patients is not null)
@@ -35,7 +40,7 @@
 }
 <ErrorAlert Message="@_error"/>
 
-@if (_pendingDelete is not null)
+@if (_pendingDelete is not null && CanManagePatients)
 {
   <div class="confirm-panel" role="alertdialog" aria-labelledby="patient-delete-title">
     <div>
@@ -112,14 +117,17 @@
             </td>
             <td class="actions-cell">
               <a class="row-edit" href="/medical/patients/@patient.Id/medical-record"
-                 aria-label="@(patient.HasMedicalRecord ? "Открыть ЭМК" : "Создать ЭМК"): @patient.LastName @patient.FirstName">
-                @(patient.HasMedicalRecord ? "Открыть ЭМК" : "Создать ЭМК")
+                 aria-label="@RecordLinkLabel(patient): @patient.LastName @patient.FirstName">
+                @RecordLinkLabel(patient)
                 <Icon Name="forward"/>
               </a>
-              <button class="icon-button danger" title="Удалить пациента" disabled="@_deleting"
-                      aria-label="Удалить: @patient.LastName @patient.FirstName" @onclick="() => AskDelete(patient)">
-                <Icon Name="delete"/>
-              </button>
+              @if (CanManagePatients)
+              {
+                <button class="icon-button danger" title="Удалить пациента" disabled="@_deleting"
+                        aria-label="Удалить: @patient.LastName @patient.FirstName" @onclick="() => AskDelete(patient)">
+                  <Icon Name="delete"/>
+                </button>
+              }
             </td>
           </tr>
         }
@@ -129,7 +137,9 @@
     @if (!VisiblePatients.Any())
     {
       <div class="empty-state">
-        @(_patients.Count == 0 ? "В реестре пока нет пациентов. Добавьте первого пациента." : "По вашему запросу ничего не найдено.")
+        @(_patients.Count == 0
+          ? CanManagePatients ? "В реестре пока нет пациентов. Добавьте первого пациента." : "В реестре пока нет пациентов."
+          : "По вашему запросу ничего не найдено.")
       </div>
     }
 
@@ -148,6 +158,14 @@
   private CancellationTokenSource? _cts;
   private int _loadVersion;
   private bool _disposed;
+
+  private bool CanManagePatients => SessionPermissions.CanManagePatients(Session.Current is { } current
+    ? new AuthenticationSessionDto(current.Id, current.UserName, current.Role, current.MedicalWorkerId,
+      current.MedicalWorkerRole)
+    : null);
+
+  private string RecordLinkLabel(PatientDto patient) => patient.HasMedicalRecord ? "Открыть ЭМК"
+    : CanManagePatients ? "Создать ЭМК" : "К экрану ЭМК";
 
   private IEnumerable<PatientDto> VisiblePatients => (_patients ?? [])
     .Where(x => $"{x.LastName} {x.FirstName} {x.MiddleName}".Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase));
@@ -214,7 +232,7 @@
 
   private void AskDelete(PatientDto patient)
   {
-    if (_deleting)
+    if (_deleting || !CanManagePatients)
     {
       return;
     }
@@ -231,7 +249,7 @@
 
   private async Task DeleteAsync()
   {
-    if (_pendingDelete is null || _deleting || _cts is null)
+    if (_pendingDelete is null || _deleting || _cts is null || !CanManagePatients)
     {
       return;
     }

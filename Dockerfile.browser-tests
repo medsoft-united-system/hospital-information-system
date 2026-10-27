@@ -1,0 +1,7 @@
+FROM mcr.microsoft.com/playwright:v1.62.0-noble
+RUN apt-get update && apt-get install -y --no-install-recommends libnss3-tools && rm -rf /var/lib/apt/lists/*
+WORKDIR /verification
+COPY tests/browser-security/package.json tests/browser-security/package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY scripts/verify-browser-security.mjs ./
+ENTRYPOINT ["node", "/verification/verify-browser-security.mjs"]

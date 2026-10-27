@@ -74,7 +74,7 @@ public sealed class SessionAuthenticationStateProvider : AuthenticationStateProv
             claims.Add(new Claim(AuthClaimTypes.MedicalWorkerId, workerId.ToString()));
         }
 
-        return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(claims, "Cookie")));
+        return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(claims, "Bearer")));
     }
 
     private void OnSessionChanged() => NotifyAuthenticationStateChanged(Task.FromResult(BuildState()));

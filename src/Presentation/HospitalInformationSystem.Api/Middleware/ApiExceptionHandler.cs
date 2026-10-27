@@ -29,7 +29,7 @@ public sealed class ApiExceptionHandler(
             {
                 Status = badRequest.StatusCode, Title = "Некорректный HTTP-запрос."
             },
-            ForbiddenOperationException => new ProblemDetails
+            ForbiddenOperationException or SetupAccessDeniedException => new ProblemDetails
                 { Status = 403, Title = "Недостаточно прав для выполнения операции." },
             EntityNotFoundException => new ProblemDetails
                 { Status = 404, Title = "Запись не найдена.", Detail = exception.Message },

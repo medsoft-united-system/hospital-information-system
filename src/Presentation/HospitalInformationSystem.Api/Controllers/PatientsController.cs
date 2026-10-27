@@ -25,6 +25,7 @@ public sealed class PatientsController(ISender sender) : ControllerBase
         Ok(await sender.Send(new GetPatientQuery(id), cancellationToken));
 
     [HttpPost]
+    [Authorize(Policy = ApiSecurityPolicies.ManagePatients)]
     [ProducesResponseType<PatientDto>(StatusCodes.Status201Created)]
     public async Task<ActionResult<PatientDto>> CreateAsync(SavePatientRequest request,
         CancellationToken cancellationToken)
@@ -35,12 +36,14 @@ public sealed class PatientsController(ISender sender) : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = ApiSecurityPolicies.ManagePatients)]
     public async Task<ActionResult<PatientDto>> UpdateAsync(Guid id, SavePatientRequest request,
         CancellationToken cancellationToken) =>
         Ok(await sender.Send(new UpdatePatientCommand(id, request.FirstName, request.LastName, request.MiddleName,
             request.BirthDate, request.Sex, request.Comment), cancellationToken));
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = ApiSecurityPolicies.ManagePatients)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> DeleteAsync(Guid id, CancellationToken cancellationToken)
     {

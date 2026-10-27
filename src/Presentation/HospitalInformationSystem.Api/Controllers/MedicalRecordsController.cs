@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Security.Claims;
 using System.Text.RegularExpressions;
 using HospitalInformationSystem.Application.MedicalRecords.Commands.AddMedicalRecordDiagnosis;
 using HospitalInformationSystem.Application.MedicalRecords.Commands.AddPrescription;
@@ -15,6 +14,7 @@ using HospitalInformationSystem.Contracts.MedicalRecords;
 using HospitalInformationSystem.Domain.Common;
 using HospitalInformationSystem.Api.Security;
 using HospitalInformationSystem.Contracts.Auth;
+using HospitalInformationSystem.Application.Abstractions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,7 +24,7 @@ namespace HospitalInformationSystem.Api.Controllers;
 [ApiController]
 [Authorize(Policy = ApiSecurityPolicies.Clinical)]
 [Route("api/medical-records")]
-public sealed partial class MedicalRecordsController(ISender sender) : ControllerBase
+public sealed partial class MedicalRecordsController(ISender sender, ICurrentMedicalWorker currentWorker) : ControllerBase
 {
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<MedicalRecordDto>> GetAsync(Guid id, CancellationToken cancellationToken) =>
@@ -36,6 +36,7 @@ public sealed partial class MedicalRecordsController(ISender sender) : Controlle
         Ok(await sender.Send(new GetPatientMedicalRecordQuery(patientId), cancellationToken));
 
     [HttpPost("/api/patients/{patientId:guid}/medical-record")]
+    [Authorize(Policy = ApiSecurityPolicies.ManagePatients)]
     [ProducesResponseType<MedicalRecordDto>(StatusCodes.Status201Created)]
     public async Task<ActionResult<MedicalRecordDto>> CreateAsync(Guid patientId, CancellationToken cancellationToken)
     {
@@ -44,6 +45,7 @@ public sealed partial class MedicalRecordsController(ISender sender) : Controlle
     }
 
     [HttpPost("{id:guid}/diagnoses")]
+    [Authorize(Policy = ApiSecurityPolicies.EditMedicalRecord)]
     [ProducesResponseType<MedicalRecordDiagnosisDto>(StatusCodes.Status201Created)]
     public async Task<ActionResult<MedicalRecordDiagnosisDto>> AddDiagnosisAsync(
         Guid id, AddMedicalRecordDiagnosisRequest request, CancellationToken cancellationToken)
@@ -54,6 +56,7 @@ public sealed partial class MedicalRecordsController(ISender sender) : Controlle
     }
 
     [HttpDelete("{id:guid}/diagnoses/{medicalRecordDiagnosisId:guid}")]
+    [Authorize(Policy = ApiSecurityPolicies.EditMedicalRecord)]
     public async Task<IActionResult> RemoveDiagnosisAsync(Guid id, Guid medicalRecordDiagnosisId,
         CancellationToken cancellationToken)
     {
@@ -63,6 +66,7 @@ public sealed partial class MedicalRecordsController(ISender sender) : Controlle
     }
 
     [HttpPost("{id:guid}/prescriptions")]
+    [Authorize(Policy = ApiSecurityPolicies.EditMedicalRecord)]
     [ProducesResponseType<PrescriptionDto>(StatusCodes.Status201Created)]
     public async Task<ActionResult<PrescriptionDto>> AddPrescriptionAsync(
         Guid id, SavePrescriptionRequest request, CancellationToken cancellationToken)
@@ -73,6 +77,7 @@ public sealed partial class MedicalRecordsController(ISender sender) : Controlle
     }
 
     [HttpPost("{id:guid}/prescriptions/{prescriptionId:guid}/cancel")]
+    [Authorize(Policy = ApiSecurityPolicies.EditMedicalRecord)]
     public async Task<IActionResult> CancelPrescriptionAsync(Guid id, Guid prescriptionId,
         CancellationToken cancellationToken)
     {
@@ -81,6 +86,7 @@ public sealed partial class MedicalRecordsController(ISender sender) : Controlle
     }
 
     [HttpPut("{id:guid}/prescriptions/{prescriptionId:guid}")]
+    [Authorize(Policy = ApiSecurityPolicies.EditMedicalRecord)]
     public async Task<ActionResult<PrescriptionDto>> ReplacePrescriptionAsync(
         Guid id, Guid prescriptionId, SavePrescriptionRequest request, CancellationToken cancellationToken) =>
         Ok(await sender.Send(new ReplacePrescriptionCommand(id, prescriptionId, request.Text, RequireAuthorId()),
@@ -102,16 +108,7 @@ public sealed partial class MedicalRecordsController(ISender sender) : Controlle
         return Ok(await sender.Send(new GetMedicalRecordSnapshotQuery(id, instant), cancellationToken));
     }
 
-    private Guid RequireAuthorId()
-    {
-        var values = Request.Headers["X-Medical-Worker-Id"];
-        if (values.Count != 1 || !Guid.TryParse(values[0], out var id) || id == Guid.Empty)
-            throw new DomainValidationException("Укажите один корректный X-Medical-Worker-Id.");
-        if (!Guid.TryParse(User.FindFirstValue(AuthClaimTypes.MedicalWorkerId), out var authenticatedAuthorId) ||
-            authenticatedAuthorId != id)
-            throw new ForbiddenOperationException();
-        return id;
-    }
+    private Guid RequireAuthorId() => currentWorker.RequireId();
 
     [GeneratedRegex(@"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?(?:Z|[+-]\d{2}:\d{2})$",
         RegexOptions.IgnoreCase)]

@@ -1,6 +1,6 @@
 using HospitalInformationSystem.Api.Security;
 using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Contracts.Auth;
+using HospitalInformationSystem.Contracts.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,11 +12,22 @@ namespace HospitalInformationSystem.Api.Controllers;
 public sealed class AccountsController(IAccountService accounts) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<AccountDto>>> GetAsync(CancellationToken cancellationToken) =>
-        Ok(await accounts.ListAsync(cancellationToken));
+    public async Task<ActionResult<IReadOnlyList<AccountDetailsDto>>> GetAsync(CancellationToken cancellationToken) =>
+        Ok(await accounts.ListDetailsAsync(cancellationToken));
 
     [HttpPost]
-    public async Task<ActionResult<AccountDto>> CreateAsync(CreateAccountRequest request,
-        CancellationToken cancellationToken) =>
-        StatusCode(StatusCodes.Status201Created, await accounts.CreateAsync(request, cancellationToken));
+    public IActionResult Create() => Problem(
+        statusCode: StatusCodes.Status410Gone,
+        title: "Используйте создание аккаунта из карточки медработника.",
+        detail: "Пароль генерируется сервером; создание дополнительных администраторов через API недоступно.");
+
+    [HttpPost("{id:guid}/reset-password")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<ActionResult<ResetAccountPasswordResultDto>> ResetPasswordAsync(Guid id,
+        CancellationToken cancellationToken) => Ok(await accounts.ResetPasswordAsync(id, cancellationToken));
+
+    [HttpPut("{id:guid}/activity")]
+    public async Task<ActionResult<SetAccountActiveResultDto>> SetActiveAsync(Guid id,
+        SetAccountActiveRequest request, CancellationToken cancellationToken) =>
+        Ok(await accounts.SetActiveAsync(id, request.IsActive, cancellationToken));
 }

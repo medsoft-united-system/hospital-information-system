@@ -1,6 +1,7 @@
-@baseUrl = http://localhost:5200
+@baseUrl = https://localhost:5201
 @adminUserName = admin
 @adminPassword = {{$processEnv MEDSOFT_ADMIN_PASSWORD}}
+@adminTotpCode = {{$processEnv MEDSOFT_ADMIN_TOTP_CODE}}
 @doctorUserName = {{$processEnv MEDSOFT_DOCTOR_USERNAME}}
 @doctorPassword = {{$processEnv MEDSOFT_DOCTOR_PASSWORD}}
 @patientId = 00000000-0000-0000-0000-000000000000
@@ -12,7 +13,8 @@
 
 # VS Code REST Client: включите cookie jar и выполняйте запросы по порядку, копируя id в переменные выше.
 # Пароли передаются через локальное окружение REST Client; не сохраняйте их в этом файле.
-# До начала создайте в /admin/accounts учётную запись MedicalWorker, связанную с активным медработником.
+# До начала создайте аккаунт сотрудника с медицинской ролью doctor.
+# Администратор настраивается через /admin/setup; для каждого входа нужен свежий TOTP.
 # Справочником управляет Administrator; пациентами и ЭМК — MedicalWorker.
 
 ### Получить анонимный CSRF-токен
@@ -20,18 +22,21 @@
 GET {{baseUrl}}/api/auth/csrf
 
 ### Войти как администратор
+# @name adminLogin
 POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
 X-CSRF-TOKEN: {{adminAnonymousCsrf.response.body.$.requestToken}}
 
-{ "userName": "{{adminUserName}}", "password": "{{adminPassword}}" }
+{ "userName": "{{adminUserName}}", "password": "{{adminPassword}}", "totpCode": "{{adminTotpCode}}", "portal": "administrator" }
 
 ### CSRF-токен после входа связан с текущей учётной записью
 # @name adminCsrf
 GET {{baseUrl}}/api/auth/csrf
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
 
 ### Создать диагноз → diagnosisId; повтор кода/названия вернёт 409
 POST {{baseUrl}}/api/diagnoses
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
 Content-Type: application/json
 X-CSRF-TOKEN: {{adminCsrf.response.body.$.requestToken}}
 
@@ -39,13 +44,14 @@ X-CSRF-TOKEN: {{adminCsrf.response.body.$.requestToken}}
 
 ### Выйти из роли администратора
 POST {{baseUrl}}/api/auth/logout
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
 X-CSRF-TOKEN: {{adminCsrf.response.body.$.requestToken}}
 
 ### Получить новый анонимный CSRF-токен после выхода
 # @name doctorAnonymousCsrf
 GET {{baseUrl}}/api/auth/csrf
 
-### Войти как медработник; medicalWorkerId ответа определяет допустимого автора ЭМК
+### Войти как врач; автор берётся из проверенного JWT
 # @name doctorLogin
 POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
@@ -56,12 +62,15 @@ X-CSRF-TOKEN: {{doctorAnonymousCsrf.response.body.$.requestToken}}
 ### Получить CSRF-токен медработника
 # @name doctorCsrf
 GET {{baseUrl}}/api/auth/csrf
+Authorization: Bearer {{doctorLogin.response.body.$.accessToken}}
 
 ### Прочитать справочник для выбора диагноза
 GET {{baseUrl}}/api/diagnoses
+Authorization: Bearer {{doctorLogin.response.body.$.accessToken}}
 
 ### Создать пациента → patientId
 POST {{baseUrl}}/api/patients
+Authorization: Bearer {{doctorLogin.response.body.$.accessToken}}
 Content-Type: application/json
 X-CSRF-TOKEN: {{doctorCsrf.response.body.$.requestToken}}
 
@@ -74,17 +83,18 @@ X-CSRF-TOKEN: {{doctorCsrf.response.body.$.requestToken}}
   "comment": null
 }
 
-### Создать ЭМК → recordId; другой X-Medical-Worker-Id вернёт 403
+### Создать ЭМК → recordId; автор определяется автоматически
 POST {{baseUrl}}/api/patients/{{patientId}}/medical-record
-X-Medical-Worker-Id: {{doctorLogin.response.body.$.medicalWorkerId}}
+Authorization: Bearer {{doctorLogin.response.body.$.accessToken}}
 X-CSRF-TOKEN: {{doctorCsrf.response.body.$.requestToken}}
 
 ### Получить текущее состояние без заголовка автора
 GET {{baseUrl}}/api/patients/{{patientId}}/medical-record
+Authorization: Bearer {{doctorLogin.response.body.$.accessToken}}
 
 ### Добавить диагноз в ЭМК → recordDiagnosisId (отличается от diagnosisId)
 POST {{baseUrl}}/api/medical-records/{{recordId}}/diagnoses
-X-Medical-Worker-Id: {{doctorLogin.response.body.$.medicalWorkerId}}
+Authorization: Bearer {{doctorLogin.response.body.$.accessToken}}
 X-CSRF-TOKEN: {{doctorCsrf.response.body.$.requestToken}}
 Content-Type: application/json
 
@@ -92,7 +102,7 @@ Content-Type: application/json
 
 ### Добавить назначение → prescriptionId
 POST {{baseUrl}}/api/medical-records/{{recordId}}/prescriptions
-X-Medical-Worker-Id: {{doctorLogin.response.body.$.medicalWorkerId}}
+Authorization: Bearer {{doctorLogin.response.body.$.accessToken}}
 X-CSRF-TOKEN: {{doctorCsrf.response.body.$.requestToken}}
 Content-Type: application/json
 
@@ -100,7 +110,7 @@ Content-Type: application/json
 
 ### Заменить назначение: в ответе новый id, старое остаётся в истории
 PUT {{baseUrl}}/api/medical-records/{{recordId}}/prescriptions/{{prescriptionId}}
-X-Medical-Worker-Id: {{doctorLogin.response.body.$.medicalWorkerId}}
+Authorization: Bearer {{doctorLogin.response.body.$.accessToken}}
 X-CSRF-TOKEN: {{doctorCsrf.response.body.$.requestToken}}
 Content-Type: application/json
 
@@ -108,20 +118,23 @@ Content-Type: application/json
 
 ### Удалить диагноз карты
 DELETE {{baseUrl}}/api/medical-records/{{recordId}}/diagnoses/{{recordDiagnosisId}}
-X-Medical-Worker-Id: {{doctorLogin.response.body.$.medicalWorkerId}}
+Authorization: Bearer {{doctorLogin.response.body.$.accessToken}}
 X-CSRF-TOKEN: {{doctorCsrf.response.body.$.requestToken}}
 
 ### История: версии по порядку, payloadJson — JSON-строка
 GET {{baseUrl}}/api/medical-records/{{recordId}}/history
+Authorization: Bearer {{doctorLogin.response.body.$.accessToken}}
 
 ### Подставьте occurredAtUtc нужного события в snapshotAt; до создания карты будет 404
 GET {{baseUrl}}/api/medical-records/{{recordId}}/snapshot?at={{snapshotAt}}
+Authorization: Bearer {{doctorLogin.response.body.$.accessToken}}
 
 ### Проверка защиты: пациент с картой не удаляется, ожидается 409
 DELETE {{baseUrl}}/api/patients/{{patientId}}
+Authorization: Bearer {{doctorLogin.response.body.$.accessToken}}
 X-CSRF-TOKEN: {{doctorCsrf.response.body.$.requestToken}}
 
-### Проверка автора: ожидается 400 и отсутствие новых событий
+### Проверка отсутствия JWT: ожидается 401 и отсутствие новых событий
 POST {{baseUrl}}/api/medical-records/{{recordId}}/prescriptions
 Content-Type: application/json
 X-CSRF-TOKEN: {{doctorCsrf.response.body.$.requestToken}}
@@ -130,4 +143,5 @@ X-CSRF-TOKEN: {{doctorCsrf.response.body.$.requestToken}}
 
 ### Завершить сеанс медработника
 POST {{baseUrl}}/api/auth/logout
+Authorization: Bearer {{doctorLogin.response.body.$.accessToken}}
 X-CSRF-TOKEN: {{doctorCsrf.response.body.$.requestToken}}
