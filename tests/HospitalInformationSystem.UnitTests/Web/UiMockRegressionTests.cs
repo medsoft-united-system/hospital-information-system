@@ -111,7 +111,7 @@ public sealed class UiMockRegressionTests
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
         var challenge = await new AuthenticationGateway(fixture.Http,
-                new SessionApiClient(fixture.Http, fixture.Session, fixture.Tokens), fixture.Session)
+                new SessionApiClient(fixture.Http, fixture.Session, fixture.Tokens, fixture.Operations), fixture.Session)
             .BeginSetupAsync(new BeginSetupRequest(password, password), UiMockState.SetupToken, CancellationToken.None);
         challenge.ChallengeId.Should().NotBeEmpty();
     }
@@ -120,6 +120,7 @@ public sealed class UiMockRegressionTests
     {
         public SessionState Session { get; } = new();
         public AntiforgeryTokenStore Tokens { get; } = new();
+        public AuthenticationOperationCoordinator Operations { get; } = new();
         public UiMockState State { get; }
         public HttpClient Http { get; }
 
@@ -127,7 +128,7 @@ public sealed class UiMockRegressionTests
         {
             State = new UiMockState(Session) { EnableLiveAudit = false };
             State.SwitchPersona(persona);
-            Http = new HttpClient(new BrowserSessionHandler(Session, Tokens)
+            Http = new HttpClient(new BrowserSessionHandler(Session, Tokens, Operations)
             {
                 InnerHandler = new UiMockHttpMessageHandler(State)
             }) { BaseAddress = new Uri("https://ui-mock.invalid/") };

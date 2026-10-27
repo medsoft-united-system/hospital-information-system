@@ -19,6 +19,8 @@ public static class PatientService
             throw new DomainValidationException("Комментарий: допускается не более 32 символов.");
         if (!Enum.IsDefined(sex))
             throw new DomainValidationException("Неизвестное значение пола.");
+        if (birthDate > DateOnly.FromDateTime(now.UtcDateTime))
+            throw new DomainValidationException("Дата рождения не может быть в будущем.");
 
         patient.FirstName = validFirstName;
         patient.LastName = validLastName;

@@ -287,11 +287,12 @@ public sealed class UiMockTransportTests
         {
             State = new UiMockState(Session) { EnableLiveAudit = false };
             var tokens = new AntiforgeryTokenStore();
-            Http = new HttpClient(new BrowserSessionHandler(Session, tokens)
+            var operations = new AuthenticationOperationCoordinator();
+            Http = new HttpClient(new BrowserSessionHandler(Session, tokens, operations)
             {
                 InnerHandler = new UiMockHttpMessageHandler(State)
             }) { BaseAddress = new Uri("https://ui-mock.invalid/") };
-            Auth = new AuthenticationGateway(Http, new SessionApiClient(Http, Session, tokens), Session);
+            Auth = new AuthenticationGateway(Http, new SessionApiClient(Http, Session, tokens, operations), Session);
         }
 
         public void Dispose() => Http.Dispose();

@@ -172,7 +172,7 @@ else
       current.MedicalWorkerRole)
     : null);
 
-  private static string Today => DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+  private static string Today => DateTime.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
 
   protected override async Task OnParametersSetAsync()
   {

@@ -79,6 +79,43 @@ public sealed class PatientsAndDiagnosesApiTests(HospitalApiFactory factory) : I
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SavePatient_FutureBirthDate_ShouldRejectWithoutChangingPatientOrAudit(bool update)
+    {
+        var request = new SavePatientRequest("Елена", "Соколова", null,
+            new DateOnly(1985, 3, 12), AdministrativeSex.Female, null);
+        PatientDto? original = null;
+        if (update)
+        {
+            var created = await _client.PostAsJsonAsync("/api/patients", request);
+            created.StatusCode.Should().Be(HttpStatusCode.Created);
+            original = (await created.Content.ReadFromJsonAsync<PatientDto>())!;
+        }
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
+        var patientCount = await db.Patients.CountAsync();
+        var auditCount = await db.AuditEvents.CountAsync();
+        var now = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow();
+        var invalid = request with
+        {
+            FirstName = "Мария", BirthDate = DateOnly.FromDateTime(now.UtcDateTime).AddDays(2)
+        };
+
+        var response = update
+            ? await _client.PutAsJsonAsync($"/api/patients/{original!.Id}", invalid)
+            : await _client.PostAsJsonAsync("/api/patients", invalid);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadFromJsonAsync<ProblemDetails>())!.Detail.Should().Contain("Дата рождения");
+        (await db.Patients.CountAsync()).Should().Be(patientCount);
+        (await db.AuditEvents.CountAsync()).Should().Be(auditCount);
+        if (original is not null)
+            (await _client.GetFromJsonAsync<PatientDto>($"/api/patients/{original.Id}"))
+                .Should().BeEquivalentTo(original);
+    }
+
+    [Theory]
     [InlineData("A00.0", "Холера")]
     [InlineData("A00.000", "Холера")]
     [InlineData("A00.00", "АБ")]

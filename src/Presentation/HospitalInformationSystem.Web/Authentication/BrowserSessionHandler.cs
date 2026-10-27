@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Http;
 namespace HospitalInformationSystem.Web.Authentication;
 
 public sealed class BrowserSessionHandler(SessionState session, AntiforgeryTokenStore tokens,
-    Uri? apiOrigin = null) : DelegatingHandler
+    AuthenticationOperationCoordinator operations, Uri? apiOrigin = null) : DelegatingHandler
 {
     private readonly SemaphoreSlim _tokenLock = new(1, 1);
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
@@ -21,28 +21,34 @@ public sealed class BrowserSessionHandler(SessionState session, AntiforgeryToken
     {
         RequireApiOrigin(request.RequestUri!);
         var version = session.Version;
+        var originalSession = session.Current;
         using var retry = await CloneAsync(request, cancellationToken);
+        RequireSessionVersion(version);
         Prepare(request);
-        await AddAntiforgeryAsync(request, cancellationToken);
+        await AddAntiforgeryAsync(request, version, cancellationToken);
+        RequireSessionVersion(version);
         var response = await base.SendAsync(request, cancellationToken);
-        if (response.StatusCode != HttpStatusCode.Unauthorized || !CanRefresh(request.RequestUri!))
+        if (response.StatusCode != HttpStatusCode.Unauthorized || !CanRefresh(request.RequestUri!) ||
+            originalSession is null && RequiresAntiforgery(request.Method))
         {
             return response;
         }
 
-        bool refreshed;
-        try { refreshed = await RefreshAsync(request.RequestUri!, version, cancellationToken); }
+        long? refreshedVersion;
+        try { refreshedVersion = await RefreshAsync(request.RequestUri!, version, originalSession, cancellationToken); }
         catch { response.Dispose(); throw; }
-        if (!refreshed)
+        if (refreshedVersion is null)
         {
             return response;
         }
         response.Dispose();
         using (retry)
         {
-            var retryVersion = session.Version;
+            var retryVersion = refreshedVersion.Value;
+            RequireSessionVersion(retryVersion);
             Prepare(retry);
-            await AddAntiforgeryAsync(retry, cancellationToken);
+            await AddAntiforgeryAsync(retry, retryVersion, cancellationToken);
+            RequireSessionVersion(retryVersion);
             var retried = await base.SendAsync(retry, cancellationToken);
             if (retried.StatusCode == HttpStatusCode.Unauthorized && session.Version == retryVersion)
             {
@@ -53,33 +59,43 @@ public sealed class BrowserSessionHandler(SessionState session, AntiforgeryToken
         }
     }
 
-    private async Task<bool> RefreshAsync(Uri uri, long version, CancellationToken cancellationToken)
+    private async Task<long?> RefreshAsync(Uri uri, long version, SessionDto? originalSession,
+        CancellationToken cancellationToken)
     {
         await _refreshLock.WaitAsync(cancellationToken);
+        var operationStarted = false;
         try
         {
+            using var operation = await operations.EnterAsync(cancellationToken);
+            operationStarted = true;
             if (session.Version != version)
                 return _lastRefreshPreviousVersion == version && _lastRefreshVersion == session.Version &&
-                       session.AccessToken is not null;
+                       session.AccessToken is not null ? session.Version : null;
             tokens.Reset();
             using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(uri, "/api/auth/refresh"));
             Prepare(request);
-            await AddAntiforgeryAsync(request, cancellationToken);
+            await AddAntiforgeryAsync(request, version, cancellationToken);
+            RequireSessionVersion(version);
             using var response = await base.SendAsync(request, cancellationToken);
-            if (session.Version != version) return false;
+            if (session.Version != version) return null;
             if (!response.IsSuccessStatusCode)
             {
                 tokens.Reset();
                 session.SetSession(null);
-                return false;
+                return null;
             }
             var refreshed = await ApiResponseReader.ReadAsync<AuthenticationTokensDto>(response, cancellationToken);
-            if (session.Version != version) return false;
+            if (session.Version != version) return null;
             tokens.Reset();
+            if (originalSession is not null && !HasSameIdentity(originalSession, refreshed.Session))
+            {
+                session.SetSession(null);
+                return null;
+            }
             session.SetTokens(refreshed);
             _lastRefreshPreviousVersion = version;
             _lastRefreshVersion = session.Version;
-            return true;
+            return _lastRefreshVersion;
         }
         catch (ApiException)
         {
@@ -88,11 +104,11 @@ public sealed class BrowserSessionHandler(SessionState session, AntiforgeryToken
                 tokens.Reset();
                 session.SetSession(null);
             }
-            return false;
+            return null;
         }
         catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException)
         {
-            if (session.Version == version)
+            if (operationStarted && session.Version == version)
             {
                 tokens.Reset();
                 session.SetSession(null);
@@ -112,12 +128,14 @@ public sealed class BrowserSessionHandler(SessionState session, AntiforgeryToken
         request.Headers.Remove("X-CSRF-TOKEN");
     }
 
-    private async Task AddAntiforgeryAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    private async Task AddAntiforgeryAsync(HttpRequestMessage request, long sessionVersion,
+        CancellationToken cancellationToken)
     {
         if (!RequiresAntiforgery(request.Method)) return;
         await _tokenLock.WaitAsync(cancellationToken);
         try
         {
+            RequireSessionVersion(sessionVersion);
             var token = tokens.RequestToken;
             while (token is null)
             {
@@ -126,6 +144,7 @@ public sealed class BrowserSessionHandler(SessionState session, AntiforgeryToken
                 Prepare(csrf);
                 using var response = await base.SendAsync(csrf, cancellationToken);
                 var result = await ApiResponseReader.ReadAsync<AntiforgeryTokenDto>(response, cancellationToken);
+                RequireSessionVersion(sessionVersion);
                 if (tokens.Version == version) tokens.RequestToken = token = result.RequestToken;
             }
             request.Headers.Add("X-CSRF-TOKEN", token);
@@ -135,6 +154,16 @@ public sealed class BrowserSessionHandler(SessionState session, AntiforgeryToken
             _tokenLock.Release();
         }
     }
+
+    private void RequireSessionVersion(long version)
+    {
+        if (session.Version != version)
+            throw new ApiException("Сессия изменилась. Повторите операцию в текущей сессии.");
+    }
+
+    private static bool HasSameIdentity(SessionDto original, AuthenticationSessionDto refreshed) =>
+        original.Id == refreshed.Id && original.Role == refreshed.AccountRole &&
+        original.MedicalWorkerId == refreshed.MedicalWorkerId && original.MedicalWorkerRole == refreshed.MedicalWorkerRole;
 
     private void RequireApiOrigin(Uri request)
     {

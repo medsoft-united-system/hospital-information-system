@@ -285,7 +285,7 @@ public sealed class GatewayContractTests
     }
 
     private static AuthenticationGateway CreateAuthenticationGateway(HttpClient http, SessionState state) =>
-        new(http, new SessionApiClient(http, state, new AntiforgeryTokenStore()), state);
+        new(http, new SessionApiClient(http, state, new AntiforgeryTokenStore(), new AuthenticationOperationCoordinator()), state);
 
     private static HttpClient CreateHttp(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send) =>
         new(new DelegateHandler(send)) { BaseAddress = new Uri("http://localhost/") };

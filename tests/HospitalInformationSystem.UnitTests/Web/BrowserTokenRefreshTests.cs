@@ -231,7 +231,8 @@ public sealed class BrowserTokenRefreshTests
 
     private static HttpClient CreateClient(SessionState state, AntiforgeryTokenStore tokens,
         Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send) =>
-        new(new BrowserSessionHandler(state, tokens, ApiOrigin) { InnerHandler = new ResponseHandler(send) })
+        new(new BrowserSessionHandler(state, tokens, new AuthenticationOperationCoordinator(), ApiOrigin)
+        { InnerHandler = new ResponseHandler(send) })
         {
             BaseAddress = ApiOrigin,
             Timeout = TimeSpan.FromSeconds(10)
