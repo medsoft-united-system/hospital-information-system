@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Contracts.Lab2;
+using HospitalInformationSystem.Contracts.Security;
 
 namespace HospitalInformationSystem.Web;
 

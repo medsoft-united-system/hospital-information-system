@@ -40,15 +40,14 @@ class SetupDevelopmentTests(unittest.TestCase):
         result = self.run_setup(password)
         self.assertEqual(result.returncode, 0, result.stderr)
         config = json.loads(self.local.read_text())
-        admin_password = config["Authentication"]["BootstrapAdmin"]["Password"]
-        self.assertGreaterEqual(len(admin_password), 12)
+        self.assertNotIn("BootstrapAdmin", config["Authentication"])
+        self.assertEqual(config["Authentication"]["Setup"]["AdministratorUserName"], "admin")
         self.assertNotIn(password, result.stdout + result.stderr)
-        self.assertNotIn(admin_password, result.stdout + result.stderr)
         if os.name != "nt":
             self.assertEqual(self.local.stat().st_mode & 0o777, 0o600)
             self.assertEqual(self.env_path.stat().st_mode & 0o777, 0o600)
 
-    def test_repeat_does_not_overwrite_settings_or_bootstrap_password(self):
+    def test_repeat_does_not_overwrite_existing_settings(self):
         self.assertEqual(self.run_setup("Temporary.Database-Aa1!").returncode, 0)
         before = self.local.read_bytes(), self.env_path.read_bytes()
         self.assertEqual(self.run_setup().returncode, 0)

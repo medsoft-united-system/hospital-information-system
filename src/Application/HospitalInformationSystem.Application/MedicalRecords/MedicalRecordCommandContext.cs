@@ -18,7 +18,7 @@ public sealed class MedicalRecordCommandContext(
     {
         var author = await workers.FindAsync(id, tracking: false, cancellationToken);
         if (author is null || author.IsDeleted)
-            throw new DomainValidationException("Укажите существующего активного медработника в X-Medical-Worker-Id.");
+            throw new DomainValidationException("Учётная запись должна быть связана с действующим медработником.");
         return author;
     }
 

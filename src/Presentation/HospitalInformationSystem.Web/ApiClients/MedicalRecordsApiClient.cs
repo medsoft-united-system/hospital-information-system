@@ -6,8 +6,6 @@ namespace HospitalInformationSystem.Web.ApiClients;
 
 public sealed class MedicalRecordsApiClient(HttpClient http)
 {
-    private const string AuthorHeader = "X-Medical-Worker-Id";
-
     public async Task<MedicalRecordDto?> FindForPatientAsync(Guid patientId,
         CancellationToken cancellationToken)
     {
@@ -21,35 +19,35 @@ public sealed class MedicalRecordsApiClient(HttpClient http)
         return await ApiResponseReader.ReadAsync<MedicalRecordDto>(response, cancellationToken);
     }
 
-    public Task<MedicalRecordDto> CreateAsync(Guid patientId, Guid authorId,
+    public Task<MedicalRecordDto> CreateAsync(Guid patientId,
         CancellationToken cancellationToken) =>
         http.SendJsonAsync<MedicalRecordDto>(HttpMethod.Post, $"api/patients/{patientId}/medical-record",
-            null, AuthorHeaders(authorId), cancellationToken);
+            null, null, cancellationToken);
 
-    public Task AddDiagnosisAsync(Guid recordId, Guid diagnosisId, Guid authorId,
+    public Task AddDiagnosisAsync(Guid recordId, Guid diagnosisId,
         CancellationToken cancellationToken) =>
         http.SendJsonAsync(HttpMethod.Post, $"api/medical-records/{recordId}/diagnoses",
-            new AddMedicalRecordDiagnosisRequest(diagnosisId), AuthorHeaders(authorId), cancellationToken);
+            new AddMedicalRecordDiagnosisRequest(diagnosisId), null, cancellationToken);
 
-    public Task RemoveDiagnosisAsync(Guid recordId, Guid medicalRecordDiagnosisId, Guid authorId,
+    public Task RemoveDiagnosisAsync(Guid recordId, Guid medicalRecordDiagnosisId,
         CancellationToken cancellationToken) =>
         http.SendJsonAsync(HttpMethod.Delete, $"api/medical-records/{recordId}/diagnoses/{medicalRecordDiagnosisId}",
-            null, AuthorHeaders(authorId), cancellationToken);
+            null, null, cancellationToken);
 
-    public Task AddPrescriptionAsync(Guid recordId, string text, Guid authorId,
+    public Task AddPrescriptionAsync(Guid recordId, string text,
         CancellationToken cancellationToken) =>
         http.SendJsonAsync(HttpMethod.Post, $"api/medical-records/{recordId}/prescriptions",
-            new SavePrescriptionRequest(text), AuthorHeaders(authorId), cancellationToken);
+            new SavePrescriptionRequest(text), null, cancellationToken);
 
-    public Task CancelPrescriptionAsync(Guid recordId, Guid prescriptionId, Guid authorId,
+    public Task CancelPrescriptionAsync(Guid recordId, Guid prescriptionId,
         CancellationToken cancellationToken) =>
         http.SendJsonAsync(HttpMethod.Post, $"api/medical-records/{recordId}/prescriptions/{prescriptionId}/cancel",
-            null, AuthorHeaders(authorId), cancellationToken);
+            null, null, cancellationToken);
 
-    public Task ReplacePrescriptionAsync(Guid recordId, Guid prescriptionId, string text, Guid authorId,
+    public Task ReplacePrescriptionAsync(Guid recordId, Guid prescriptionId, string text,
         CancellationToken cancellationToken) =>
         http.SendJsonAsync(HttpMethod.Put, $"api/medical-records/{recordId}/prescriptions/{prescriptionId}",
-            new SavePrescriptionRequest(text), AuthorHeaders(authorId), cancellationToken);
+            new SavePrescriptionRequest(text), null, cancellationToken);
 
     public async Task<IReadOnlyList<MedicalRecordHistoryEventDto>> GetHistoryAsync(Guid recordId,
         CancellationToken cancellationToken)
@@ -67,6 +65,4 @@ public sealed class MedicalRecordsApiClient(HttpClient http)
         return await ApiResponseReader.ReadAsync<MedicalRecordSnapshotDto>(response, cancellationToken);
     }
 
-    private static Dictionary<string, string> AuthorHeaders(Guid authorId) =>
-        new() { [AuthorHeader] = authorId.ToString() };
 }

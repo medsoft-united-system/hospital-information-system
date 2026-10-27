@@ -1,0 +1,14 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /source
+COPY Directory.Build.props Directory.Packages.props ./
+COPY src/Application/ src/Application/
+COPY src/Infrastructure/ src/Infrastructure/
+COPY src/Presentation/HospitalInformationSystem.Api/ src/Presentation/HospitalInformationSystem.Api/
+RUN dotnet publish src/Presentation/HospitalInformationSystem.Api -c Release -o /publish /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+COPY --from=build /publish/ ./
+USER $APP_UID
+EXPOSE 5201
+ENTRYPOINT ["dotnet", "HospitalInformationSystem.Api.dll"]

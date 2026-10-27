@@ -1,4 +1,4 @@
-@using HospitalInformationSystem.Contracts.Lab2
+@using HospitalInformationSystem.Contracts.Security
 @implements IDisposable
 @inject HospitalInformationSystem.Web.Gateways.IAccountManagementGateway Accounts
 
@@ -63,7 +63,7 @@
   private readonly AccountForm _form = new();
   private CancellationTokenSource? _cts;
   private Guid _loadedWorkerId;
-  private Lab2AccountDto? _account;
+  private AccountDetailsDto? _account;
   private bool _loading;
   private bool _creating;
   private bool _disposed;
@@ -179,7 +179,7 @@
     }
   }
 
-  private async Task OnAccountChanged(Lab2AccountDto account)
+  private async Task OnAccountChanged(AccountDetailsDto account)
   {
     _account = account;
     await NotifyChangedAsync();

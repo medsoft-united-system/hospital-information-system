@@ -4,7 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Lab2;
+using HospitalInformationSystem.Contracts.Security;
 
 namespace HospitalInformationSystem.Web.Development;
 
@@ -117,7 +117,10 @@ public sealed partial class UiMockHttpMessageHandler(UiMockState state) : HttpMe
             state.SignIn(account);
             state.AddAudit(state.IsAdministrator ? "AdministratorLogin" : "UserLogin",
                 "Вход в демонстрационную сессию UiMock.");
-            return Json(state.CurrentSession!);
+            var current = state.CurrentSession!;
+            return Json(new AuthenticationTokensDto("ui-mock-access", DateTimeOffset.UtcNow.AddMinutes(5),
+                new AuthenticationSessionDto(current.Id, current.UserName, current.Role,
+                    current.MedicalWorkerId, current.MedicalWorkerRole)));
         }
         return NotFound();
     }

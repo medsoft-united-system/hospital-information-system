@@ -1,4 +1,4 @@
-@using HospitalInformationSystem.Contracts.Lab2
+@using HospitalInformationSystem.Contracts.Security
 @implements IDisposable
 @inject HospitalInformationSystem.Web.Gateways.IAccountManagementGateway Accounts
 
@@ -67,9 +67,9 @@
 </div>
 
 @code {
-  [Parameter, EditorRequired] public Lab2AccountDto Account { get; set; } = default!;
+  [Parameter, EditorRequired] public AccountDetailsDto Account { get; set; } = default!;
   [Parameter] public bool WorkerDeleted { get; set; }
-  [Parameter] public EventCallback<Lab2AccountDto> OnChanged { get; set; }
+  [Parameter] public EventCallback<AccountDetailsDto> OnChanged { get; set; }
 
   private CancellationTokenSource _cts = new();
   private Guid _trackedAccountId;

@@ -5,6 +5,8 @@ using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.DI;
 using HospitalInformationSystem.Infrastructure.Initializers;
 using HospitalInformationSystem.Infrastructure.Identity;
+using HospitalInformationSystem.Infrastructure.Identity.Tokens;
+using System.Security.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 if (builder.Environment.IsDevelopment())
@@ -13,6 +15,7 @@ if (builder.Environment.IsDevelopment())
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.AddServerHeader = false;
+    options.ConfigureHttpsDefaults(https => https.SslProtocols = SslProtocols.Tls13);
     options.Limits.MaxRequestBodySize = ApiSecurityRegistration.MaxUploadBodyBytes;
     options.Limits.MaxRequestHeadersTotalSize = 16 * 1024;
     options.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(15);
@@ -22,6 +25,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
     throw new InvalidOperationException("Configure ConnectionStrings:Postgres using user-secrets, environment variables or appsettings.Local.json in Development.");
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(connectionString);
+builder.Services.Configure<Argon2idOptions>(builder.Configuration.GetSection(Argon2idOptions.SectionName));
 builder.Services.AddControllers().AddJsonOptions(options => options.JsonSerializerOptions.MaxDepth = 32);
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
@@ -29,6 +33,7 @@ builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddApiSecurity(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
+_ = app.Services.GetRequiredService<JwtKeyMaterial>();
 app.UseMiddleware<ApiSecurityHeadersMiddleware>();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
@@ -55,16 +60,13 @@ if (app.Configuration.GetValue<bool>("Database:ApplyMigrations"))
 {
     await using var scope = app.Services.CreateAsyncScope();
     await scope.ServiceProvider.GetRequiredService<DatabaseInitializer>()
-        .InitializeAsync(app.Configuration.GetValue<bool>("Database:Seed"));
+        .InitializeAsync(app.Configuration.GetValue<bool>("Database:Seed"), CancellationToken.None);
 }
 
-var bootstrapUserName = app.Configuration["Authentication:BootstrapAdmin:UserName"];
-var bootstrapPassword = app.Configuration["Authentication:BootstrapAdmin:Password"];
-if (!app.Environment.IsEnvironment("Testing") || bootstrapUserName is not null || bootstrapPassword is not null)
+await using (var scope = app.Services.CreateAsyncScope())
 {
-    await using var scope = app.Services.CreateAsyncScope();
     await scope.ServiceProvider.GetRequiredService<IdentityBootstrapper>()
-        .InitializeAsync(bootstrapUserName, bootstrapPassword, CancellationToken.None);
+        .InitializeRolesAsync(CancellationToken.None);
 }
 
 app.Run();

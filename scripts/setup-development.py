@@ -89,13 +89,11 @@ def main():
             "ConnectionStrings": {
                 "Postgres": 'Host=localhost;Port=5432;Database=hospital;Username=postgres;Password="' + escaped + '"'
             },
-            "Authentication": {"BootstrapAdmin": {
-                "UserName": "admin", "Password": secrets.token_urlsafe(32) + "Aa1!"
-            }}
+            "Authentication": {"Setup": {"AdministratorUserName": "admin"}}
         }
         write_private(local_path, json.dumps(config, ensure_ascii=False, indent=2) + "\n")
-    print("Готово. Логин первого администратора: admin.")
-    print("Пароль администратора находится в " + str(local_path))
+    print("Настройки БД готовы. Пароль администратора задаётся в мастере /admin/setup вместе с TOTP.")
+    print("Подготовьте сертификаты через generate-development-certificates.py и запускайте run-secure-development.py.")
     print("Существующая база и её пароль не изменялись. Не добавляйте локальные файлы в Git.")
 
 

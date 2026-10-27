@@ -1,10 +1,12 @@
 using System.Globalization;
-using System.Security.Claims;
 using System.Threading.RateLimiting;
 using HospitalInformationSystem.Application.Abstractions;
+using HospitalInformationSystem.Application.Audit;
 using HospitalInformationSystem.Contracts.Auth;
+using HospitalInformationSystem.Contracts.Security;
 using HospitalInformationSystem.Infrastructure.Identity;
-using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using HospitalInformationSystem.Infrastructure.Identity.Tokens;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
@@ -26,45 +28,36 @@ public static class ApiSecurityRegistration
         var origins = (configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
             .Select(origin => NormalizeOrigin(origin, local)).Distinct(StringComparer.Ordinal).ToArray();
         services.AddHttpContextAccessor();
-        services.AddAuthentication(IdentityConstants.ApplicationScheme).AddIdentityCookies();
-        services.ConfigureApplicationCookie(options =>
-        {
-            options.Cookie.Name = local ? "MedSoft.Session" : "__Host-MedSoft.Session";
-            options.Cookie.HttpOnly = true;
-            options.Cookie.IsEssential = true;
-            options.Cookie.Path = "/";
-            options.Cookie.SameSite = SameSiteMode.Lax;
-            options.Cookie.SecurePolicy = local ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
-            options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
-            options.SlidingExpiration = false;
-            options.Events.OnRedirectToLogin = context =>
+        services.AddAdministratorSecurity(configuration, environment);
+        services.AddScoped<IAuditActorAccessor, HttpAuditActorAccessor>();
+        services.AddScoped<AuthenticationAuditService>();
+        services.AddScoped<ICurrentMedicalWorker, CurrentMedicalWorker>();
+        services.AddScoped<IAuthorizationHandler, MedicalRoleAuthorizationHandler>();
+        services.Configure<JwtTokenOptions>(configuration.GetSection("Authentication:Jwt"));
+        if (environment.IsEnvironment("Testing"))
+            services.PostConfigure<JwtTokenOptions>(options => options.AllowEphemeralKeys = true);
+        else if (configuration.GetValue<bool>("Authentication:Jwt:AllowEphemeralKeys"))
+            throw new InvalidOperationException("Временные JWT-ключи разрешены только в тестовой среде.");
+        services.AddSingleton<JwtKeyMaterial>();
+        services.AddScoped<TokenSessionService>();
+        services.AddScoped<RefreshCookieService>();
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
+        services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+            .Configure<JwtKeyMaterial>((options, keys) =>
             {
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                return Task.CompletedTask;
-            };
-            options.Events.OnRedirectToAccessDenied = context =>
-            {
-                context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                return Task.CompletedTask;
-            };
-            options.Events.OnValidatePrincipal = async context =>
-            {
-                if (context.Principal?.Identity?.IsAuthenticated != true)
-                    return;
-                var requestServices = context.HttpContext.RequestServices;
-                var signInManager = requestServices.GetRequiredService<SignInManager<HospitalUser>>();
-                if (await signInManager.ValidateSecurityStampAsync(context.Principal) is not null &&
-                    Guid.TryParse(context.Principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                options.MapInboundClaims = false;
+                options.TokenValidationParameters = keys.ValidationParameters;
+                options.Events = new JwtBearerEvents
                 {
-                    var accountService = requestServices.GetRequiredService<IAccountService>();
-                    var session = await accountService.GetSessionAsync(userId, context.HttpContext.RequestAborted);
-                    if (session is not null && MatchesSession(context.Principal, session))
-                        return;
-                }
-                context.RejectPrincipal();
-                await context.HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
-            };
-        });
+                    OnTokenValidated = async context =>
+                    {
+                        var sessions = context.HttpContext.RequestServices.GetRequiredService<TokenSessionService>();
+                        if (context.Principal is null || !await sessions.ValidatePrincipalAsync(context.Principal,
+                                context.HttpContext.RequestAborted))
+                            context.Fail("Сессия завершена или права доступа изменены.");
+                    }
+                };
+            });
         services.AddAuthorization(options =>
         {
             options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
@@ -72,6 +65,12 @@ public static class ApiSecurityRegistration
                 policy.RequireRole(ApplicationRoles.Administrator));
             options.AddPolicy(ApiSecurityPolicies.Clinical, policy =>
                 policy.RequireRole(ApplicationRoles.MedicalWorker));
+            options.AddPolicy(ApiSecurityPolicies.ManagePatients, policy =>
+                policy.RequireRole(ApplicationRoles.MedicalWorker)
+                    .AddRequirements(new MedicalRoleRequirement(MedicalWorkerRole.Doctor, MedicalWorkerRole.Nurse)));
+            options.AddPolicy(ApiSecurityPolicies.EditMedicalRecord, policy =>
+                policy.RequireRole(ApplicationRoles.MedicalWorker)
+                    .AddRequirements(new MedicalRoleRequirement(MedicalWorkerRole.Doctor)));
             options.AddPolicy(ApiSecurityPolicies.CatalogRead, policy =>
                 policy.RequireRole(ApplicationRoles.Administrator, ApplicationRoles.MedicalWorker));
         });
@@ -87,7 +86,7 @@ public static class ApiSecurityRegistration
         });
         services.AddCors(options => options.AddDefaultPolicy(policy => policy.WithOrigins(origins)
             .WithMethods("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-            .WithHeaders("Content-Type", "X-CSRF-TOKEN", "X-Medical-Worker-Id")
+            .WithHeaders("Content-Type", "X-CSRF-TOKEN", "Authorization", "X-Setup-Token", "X-Medical-Worker-Id")
             .AllowCredentials()));
         services.Configure<FormOptions>(options =>
         {
@@ -124,6 +123,11 @@ public static class ApiSecurityRegistration
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.OnRejected = async (context, cancellationToken) =>
             {
+                var request = context.HttpContext.Request;
+                if (HttpMethods.IsPost(request.Method) &&
+                    string.Equals(request.Path.Value?.TrimEnd('/'), "/api/auth/login", StringComparison.OrdinalIgnoreCase))
+                    await context.HttpContext.RequestServices.GetRequiredService<AuthenticationAuditService>()
+                        .LoginRateLimitedAsync(cancellationToken);
                 if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
                     context.HttpContext.Response.Headers.RetryAfter =
                         Math.Ceiling(retryAfter.TotalSeconds).ToString(CultureInfo.InvariantCulture);
@@ -145,13 +149,4 @@ public static class ApiSecurityRegistration
         return uri.GetLeftPart(UriPartial.Authority);
     }
 
-    private static bool MatchesSession(ClaimsPrincipal principal, SessionDto session)
-    {
-        var roles = principal.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToArray();
-        var workerClaims = principal.FindAll(AuthClaimTypes.MedicalWorkerId).Select(claim => claim.Value).ToArray();
-        return roles.Length == 1 && roles[0] == session.Role &&
-               (session.MedicalWorkerId is { } id
-                   ? workerClaims.Length == 1 && Guid.TryParse(workerClaims[0], out var workerId) && workerId == id
-                   : workerClaims.Length == 0);
-    }
 }

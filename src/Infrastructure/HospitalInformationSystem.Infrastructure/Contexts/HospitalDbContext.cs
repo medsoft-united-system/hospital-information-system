@@ -1,4 +1,6 @@
 using HospitalInformationSystem.Application.Abstractions;
+using HospitalInformationSystem.Application.Audit;
+using HospitalInformationSystem.Infrastructure.Audit;
 using HospitalInformationSystem.Application.Common;
 using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using HospitalInformationSystem.Infrastructure.Identity;
@@ -9,7 +11,8 @@ using Npgsql;
 
 namespace HospitalInformationSystem.Infrastructure.Contexts;
 
-public sealed class HospitalDbContext(DbContextOptions<HospitalDbContext> options)
+public sealed class HospitalDbContext(DbContextOptions<HospitalDbContext> options, TimeProvider? timeProvider = null,
+    IAuditActorAccessor? auditActorAccessor = null)
     : IdentityDbContext<HospitalUser, IdentityRole<Guid>, Guid>(options), IUnitOfWork
 {
     public DbSet<MedicalWorkerDbo> MedicalWorkers => Set<MedicalWorkerDbo>();
@@ -19,6 +22,9 @@ public sealed class HospitalDbContext(DbContextOptions<HospitalDbContext> option
     public DbSet<MedicalRecordDiagnosisDbo> MedicalRecordDiagnoses => Set<MedicalRecordDiagnosisDbo>();
     public DbSet<PrescriptionDbo> Prescriptions => Set<PrescriptionDbo>();
     public DbSet<MedicalRecordHistoryEventDbo> MedicalRecordHistoryEvents => Set<MedicalRecordHistoryEventDbo>();
+    public DbSet<RefreshSessionDbo> RefreshSessions => Set<RefreshSessionDbo>();
+    public DbSet<AuditEventDbo> AuditEvents => Set<AuditEventDbo>();
+    public DbSet<AdministratorSetupStateDbo> AdministratorSetupStates => Set<AdministratorSetupStateDbo>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -33,12 +39,20 @@ public sealed class HospitalDbContext(DbContextOptions<HospitalDbContext> option
     }
 
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         RejectHistoryChanges();
+        var securityChanges = new TrackedSecurityChanges(this, timeProvider ?? TimeProvider.System,
+            auditActorAccessor ?? new SystemAuditActorAccessor());
+        await using var transaction = securityChanges.HasChanges() && Database.CurrentTransaction is null
+            ? await Database.BeginTransactionAsync(cancellationToken) : null;
         try
         {
-            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+            await securityChanges.AppendAsync(cancellationToken);
+            UpdateAccountTimestamps();
+            var count = await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+            if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+            return count;
         }
         catch (DbUpdateConcurrencyException exception)
         {
@@ -54,24 +68,7 @@ public sealed class HospitalDbContext(DbContextOptions<HospitalDbContext> option
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
-    {
-        RejectHistoryChanges();
-        try
-        {
-            return base.SaveChanges(acceptAllChangesOnSuccess);
-        }
-        catch (DbUpdateConcurrencyException exception)
-        {
-            throw new BusinessConflictException(
-                "Данные уже изменены другим запросом. Обновите страницу и повторите операцию.", exception);
-        }
-        catch (Exception exception) when (IsDatabaseConflict(exception))
-        {
-            throw new BusinessConflictException(
-                "Сохранение конфликтует с существующей записью, связями или одновременным изменением. Обновите данные и повторите операцию.",
-                exception);
-        }
-    }
+        => SaveChangesAsync(acceptAllChangesOnSuccess, CancellationToken.None).GetAwaiter().GetResult();
 
     private static bool IsDatabaseConflict(Exception exception) =>
         exception.GetBaseException() is PostgresException postgres &&
@@ -83,8 +80,31 @@ public sealed class HospitalDbContext(DbContextOptions<HospitalDbContext> option
 
     private void RejectHistoryChanges()
     {
+        if (ChangeTracker.Entries<AuditEventDbo>()
+            .Any(entry => entry.State is EntityState.Modified or EntityState.Deleted))
+            throw new InvalidOperationException("Сохранённые события аудита нельзя изменять или удалять.");
         if (ChangeTracker.Entries<MedicalRecordHistoryEventDbo>()
             .Any(entry => entry.State is EntityState.Modified or EntityState.Deleted))
             throw new InvalidOperationException("Сохранённые события истории нельзя изменять или удалять.");
+    }
+
+    private void UpdateAccountTimestamps()
+    {
+        var now = (timeProvider ?? TimeProvider.System).GetUtcNow();
+        foreach (var entry in ChangeTracker.Entries<HospitalUser>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                if (entry.Entity.CreatedAtUtc == default) entry.Entity.CreatedAtUtc = now;
+                entry.Entity.CreatedAtUtc = entry.Entity.CreatedAtUtc.ToUniversalTime();
+                entry.Entity.UpdatedAtUtc = entry.Entity.CreatedAtUtc;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.CreatedAtUtc = entry.Property(x => x.CreatedAtUtc).OriginalValue;
+                entry.Property(x => x.CreatedAtUtc).IsModified = false;
+                entry.Entity.UpdatedAtUtc = now;
+            }
+        }
     }
 }

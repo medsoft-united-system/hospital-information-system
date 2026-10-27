@@ -12,7 +12,7 @@ using Microsoft.JSInterop;
 using Moq;
 using HospitalInformationSystem.Contracts.Auth;
 using HospitalInformationSystem.Contracts.Diagnoses;
-using HospitalInformationSystem.Contracts.Lab2;
+using HospitalInformationSystem.Contracts.Security;
 using HospitalInformationSystem.Contracts.MedicalRecords;
 using HospitalInformationSystem.Contracts.MedicalWorkers;
 using HospitalInformationSystem.Contracts.Patients;
@@ -184,7 +184,7 @@ public sealed class WebPageRegressionTests
         staleResponse.SetResult(Json(new[] { administrator }));
         await olderLoad;
 
-        Get<IReadOnlyList<Lab2AccountDto>>(page, "_accounts").Should().Equal(administrator, doctor);
+        Get<IReadOnlyList<AccountDetailsDto>>(page, "_accounts").Should().Equal(administrator, doctor);
         Get<bool>(page, "_loading").Should().BeFalse();
     }
 
@@ -197,10 +197,10 @@ public sealed class WebPageRegressionTests
 
         Invoke(page, "OnAccountChanged", doctor with { IsActive = false });
 
-        Get<IReadOnlyList<Lab2AccountDto>>(page, "_accounts").Single().IsActive.Should().BeFalse();
+        Get<IReadOnlyList<AccountDetailsDto>>(page, "_accounts").Single().IsActive.Should().BeFalse();
     }
 
-    private static Lab2AccountDto Lab2Account(string userName, string accountRole, string? workerName,
+    private static AccountDetailsDto Lab2Account(string userName, string accountRole, string? workerName,
         MedicalWorkerRole? role) =>
         new(Guid.NewGuid(), userName, accountRole, workerName is null ? null : Guid.NewGuid(), workerName, role,
             true, false, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
@@ -280,7 +280,7 @@ public sealed class WebPageRegressionTests
 
         await InvokeAsync(page, "SetActiveAsync", false);
 
-        GetProperty<Lab2AccountDto>(page, "Account").IsActive.Should().BeFalse();
+        GetProperty<AccountDetailsDto>(page, "Account").IsActive.Should().BeFalse();
         Get<string>(page, "_notice").Should().Contain("3");
     }
 
@@ -305,7 +305,7 @@ public sealed class WebPageRegressionTests
     {
         var gateway = new Mock<IAccountManagementGateway>();
         gateway.Setup(service => service.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Array.Empty<Lab2AccountDto>());
+            .ReturnsAsync(Array.Empty<AccountDetailsDto>());
         var html = await RenderComponentHtmlAsync<WorkerAccountPanel>(
             services =>
             {
@@ -354,7 +354,7 @@ public sealed class WebPageRegressionTests
         await InvokeAsync(page, "CreateAsync");
 
         Get<string>(page, "_createdPassword").Should().Be("NewPass123456");
-        Get<Lab2AccountDto>(page, "_account").Should().Be(account);
+        Get<AccountDetailsDto>(page, "_account").Should().Be(account);
     }
 
     [Fact]
@@ -362,7 +362,7 @@ public sealed class WebPageRegressionTests
     {
         var deletedWorkerId = Guid.NewGuid();
         var activeWorkerId = Guid.NewGuid();
-        var deletedWorkerAccount = new Lab2AccountDto(Guid.NewGuid(), "left.demo", ApplicationRoles.MedicalWorker,
+        var deletedWorkerAccount = new AccountDetailsDto(Guid.NewGuid(), "left.demo", ApplicationRoles.MedicalWorker,
             deletedWorkerId, "Петров Пётр", MedicalWorkerRole.Doctor, false, false, DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow);
         var activeWorkerAccount = deletedWorkerAccount with { Id = Guid.NewGuid(), MedicalWorkerId = activeWorkerId };

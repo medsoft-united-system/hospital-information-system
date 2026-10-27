@@ -1,5 +1,5 @@
 @page "/admin/accounts"
-@using HospitalInformationSystem.Contracts.Lab2
+@using HospitalInformationSystem.Contracts.Security
 @using HospitalInformationSystem.Web.Components.Accounts
 @attribute [Authorize(Roles = ApplicationRoles.Administrator)]
 @implements IDisposable
@@ -133,7 +133,7 @@
 }
 
 @code {
-  private IReadOnlyList<Lab2AccountDto>? _accounts;
+  private IReadOnlyList<AccountDetailsDto>? _accounts;
   private IReadOnlySet<Guid> _deletedWorkerIds = new HashSet<Guid>();
   private readonly CancellationTokenSource _cancellation = new();
   private bool _loading = true;
@@ -150,19 +150,19 @@
     Inactive
   }
 
-  private Lab2AccountDto? SelectedAccount => _accounts?.FirstOrDefault(account => account.Id == _selectedId);
+  private AccountDetailsDto? SelectedAccount => _accounts?.FirstOrDefault(account => account.Id == _selectedId);
 
-  private IEnumerable<Lab2AccountDto> VisibleAccounts => (_accounts ?? [])
+  private IEnumerable<AccountDetailsDto> VisibleAccounts => (_accounts ?? [])
     .Where(account => MatchesActivity(account) && MatchesSearch(account));
 
-  private bool MatchesActivity(Lab2AccountDto account) => _activityFilter switch
+  private bool MatchesActivity(AccountDetailsDto account) => _activityFilter switch
   {
     ActivityFilter.Active => account.IsActive,
     ActivityFilter.Inactive => !account.IsActive,
     _ => true
   };
 
-  private bool MatchesSearch(Lab2AccountDto account)
+  private bool MatchesSearch(AccountDetailsDto account)
   {
     var term = _search.Trim();
     if (term.Length == 0)
@@ -173,9 +173,9 @@
     return $"{account.UserName} {account.MedicalWorkerName}".Contains(term, StringComparison.OrdinalIgnoreCase);
   }
 
-  private static bool IsAdministrator(Lab2AccountDto account) => account.AccountRole == ApplicationRoles.Administrator;
+  private static bool IsAdministrator(AccountDetailsDto account) => account.AccountRole == ApplicationRoles.Administrator;
 
-  private bool IsWorkerDeleted(Lab2AccountDto account) =>
+  private bool IsWorkerDeleted(AccountDetailsDto account) =>
     account.MedicalWorkerId is { } workerId && _deletedWorkerIds.Contains(workerId);
 
   protected override Task OnInitializedAsync() => LoadAsync();
@@ -232,7 +232,7 @@
 
   private void Select(Guid id) => _selectedId = _selectedId == id ? null : id;
 
-  private void OnAccountChanged(Lab2AccountDto account)
+  private void OnAccountChanged(AccountDetailsDto account)
   {
     _accounts = (_accounts ?? [])
       .Select(item => item.Id == account.Id ? account : item)
