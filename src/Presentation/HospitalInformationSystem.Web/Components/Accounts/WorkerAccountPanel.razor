@@ -8,6 +8,9 @@
       <p>Доступ сотрудника к системе. Пароль генерируется сервером.</p></div>
   </div>
 
+  <GeneratedPasswordCard Password="@_createdPassword" Title="Учётная запись создана"
+                         OnDismiss="() => _createdPassword = null"/>
+
   @if (_loading)
   {
     <div class="empty-state" role="status">Загрузка учётной записи…</div>
@@ -34,8 +37,6 @@
   }
   else
   {
-    <GeneratedPasswordCard Password="_createdPassword" Title="Учётная запись создана"
-                           OnDismiss="() => _createdPassword = null"/>
     <EditForm Model="_form" OnValidSubmit="CreateAsync">
       <DataAnnotationsValidator/>
       <fieldset disabled="@_creating">

@@ -4,6 +4,7 @@
 @attribute [Authorize(Roles = ApplicationRoles.Administrator)]
 @implements IDisposable
 @inject HospitalInformationSystem.Web.Gateways.IAccountManagementGateway Gateway
+@inject HospitalInformationSystem.Web.ApiClients.MedicalWorkersApiClient Workers
 
 <PageTitle>Учётные записи · Учебная HIS</PageTitle>
 <div class="eyebrow"><span class="eyebrow-line"></span> ДОСТУП К СИСТЕМЕ</div>
@@ -126,12 +127,14 @@
         <p>@(selected.MedicalWorkerName ?? "Сотрудник не указан") · @MedicalRoleLabels.Describe(selected.MedicalWorkerRole)</p></div>
       <button class="btn btn-light" @onclick="() => _selectedId = null">Закрыть</button>
     </div>
-    <AccountOperations Account="selected" WorkerDeleted="@(selected.MedicalWorkerName is null)" OnChanged="OnAccountChanged"/>
+    <AccountOperations @key="selected.Id" Account="selected" WorkerDeleted="@IsWorkerDeleted(selected)"
+                       OnChanged="OnAccountChanged"/>
   </section>
 }
 
 @code {
   private IReadOnlyList<Lab2AccountDto>? _accounts;
+  private IReadOnlySet<Guid> _deletedWorkerIds = new HashSet<Guid>();
   private readonly CancellationTokenSource _cancellation = new();
   private bool _loading = true;
   private int _loadVersion;
@@ -172,6 +175,9 @@
 
   private static bool IsAdministrator(Lab2AccountDto account) => account.AccountRole == ApplicationRoles.Administrator;
 
+  private bool IsWorkerDeleted(Lab2AccountDto account) =>
+    account.MedicalWorkerId is { } workerId && _deletedWorkerIds.Contains(workerId);
+
   protected override Task OnInitializedAsync() => LoadAsync();
 
   private async Task LoadAsync()
@@ -182,12 +188,17 @@
     try
     {
       var accounts = await Gateway.ListAsync(_cancellation.Token);
+      var workers = await Workers.ListAsync(true, _cancellation.Token);
       if (_cancellation.IsCancellationRequested || version != _loadVersion)
       {
         return;
       }
 
       _accounts = accounts;
+      _deletedWorkerIds = workers
+        .Where(worker => worker.IsDeleted)
+        .Select(worker => worker.Id)
+        .ToHashSet();
       if (_selectedId is { } id && accounts.All(account => account.Id != id))
       {
         _selectedId = null;

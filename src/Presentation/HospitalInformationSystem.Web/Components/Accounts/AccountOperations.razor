@@ -19,7 +19,7 @@
     <p role="status" class="field-hint">@_notice</p>
   }
 
-  <GeneratedPasswordCard Password="_generatedPassword" Title="Новый пароль сотрудника"
+  <GeneratedPasswordCard Password="@_generatedPassword" Title="Новый пароль сотрудника"
                          OnDismiss="() => _generatedPassword = null"/>
 
   @if (_confirm is null)
@@ -71,7 +71,8 @@
   [Parameter] public bool WorkerDeleted { get; set; }
   [Parameter] public EventCallback<Lab2AccountDto> OnChanged { get; set; }
 
-  private readonly CancellationTokenSource _cts = new();
+  private CancellationTokenSource _cts = new();
+  private Guid _trackedAccountId;
   private ConfirmKind? _confirm;
   private bool _busy;
   private bool _disposed;
@@ -83,6 +84,24 @@
   {
     Reset,
     Deactivate
+  }
+
+  protected override void OnParametersSet()
+  {
+    if (_trackedAccountId == Account.Id)
+    {
+      return;
+    }
+
+    _trackedAccountId = Account.Id;
+    _cts.Cancel();
+    _cts.Dispose();
+    _cts = new CancellationTokenSource();
+    _busy = false;
+    _confirm = null;
+    _error = null;
+    _notice = null;
+    _generatedPassword = null;
   }
 
   private void Ask(ConfirmKind kind)
