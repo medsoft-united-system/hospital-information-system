@@ -23,9 +23,13 @@ HANDSHAKE_OK = Completed(
 ISSUER_OK = "issuer=OU=MedSoft 2026/27 123456,O=ITMO,CN=medsoft.local\n"
 
 
+def connect_value(args):
+    return args[args.index("-connect") + 1]
+
+
 class FakeRunner:
     def __init__(self):
-        self.help_text = "usage: s_client ... -tls1_2 -tls1_3 ...\n"
+        self.help_text = "usage: s_client ... -tls1_2 -tls1_3 -no-CAfile -no-CApath -no-CAstore ...\n"
         self.handshake = HANDSHAKE_OK
         self.issuer = ISSUER_OK
         self.checkend = Completed(0, "", "")
@@ -77,10 +81,26 @@ class VerifyTlsTests(unittest.TestCase):
 
     def test_tool_without_tls13_is_reported_as_tool_error(self):
         runner = FakeRunner()
-        runner.help_text = "usage: s_client ... -tls1_2 ...\n"
+        runner.help_text = "usage: s_client ... -tls1_2 -no-CAfile ...\n"
         code, _, err = self.run_main(runner)
         self.assertEqual(code, 2)
         self.assertIn("TLS 1.3", err)
+
+    def test_tool_without_trust_isolation_flags_is_rejected(self):
+        runner = FakeRunner()
+        runner.help_text = "usage: s_client ... -tls1_2 -tls1_3 ...\n"
+        code, _, err = self.run_main(runner)
+        self.assertEqual(code, 2)
+        self.assertIn("системное доверие", err)
+
+    def test_handshake_disables_system_trust(self):
+        runner = FakeRunner()
+        code, _, _ = self.run_main(runner)
+        self.assertEqual(code, 0)
+        handshake = next(call for call in runner.calls
+                         if call[1] == "s_client" and "-tls1_3" in call)
+        for flag in ("-no-CAfile", "-no-CApath", "-no-CAstore"):
+            self.assertIn(flag, handshake)
 
     def test_failed_handshake_is_a_stand_failure(self):
         runner = FakeRunner()
@@ -110,12 +130,40 @@ class VerifyTlsTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("истёк", err)
 
+    def test_issuer_with_extra_organisation_suffix_fails(self):
+        runner = FakeRunner()
+        runner.issuer = "issuer=OU=MedSoft 2026/27 1234567,O=ITMO-Fake,CN=medsoft.local\n"
+        code, _, err = self.run_main(runner, isu="123456")
+        self.assertEqual(code, 1)
+        self.assertIn("O=ITMO", err)
+
+    def test_issuer_with_isu_common_prefix_fails(self):
+        runner = FakeRunner()
+        runner.issuer = "issuer=OU=MedSoft 2026/27 1234567,O=ITMO,CN=medsoft.local\n"
+        code, _, err = self.run_main(runner, isu="123456")
+        self.assertEqual(code, 1)
+        self.assertIn("MedSoft 2026/27 123456", err)
+
     def test_server_that_accepts_tls12_fails(self):
         runner = FakeRunner()
         runner.tls12 = Completed(0, "    Protocol  : TLSv1.2\n", "")
         code, _, err = self.run_main(runner)
         self.assertEqual(code, 1)
         self.assertIn("TLS 1.2", err)
+
+    def test_tls12_negotiated_then_eof_fails(self):
+        runner = FakeRunner()
+        runner.tls12 = Completed(1, "    Protocol  : TLSv1.2\n", "0000 - unexpected eof while reading\n")
+        code, _, err = self.run_main(runner)
+        self.assertEqual(code, 1)
+        self.assertIn("TLS 1.2", err)
+
+    def test_unrelated_error_is_not_a_tls12_rejection(self):
+        runner = FakeRunner()
+        runner.tls12 = Completed(1, "", "write:errno=104\n")
+        code, _, err = self.run_main(runner)
+        self.assertEqual(code, 1)
+        self.assertIn("не подтверждён", err)
 
     def test_connectivity_error_does_not_confirm_tls12_rejection(self):
         runner = FakeRunner()
@@ -147,6 +195,24 @@ class VerifyTlsTests(unittest.TestCase):
                          if call[1] == "s_client" and "-tls1_3" in call)
         self.assertIn("-verify_ip", handshake)
         self.assertNotIn("-servername", handshake)
+        self.assertIn("127.0.0.1:5201", connect_value(handshake))
+
+    def test_ipv4_connect_target_has_no_brackets(self):
+        self.assertEqual(verify_lab2_tls.connect_target("127.0.0.1", 5201), "127.0.0.1:5201")
+
+    def test_ipv6_connect_target_is_bracketed(self):
+        self.assertEqual(verify_lab2_tls.connect_target("::1", 5201), "[::1]:5201")
+
+    def test_hostname_connect_target_is_plain(self):
+        self.assertEqual(verify_lab2_tls.connect_target("medsoft.local", 5201), "medsoft.local:5201")
+
+    def test_ipv6_host_is_bracketed_in_both_calls(self):
+        runner = FakeRunner()
+        code, _, _ = self.run_main(runner, host="::1")
+        self.assertEqual(code, 0)
+        for call in runner.calls:
+            if "-connect" in call:
+                self.assertEqual("[::1]:5201", connect_value(call))
 
 
 if __name__ == "__main__":

@@ -23,6 +23,12 @@ Completed = namedtuple("Completed", "returncode stdout stderr")
 
 CONNECTIVITY_MARKERS = ("connect:errno", "connection refused", "getaddrinfo", "name or service not known",
                         "no route to host", "errno=61", "errno=111")
+# Отказ именно из-за версии протокола — только эти явные признаки считаем успехом.
+PROTOCOL_VERSION_MARKERS = ("tlsv1 alert protocol version", "alert protocol version", "unsupported protocol",
+                            "no protocols available", "wrong version number", "wrong ssl version",
+                            "unsupported protocol version")
+# Флаги OpenSSL, отключающие системные источники доверия. Берём те, что поддержаны.
+TRUST_ISOLATION_FLAGS = ("-no-CAfile", "-no-CApath", "-no-CAstore")
 
 
 class ToolError(Exception):
@@ -46,20 +52,48 @@ def is_ip(host):
         return False
 
 
-def ensure_tls13_tool(runner, openssl):
+def is_ipv6(host):
+    try:
+        return isinstance(ipaddress.ip_address(host), ipaddress.IPv6Address)
+    except ValueError:
+        return False
+
+
+def connect_target(host, port):
+    """IPv6-адрес для -connect нужно заключать в квадратные скобки."""
+    if is_ipv6(host):
+        return f"[{host}]:{port}"
+    return f"{host}:{port}"
+
+
+def tool_capabilities(runner, openssl):
+    """Возвращает текст -help OpenSSL и заодно проверяет поддержку TLS 1.3."""
     try:
         result = runner([openssl, "s_client", "-help"], timeout=15)
     except FileNotFoundError as error:
         raise ToolError(f"OpenSSL не найден: {openssl}") from error
     except subprocess.TimeoutExpired as error:
         raise ToolError("OpenSSL не ответил на запрос возможностей вовремя.") from error
-    if "-tls1_3" not in (result.stdout + result.stderr):
+    capabilities = result.stdout + result.stderr
+    if "-tls1_3" not in capabilities:
         raise ToolError("Указанный OpenSSL не поддерживает TLS 1.3. Передайте путь к подходящей версии через --openssl.")
+    return capabilities
 
 
-def handshake_tls13(runner, openssl, host, port, ca, timeout):
-    args = [openssl, "s_client", "-connect", f"{host}:{port}", "-CAfile", ca,
-            "-tls1_3", "-verify_return_error", "-verify", "5", "-showcerts"]
+def trust_isolation_flags(capabilities):
+    """Флаги, отключающие системное доверие. Если не поддержан ни один —
+    гарантировать изоляцию нельзя, поэтому это ошибка инструмента, а не успех."""
+    flags = [flag for flag in TRUST_ISOLATION_FLAGS if flag in capabilities]
+    if not flags:
+        raise ToolError("OpenSSL не умеет отключать системное доверие "
+                        "(-no-CAfile/-no-CApath/-no-CAstore). Обновите OpenSSL, иначе возможен ложный успех "
+                        "при доверенном в системе учебном CA.")
+    return flags
+
+
+def handshake_tls13(runner, openssl, host, port, ca, timeout, isolation):
+    args = [openssl, "s_client", "-connect", connect_target(host, port), "-CAfile", ca,
+            *isolation, "-tls1_3", "-verify_return_error", "-verify", "5", "-showcerts"]
     if is_ip(host):
         args += ["-verify_ip", host]
     else:
@@ -97,13 +131,83 @@ def check_certificate(runner, openssl, certificate, isu, timeout):
         handle.flush()
         issuer = run_x509(runner, openssl, ["-issuer", "-nameopt", "RFC2253"], handle.name, timeout)
         validity = run_x509(runner, openssl, ["-checkend", "0"], handle.name, timeout, allow_failure=True)
-    expected_ou = f"OU=MedSoft 2026/27 {isu}"
-    if "O=ITMO" not in issuer:
-        raise VerificationFailed("Издатель сертификата не содержит O=ITMO.")
-    if expected_ou not in issuer:
-        raise VerificationFailed(f"Издатель сертификата не содержит '{expected_ou}'.")
+    attributes = parse_dn(issuer)
+    expected_ou = f"MedSoft 2026/27 {isu}"
+    if "ITMO" not in attributes.get("O", []):
+        raise VerificationFailed("Издатель сертификата не содержит O=ITMO (нужно точное совпадение значения).")
+    if expected_ou not in attributes.get("OU", []):
+        raise VerificationFailed(f"Издатель сертификата не содержит OU='{expected_ou}' (нужно точное совпадение).")
     if validity.returncode != 0:
         raise VerificationFailed("Срок действия сертификата истёк.")
+
+
+def parse_dn(issuer_line):
+    """Разбирает DN издателя (формат -nameopt RFC2253) с учётом экранирования,
+    возвращает отображение атрибут → список значений (значения сравниваются целиком)."""
+    dn = issuer_line.strip()
+    if dn.lower().startswith("issuer="):
+        dn = dn[len("issuer="):]
+    attributes = {}
+    for component in split_unescaped(dn, ","):
+        component = component.strip()
+        if not component:
+            continue
+        key, separator, value = partition_unescaped(component, "=")
+        if not separator:
+            continue
+        attributes.setdefault(key.strip().upper(), []).append(unescape_dn_value(value.strip()))
+    return attributes
+
+
+def split_unescaped(text, separator):
+    parts = []
+    current = []
+    escaped = False
+    for char in text:
+        if escaped:
+            current.append(char)
+            escaped = False
+        elif char == "\\":
+            current.append(char)
+            escaped = True
+        elif char == separator:
+            parts.append("".join(current))
+            current = []
+        else:
+            current.append(char)
+    parts.append("".join(current))
+    return parts
+
+
+def partition_unescaped(text, separator):
+    escaped = False
+    for index, char in enumerate(text):
+        if escaped:
+            escaped = False
+        elif char == "\\":
+            escaped = True
+        elif char == separator:
+            return text[:index], separator, text[index + 1:]
+    return text, "", ""
+
+
+def unescape_dn_value(value):
+    result = []
+    index = 0
+    while index < len(value):
+        char = value[index]
+        if char == "\\" and index + 1 < len(value):
+            following = value[index + 1:index + 3]
+            if len(following) == 2 and all(c in "0123456789abcdefABCDEF" for c in following):
+                result.append(chr(int(following, 16)))
+                index += 3
+                continue
+            result.append(value[index + 1])
+            index += 2
+            continue
+        result.append(char)
+        index += 1
+    return "".join(result)
 
 
 def run_x509(runner, openssl, options, path, timeout, allow_failure=False):
@@ -118,7 +222,7 @@ def run_x509(runner, openssl, options, path, timeout, allow_failure=False):
 
 
 def ensure_tls12_rejected(runner, openssl, host, port, ca, timeout):
-    args = [openssl, "s_client", "-connect", f"{host}:{port}", "-CAfile", ca, "-tls1_2"]
+    args = [openssl, "s_client", "-connect", connect_target(host, port), "-CAfile", ca, "-tls1_2"]
     if is_ip(host):
         args += ["-verify_ip", host]
     else:
@@ -128,18 +232,25 @@ def ensure_tls12_rejected(runner, openssl, host, port, ca, timeout):
     except subprocess.TimeoutExpired as error:
         raise VerificationFailed("Тайм-аут при проверке TLS 1.2 — отказ не подтверждён.") from error
     combined = (result.stdout + result.stderr).lower()
+    # Whitelist: успех только при подтверждённом отказе именно из-за версии протокола.
+    if "tlsv1.2" in combined:
+        raise VerificationFailed("Согласован TLS 1.2 — требование TLS 1.3-only не выполнено.")
     if result.returncode == 0:
         raise VerificationFailed("Сервер принял TLS 1.2 — требование TLS 1.3-only не выполнено.")
+    if any(marker in combined for marker in PROTOCOL_VERSION_MARKERS):
+        return
     if any(marker in combined for marker in CONNECTIVITY_MARKERS):
         raise VerificationFailed("Проблема соединения, а не отказ TLS 1.2 — требование не подтверждено.")
+    raise VerificationFailed("Отказ TLS 1.2 не подтверждён версией протокола — проверку нельзя считать успешной.")
 
 
 def verify(arguments, runner):
     checks = []
-    ensure_tls13_tool(runner, arguments.openssl)
+    capabilities = tool_capabilities(runner, arguments.openssl)
+    isolation = trust_isolation_flags(capabilities)
     certificate = handshake_tls13(runner, arguments.openssl, arguments.host, arguments.port, arguments.ca,
-                                  arguments.timeout)
-    checks.append("TLS 1.3 handshake и доверие к CA подтверждены")
+                                  arguments.timeout, isolation)
+    checks.append("TLS 1.3 handshake и доверие к CA подтверждены (системное доверие отключено)")
     check_certificate(runner, arguments.openssl, certificate, arguments.isu_id, arguments.timeout)
     checks.append(f"Издатель содержит O=ITMO и OU=MedSoft 2026/27 {arguments.isu_id}, срок действителен")
     ensure_tls12_rejected(runner, arguments.openssl, arguments.host, arguments.port, arguments.ca, arguments.timeout)
