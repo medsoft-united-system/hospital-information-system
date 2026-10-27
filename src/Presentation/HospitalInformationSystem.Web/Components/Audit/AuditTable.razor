@@ -13,7 +13,7 @@
     <tbody>
     @foreach (var item in Items)
     {
-      <tr @key="item.EventId">
+      <tr @key="item.EventId" data-event-id="@item.EventId">
         <td data-label="Время">@item.EventTime.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</td>
         <td data-label="Тип события">@AuditLabels.EventType(item.EventType)</td>
         <td data-label="Инициатор">

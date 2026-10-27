@@ -104,9 +104,9 @@ else
         <div class="registry-heading">
           <div>
             <h2>Диагнозы</h2>
-            <p>@(_editing ? "Режим редактирования. Изменения сохраняются на сервере." : "Текущие диагнозы карты (только просмотр).")</p>
+            <p>@(IsEditingRecord ? "Режим редактирования. Изменения сохраняются на сервере." : "Текущие диагнозы карты (только просмотр).")</p>
           </div>
-          @if (_editing)
+          @if (IsEditingRecord)
           {
             <button class="btn btn-light" disabled="@_busy" @onclick="CancelEdit">Выйти из редактирования</button>
           }
@@ -119,7 +119,7 @@ else
             <span class="field-hint">Изменять карту может только врач.</span>
           }
         </div>
-        @if (_editing)
+        @if (IsEditingRecord)
         {
           <div class="mr-edit-form">
             <div class="mr-field mr-field-grow">
@@ -134,7 +134,7 @@ else
                 }
               </select>
             </div>
-            <button class="btn btn-primary" disabled="@(_busy || _selectedDiagnosisId is null)"
+            <button class="btn btn-primary" disabled="@(_busy || _editDataLoading || _selectedDiagnosisId is null)"
                     @onclick="AddDiagnosisAsync">
               <Icon Name="plus"/> Добавить диагноз
             </button>
@@ -147,7 +147,7 @@ else
               <th scope="col">Код</th>
               <th scope="col">Наименование</th>
               <th scope="col">Добавлен</th>
-              @if (_editing)
+              @if (IsEditingRecord)
               {
                 <th scope="col" class="actions-cell">Действия</th>
               }
@@ -160,7 +160,7 @@ else
                 <td data-label="Код"><code>@diagnosis.Code</code></td>
                 <td data-label="Наименование">@diagnosis.Name</td>
                 <td data-label="Добавлен">@FormatLocal(diagnosis.AddedAtUtc)</td>
-                @if (_editing)
+                @if (IsEditingRecord)
                 {
                   <td class="actions-cell">
                     <button class="icon-button danger" title="Удалить диагноз" disabled="@_busy"
@@ -184,9 +184,9 @@ else
         <div class="registry-heading">
           <div>
             <h2>Назначения</h2>
-            <p>@(_editing ? "Режим редактирования. Изменения сохраняются на сервере." : "Действующие назначения карты (только просмотр).")</p>
+            <p>@(IsEditingRecord ? "Режим редактирования. Изменения сохраняются на сервере." : "Действующие назначения карты (только просмотр).")</p>
           </div>
-          @if (_editing)
+          @if (IsEditingRecord)
           {
             <button class="btn btn-light" disabled="@_busy" @onclick="CancelEdit">Выйти из редактирования</button>
           }
@@ -199,7 +199,7 @@ else
             <span class="field-hint">Изменять карту может только врач.</span>
           }
         </div>
-        @if (_editing)
+        @if (IsEditingRecord)
         {
           <div class="mr-edit-form">
             <div class="mr-field mr-field-grow">
@@ -224,7 +224,7 @@ else
           @foreach (var prescription in _record.Prescriptions)
           {
             <li @key="prescription.Id">
-              @if (_editing && _replaceId == prescription.Id)
+              @if (IsEditingRecord && _replaceId == prescription.Id)
               {
                 <div class="mr-field mr-field-grow">
                   <label for="replace-text">Новый текст назначения</label>
@@ -251,7 +251,7 @@ else
                   <p class="mr-prescription-text">@prescription.Text</p>
                   <small>Назначено @FormatLocal(prescription.CreatedAtUtc)@(prescription.ReplacesPrescriptionId is null ? "" : " · замена предыдущего")</small>
                 </div>
-                @if (_editing)
+                @if (IsEditingRecord)
                 {
                   <div class="button-row">
                     <button class="btn btn-light" disabled="@_busy"
@@ -400,8 +400,12 @@ else
   [Parameter] public Guid PatientId { get; set; }
 
   private MedicalWorkerRole? Role => Session.Current?.MedicalWorkerRole;
-  private bool CanEdit => Role == MedicalWorkerRole.Doctor;
-  private bool CanCreateRecord => Role is MedicalWorkerRole.Doctor or MedicalWorkerRole.Nurse;
+  private AuthenticationSessionDto? PermissionSession => Session.Current is { } current
+    ? new(current.Id, current.UserName, current.Role, current.MedicalWorkerId, current.MedicalWorkerRole)
+    : null;
+  private bool CanEdit => SessionPermissions.CanEditMedicalRecord(PermissionSession);
+  private bool CanCreateRecord => SessionPermissions.CanCreateMedicalRecord(PermissionSession);
+  private bool IsEditingRecord => _editing && CanEdit;
 
   private enum Tab { Diagnoses, Prescriptions, History }
 
@@ -612,7 +616,7 @@ else
 
   private async Task BeginEditAsync()
   {
-    if (!CanEdit)
+    if (_busy || !CanEdit)
     {
       return;
     }
@@ -760,7 +764,7 @@ else
       return Task.CompletedTask;
     }
 
-    return RunMutationAsync(token => Records.CreateAsync(PatientId, token));
+    return RunMutationAsync(token => Records.CreateAsync(PatientId, token), creating: true);
   }
 
   private Task AddDiagnosisAsync() => RunMutationAsync(token =>
@@ -807,9 +811,9 @@ else
   private static string PrescriptionLengthMessage =>
     $"Назначение должно содержать от {PrescriptionTextMinLength} до {PrescriptionTextMaxLength} символов.";
 
-  private async Task RunMutationAsync(Func<CancellationToken, Task> action)
+  private async Task RunMutationAsync(Func<CancellationToken, Task> action, bool creating = false)
   {
-    if (_busy || _cts is null)
+    if (_busy || _disposed || _cts is null || !(creating ? CanCreateRecord : CanEdit))
     {
       return;
     }

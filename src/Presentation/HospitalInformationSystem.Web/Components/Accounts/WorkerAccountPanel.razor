@@ -24,10 +24,10 @@
   {
     <dl class="account-facts">
       <div><dt>Логин</dt><dd>@account.UserName</dd></div>
-      <div><dt>Создана</dt><dd>@account.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</dd></div>
-      <div><dt>Обновлена</dt><dd>@account.UpdatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</dd></div>
+      <div><dt>Создана</dt><dd>@account.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</dd></div>
+      <div><dt>Обновлена</dt><dd>@account.UpdatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</dd></div>
     </dl>
-    <AccountOperations Account="account" WorkerDeleted="WorkerDeleted" OnChanged="OnAccountChanged"/>
+    <AccountOperations @key="account.Id" Account="account" WorkerDeleted="WorkerDeleted" OnChanged="OnAccountChanged"/>
   }
   else if (WorkerDeleted)
   {
@@ -81,11 +81,20 @@
 
     _loadedWorkerId = WorkerId;
     _createdPassword = null;
+    _creating = false;
+    _createError = null;
+    _form.UserName = "";
+    _account = null;
     await LoadAsync();
   }
 
   private async Task LoadAsync()
   {
+    if (_disposed)
+    {
+      return;
+    }
+
     _cts?.Cancel();
     _cts?.Dispose();
     _cts = new CancellationTokenSource();
@@ -131,7 +140,7 @@
 
   private async Task CreateAsync()
   {
-    if (_creating || _disposed || _cts is null)
+    if (_creating || _disposed || _cts is null || WorkerDeleted)
     {
       return;
     }
@@ -181,6 +190,7 @@
 
   private async Task OnAccountChanged(AccountDetailsDto account)
   {
+    _createdPassword = null;
     _account = account;
     await NotifyChangedAsync();
   }
@@ -197,6 +207,11 @@
 
   public void Dispose()
   {
+    if (_disposed)
+    {
+      return;
+    }
+
     _disposed = true;
     _createdPassword = null;
     _cts?.Cancel();

@@ -72,6 +72,20 @@ class CheckPublishTests(unittest.TestCase):
         self.assertIn("notes.txt", out)
         self.assertIn("backup", out)
 
+    def test_private_key_after_one_mib_is_rejected(self):
+        (self.api / "bundle.txt").write_bytes(b"." * (1024 * 1024 + 1) + PRIVATE_KEY.encode())
+        code, out, _ = self.run_check()
+        self.assertEqual(code, 1)
+        self.assertIn("bundle.txt", out)
+        self.assertNotIn("MIIBsecret", out)
+
+    def test_private_key_marker_crossing_a_read_boundary_is_rejected(self):
+        prefix = b"." * (check_lab2_publish.SCAN_CHUNK_BYTES - 10)
+        (self.api / "bundle.crt").write_bytes(prefix + PRIVATE_KEY.encode())
+        code, out, _ = self.run_check()
+        self.assertEqual(code, 1)
+        self.assertIn("bundle.crt", out)
+
     def test_enabled_uimock_configuration_is_rejected(self):
         (self.api / "appsettings.Production.json").write_text('{"uimock": {"enabled": true}}', encoding="utf-8")
         code, out, _ = self.run_check()
@@ -87,6 +101,21 @@ class CheckPublishTests(unittest.TestCase):
                 self.assertEqual(code, 1)
                 self.assertIn(name, out)
                 (self.api / name).unlink()
+
+    def test_flat_dotnet_configuration_key_is_rejected(self):
+        for raw in ("true", '"true"', '" TRUE "'):
+            with self.subTest(raw=raw):
+                (self.web / "wwwroot" / "appsettings.json").write_text(
+                    '{"uImOcK:EnAbLeD":' + raw + '}', encoding="utf-8")
+                code, out, _ = self.run_check()
+                self.assertEqual(code, 1)
+                self.assertIn("UiMock.Enabled=true", out)
+
+    def test_nested_flat_key_does_not_enable_the_root_flag(self):
+        (self.api / "appsettings.json").write_text(
+            '{"Example":{"UiMock:Enabled":true},"UiMock":[{"Enabled":true}]}', encoding="utf-8")
+        code, _, _ = self.run_check()
+        self.assertEqual(code, 0)
 
     def test_uimock_disabled_string_and_number_pass(self):
         (self.api / "appsettings.json").write_text('{"UiMock": {"Enabled": "false"}}', encoding="utf-8")

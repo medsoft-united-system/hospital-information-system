@@ -55,6 +55,7 @@ public sealed class WebPageRegressionTests
             : new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)));
         using var page = new Patients();
         Inject(page, "Api", new PatientsApiClient(http));
+        Inject(page, "Session", Session(MedicalWorkerRole.Doctor));
         Set(page, "_cts", new CancellationTokenSource());
         Set(page, "_patients", new[] { patient });
         Set(page, "_pendingDelete", patient);

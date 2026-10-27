@@ -43,7 +43,7 @@
 }
 <ErrorAlert Message="@_error"/>
 
-@if (_pendingDelete is not null)
+@if (_pendingDelete is not null && CanManage)
 {
   <div class="confirm-panel" role="alertdialog" aria-labelledby="patient-delete-title">
     <div>
@@ -143,7 +143,9 @@
     @if (!VisiblePatients.Any())
     {
       <div class="empty-state">
-        @(_patients.Count == 0 ? "В реестре пока нет пациентов. Добавьте первого пациента." : "По вашему запросу ничего не найдено.")
+        @(_patients.Count == 0
+          ? CanManage ? "В реестре пока нет пациентов. Добавьте первого пациента." : "В реестре пока нет пациентов."
+          : "По вашему запросу ничего не найдено.")
       </div>
     }
 
@@ -164,7 +166,10 @@
   private bool _disposed;
 
   private MedicalWorkerRole? Role => Session.Current?.MedicalWorkerRole;
-  private bool CanManage => Role is MedicalWorkerRole.Doctor or MedicalWorkerRole.Nurse;
+  private bool CanManage => SessionPermissions.CanManagePatients(Session.Current is { } current
+    ? new AuthenticationSessionDto(current.Id, current.UserName, current.Role, current.MedicalWorkerId,
+      current.MedicalWorkerRole)
+    : null);
 
   private IEnumerable<PatientDto> VisiblePatients => (_patients ?? [])
     .Where(x => $"{x.LastName} {x.FirstName} {x.MiddleName}".Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase));
@@ -231,7 +236,7 @@
 
   private void AskDelete(PatientDto patient)
   {
-    if (_deleting)
+    if (_deleting || !CanManage)
     {
       return;
     }
@@ -248,7 +253,7 @@
 
   private async Task DeleteAsync()
   {
-    if (_pendingDelete is null || _deleting || _cts is null)
+    if (_pendingDelete is null || _deleting || _cts is null || _disposed || !CanManage)
     {
       return;
     }

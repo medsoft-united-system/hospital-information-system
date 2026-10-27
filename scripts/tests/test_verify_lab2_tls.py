@@ -21,6 +21,11 @@ HANDSHAKE_OK = Completed(
     "",
 )
 ISSUER_OK = "issuer=OU=MedSoft 2026/27 123456,O=ITMO,CN=medsoft.local\n"
+TLS12_PROTOCOL_ALERT = Completed(1,
+    "CONNECTED(00000003)\n---\nno peer certificate available\n---\n"
+    "New, (NONE), Cipher is (NONE)\nProtocol: TLSv1.2\nSSL-Session:\n"
+    "    Protocol  : TLSv1.2\n    Cipher    : 0000\n",
+    "SSL routines:ssl3_read_bytes:tlsv1 alert protocol version:SSL alert number 70\n")
 
 
 def connect_value(args):
@@ -33,7 +38,7 @@ class FakeRunner:
         self.handshake = HANDSHAKE_OK
         self.issuer = ISSUER_OK
         self.checkend = Completed(0, "", "")
-        self.tls12 = Completed(1, "", "tlsv1 alert protocol version")
+        self.tls12 = TLS12_PROTOCOL_ALERT
         self.timeouts = set()
         self.calls = []
 
@@ -89,6 +94,13 @@ class VerifyTlsTests(unittest.TestCase):
     def test_tool_without_trust_isolation_flags_is_rejected(self):
         runner = FakeRunner()
         runner.help_text = "usage: s_client ... -tls1_2 -tls1_3 ...\n"
+        code, _, err = self.run_main(runner)
+        self.assertEqual(code, 2)
+        self.assertIn("системное доверие", err)
+
+    def test_partial_system_trust_isolation_is_rejected(self):
+        runner = FakeRunner()
+        runner.help_text = "-tls1_2 -tls1_3 -no-CAfile -CApath -CAstore"
         code, _, err = self.run_main(runner)
         self.assertEqual(code, 2)
         self.assertIn("системное доверие", err)
@@ -153,10 +165,37 @@ class VerifyTlsTests(unittest.TestCase):
 
     def test_tls12_negotiated_then_eof_fails(self):
         runner = FakeRunner()
-        runner.tls12 = Completed(1, "    Protocol  : TLSv1.2\n", "0000 - unexpected eof while reading\n")
+        runner.tls12 = Completed(1, "    Protocol  : TLSv1.2\n    Cipher : ECDHE-RSA-AES256-GCM-SHA384\n",
+                                 "0000 - unexpected eof while reading\n")
         code, _, err = self.run_main(runner)
         self.assertEqual(code, 1)
         self.assertIn("TLS 1.2", err)
+
+    def test_protocol_alert_with_proposed_tls12_and_no_cipher_passes(self):
+        for cipher in ("0000", "0x0000", "NONE", "(NONE)"):
+            with self.subTest(cipher=cipher):
+                runner = FakeRunner()
+                runner.tls12 = Completed(1, "Protocol: TLSv1.2\nCipher: " + cipher + "\n",
+                                         TLS12_PROTOCOL_ALERT.stderr)
+                code, _, err = self.run_main(runner)
+                self.assertEqual(code, 0, err)
+
+    def test_negotiated_cipher_is_rejected_even_with_a_later_protocol_alert(self):
+        runner = FakeRunner()
+        runner.tls12 = Completed(1, "New, TLSv1.2, Cipher is ECDHE-RSA-AES256-GCM-SHA384\n",
+                                 TLS12_PROTOCOL_ALERT.stderr)
+        code, _, err = self.run_main(runner)
+        self.assertEqual(code, 1)
+        self.assertIn("Согласован TLS 1.2", err)
+
+    def test_local_protocol_errors_do_not_prove_server_rejection(self):
+        for error in ("no protocols available", "unsupported protocol", "wrong version number"):
+            with self.subTest(error=error):
+                runner = FakeRunner()
+                runner.tls12 = Completed(1, "", error)
+                code, _, err = self.run_main(runner)
+                self.assertEqual(code, 1)
+                self.assertIn("не подтверждён", err)
 
     def test_unrelated_error_is_not_a_tls12_rejection(self):
         runner = FakeRunner()
@@ -186,6 +225,15 @@ class VerifyTlsTests(unittest.TestCase):
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             code = verify_lab2_tls.main(argv, runner=runner)
         self.assertEqual(code, 2)
+
+    def test_nonpositive_or_nonfinite_timeout_is_an_argument_error(self):
+        for timeout in ("0", "-1", "nan", "inf"):
+            with self.subTest(timeout=timeout):
+                runner = FakeRunner()
+                code, _, err = self.run_main(runner, extra=["--timeout", timeout])
+                self.assertEqual(code, 2)
+                self.assertIn("тайм-аут", err)
+                self.assertEqual(runner.calls, [])
 
     def test_ip_host_uses_ip_verification_without_sni(self):
         runner = FakeRunner()

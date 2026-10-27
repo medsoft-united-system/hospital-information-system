@@ -81,7 +81,7 @@
                 @MedicalRoleLabels.Describe(account.MedicalWorkerRole)
               }
             </td>
-            <td data-label="Создана">@account.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+            <td data-label="Создана">@account.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</td>
             <td data-label="Статус">
               <span class="status @(account.IsActive ? "status-active" : "status-deleted")">
                 <span class="status-dot"></span>@(account.IsActive ? "Активна" : "Деактивирована")
@@ -137,6 +137,7 @@
   private IReadOnlySet<Guid> _deletedWorkerIds = new HashSet<Guid>();
   private readonly CancellationTokenSource _cancellation = new();
   private bool _loading = true;
+  private bool _disposed;
   private int _loadVersion;
   private string? _listError;
   private string _search = "";
@@ -182,14 +183,25 @@
 
   private async Task LoadAsync()
   {
+    if (_disposed)
+    {
+      return;
+    }
+
+    var token = _cancellation.Token;
     var version = ++_loadVersion;
     _loading = true;
     _listError = null;
     try
     {
-      var accounts = await Gateway.ListAsync(_cancellation.Token);
-      var workers = await Workers.ListAsync(true, _cancellation.Token);
-      if (_cancellation.IsCancellationRequested || version != _loadVersion)
+      var accounts = await Gateway.ListAsync(token);
+      if (token.IsCancellationRequested || version != _loadVersion)
+      {
+        return;
+      }
+
+      var workers = await Workers.ListAsync(true, token);
+      if (token.IsCancellationRequested || version != _loadVersion)
       {
         return;
       }
@@ -204,26 +216,26 @@
         _selectedId = null;
       }
     }
-    catch (OperationCanceledException) when (_cancellation.IsCancellationRequested)
+    catch (OperationCanceledException) when (token.IsCancellationRequested)
     {
     }
     catch (ApiException exception)
     {
-      if (!_cancellation.IsCancellationRequested && version == _loadVersion)
+      if (!token.IsCancellationRequested && version == _loadVersion)
       {
         _listError = exception.Message;
       }
     }
     catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
     {
-      if (!_cancellation.IsCancellationRequested && version == _loadVersion)
+      if (!token.IsCancellationRequested && version == _loadVersion)
       {
         _listError = "Не удалось загрузить учётные записи. Повторите попытку.";
       }
     }
     finally
     {
-      if (version == _loadVersion)
+      if (!token.IsCancellationRequested && version == _loadVersion)
       {
         _loading = false;
       }
@@ -234,6 +246,8 @@
 
   private void OnAccountChanged(AccountDetailsDto account)
   {
+    _loadVersion++;
+    _loading = false;
     _accounts = (_accounts ?? [])
       .Select(item => item.Id == account.Id ? account : item)
       .ToArray();
@@ -241,6 +255,12 @@
 
   public void Dispose()
   {
+    if (_disposed)
+    {
+      return;
+    }
+
+    _disposed = true;
     _cancellation.Cancel();
     _cancellation.Dispose();
   }

@@ -133,6 +133,7 @@
     _busy = true;
     _error = null;
     _notice = null;
+    _generatedPassword = null;
     try
     {
       var result = await Accounts.ResetPasswordAsync(Account.Id, token);
@@ -142,8 +143,11 @@
       }
 
       _generatedPassword = result.GeneratedPassword;
+      Account = Account with { IsLockedOut = false };
       _notice = $"Пароль обновлён. Отозвано refresh-токенов: {result.RevokedRefreshTokenCount}.";
       _confirm = null;
+      await NotifyChangedAsync();
+      await RefreshAccountAfterResetAsync(token);
     }
     catch (Exception exception) when (HandleFailure(exception, token))
     {
@@ -159,6 +163,46 @@
 
   private Task ActivateAsync() => SetActiveAsync(true);
 
+  private async Task RefreshAccountAfterResetAsync(CancellationToken token)
+  {
+    try
+    {
+      var accounts = await Accounts.ListAsync(token);
+      if (!IsCurrent(token))
+      {
+        return;
+      }
+
+      var updated = accounts.FirstOrDefault(account => account.Id == Account.Id);
+      if (updated is null)
+      {
+        _notice += " Обновить сведения об аккаунте не удалось. Новый пароль доступен в карточке.";
+        return;
+      }
+
+      Account = updated;
+      await NotifyChangedAsync();
+    }
+    catch (OperationCanceledException) when (token.IsCancellationRequested)
+    {
+    }
+    catch (Exception exception) when (exception is ApiException or HttpRequestException or TaskCanceledException)
+    {
+      if (IsCurrent(token))
+      {
+        _notice += " Обновить сведения об аккаунте не удалось. Новый пароль доступен в карточке.";
+      }
+    }
+  }
+
+  private async Task NotifyChangedAsync()
+  {
+    if (OnChanged.HasDelegate)
+    {
+      await OnChanged.InvokeAsync(Account);
+    }
+  }
+
   private async Task SetActiveAsync(bool isActive)
   {
     if (_busy || _disposed)
@@ -170,6 +214,7 @@
     _busy = true;
     _error = null;
     _notice = null;
+    _generatedPassword = null;
     try
     {
       var result = await Accounts.SetActiveAsync(Account.Id, isActive, token);
@@ -183,10 +228,7 @@
         ? "Учётная запись активирована."
         : $"Учётная запись деактивирована. Отозвано refresh-токенов: {result.RevokedRefreshTokenCount}.";
       _confirm = null;
-      if (OnChanged.HasDelegate)
-      {
-        await OnChanged.InvokeAsync(result.Account);
-      }
+      await NotifyChangedAsync();
     }
     catch (Exception exception) when (HandleFailure(exception, token))
     {
@@ -236,6 +278,11 @@
 
   public void Dispose()
   {
+    if (_disposed)
+    {
+      return;
+    }
+
     _disposed = true;
     _generatedPassword = null;
     _cts.Cancel();

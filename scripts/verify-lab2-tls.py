@@ -13,6 +13,8 @@ handshake и доверие к указанному CA, имя сервера, �
 """
 import argparse
 import ipaddress
+import math
+import re
 import subprocess
 import sys
 import tempfile
@@ -24,9 +26,7 @@ Completed = namedtuple("Completed", "returncode stdout stderr")
 CONNECTIVITY_MARKERS = ("connect:errno", "connection refused", "getaddrinfo", "name or service not known",
                         "no route to host", "errno=61", "errno=111")
 # Отказ именно из-за версии протокола — только эти явные признаки считаем успехом.
-PROTOCOL_VERSION_MARKERS = ("tlsv1 alert protocol version", "alert protocol version", "unsupported protocol",
-                            "no protocols available", "wrong version number", "wrong ssl version",
-                            "unsupported protocol version")
+PROTOCOL_VERSION_MARKERS = ("tlsv1 alert protocol version", "alert protocol version")
 # Флаги OpenSSL, отключающие системные источники доверия. Берём те, что поддержаны.
 TRUST_ISOLATION_FLAGS = ("-no-CAfile", "-no-CApath", "-no-CAstore")
 
@@ -81,10 +81,10 @@ def tool_capabilities(runner, openssl):
 
 
 def trust_isolation_flags(capabilities):
-    """Флаги, отключающие системное доверие. Если не поддержан ни один —
-    гарантировать изоляцию нельзя, поэтому это ошибка инструмента, а не успех."""
+    """Отключает CAfile/CApath и, при поддержке инструментом, CAstore."""
     flags = [flag for flag in TRUST_ISOLATION_FLAGS if flag in capabilities]
-    if not flags:
+    if "-no-CAfile" not in flags or "-no-CApath" not in flags or \
+            "-CAstore" in capabilities and "-no-CAstore" not in flags:
         raise ToolError("OpenSSL не умеет отключать системное доверие "
                         "(-no-CAfile/-no-CApath/-no-CAstore). Обновите OpenSSL, иначе возможен ложный успех "
                         "при доверенном в системе учебном CA.")
@@ -233,7 +233,9 @@ def ensure_tls12_rejected(runner, openssl, host, port, ca, timeout):
         raise VerificationFailed("Тайм-аут при проверке TLS 1.2 — отказ не подтверждён.") from error
     combined = (result.stdout + result.stderr).lower()
     # Whitelist: успех только при подтверждённом отказе именно из-за версии протокола.
-    if "tlsv1.2" in combined:
+    ciphers = re.findall(r"\bcipher(?:suite)?\s*(?::|is)\s*([^\s,]+)", combined)
+    if "tlsv1.2" in combined and any(cipher not in ("0000", "0x0000", "none", "(none)")
+                                    for cipher in ciphers):
         raise VerificationFailed("Согласован TLS 1.2 — требование TLS 1.3-only не выполнено.")
     if result.returncode == 0:
         raise VerificationFailed("Сервер принял TLS 1.2 — требование TLS 1.3-only не выполнено.")
@@ -276,6 +278,9 @@ def main(argv=None, runner=default_runner):
         return 2
     if not arguments.isu_id.strip():
         print("Неверный аргумент: укажите непустой --isu-id.", file=sys.stderr)
+        return 2
+    if not math.isfinite(arguments.timeout) or arguments.timeout <= 0:
+        print("Неверный аргумент: тайм-аут должен быть положительным конечным числом.", file=sys.stderr)
         return 2
 
     try:
