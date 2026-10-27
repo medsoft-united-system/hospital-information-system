@@ -62,11 +62,37 @@ class CheckPublishTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("server.pfx", out)
 
+    def test_private_key_without_pem_extension_is_rejected(self):
+        (self.api / "leaked.crt").write_text(PRIVATE_KEY, encoding="utf-8")
+        (self.web / "wwwroot" / "notes.txt").write_text(PRIVATE_KEY, encoding="utf-8")
+        (self.api / "backup").write_text(PRIVATE_KEY, encoding="utf-8")
+        code, out, _ = self.run_check()
+        self.assertEqual(code, 1)
+        self.assertIn("leaked.crt", out)
+        self.assertIn("notes.txt", out)
+        self.assertIn("backup", out)
+
     def test_enabled_uimock_configuration_is_rejected(self):
         (self.api / "appsettings.Production.json").write_text('{"uimock": {"enabled": true}}', encoding="utf-8")
         code, out, _ = self.run_check()
         self.assertEqual(code, 1)
         self.assertIn("appsettings.Production.json", out)
+
+    def test_uimock_enabled_as_dotnet_bool_string_is_rejected(self):
+        for index, raw in enumerate(('"true"', '"True"', '" TRUE "')):
+            with self.subTest(raw=raw):
+                name = f"appsettings.String{index}.json"
+                (self.api / name).write_text(f'{{"UiMock": {{"Enabled": {raw}}}}}', encoding="utf-8")
+                code, out, _ = self.run_check()
+                self.assertEqual(code, 1)
+                self.assertIn(name, out)
+                (self.api / name).unlink()
+
+    def test_uimock_disabled_string_and_number_pass(self):
+        (self.api / "appsettings.json").write_text('{"UiMock": {"Enabled": "false"}}', encoding="utf-8")
+        (self.web / "wwwroot" / "appsettings.json").write_text('{"UiMock": {"Enabled": 1}}', encoding="utf-8")
+        code, _, _ = self.run_check()
+        self.assertEqual(code, 0)
 
     def test_corrupted_configuration_cannot_be_completed(self):
         (self.api / "appsettings.json").write_text("{ broken", encoding="utf-8")

@@ -18,7 +18,10 @@ from pathlib import Path
 
 FORBIDDEN_CONFIG_NAMES = {"appsettings.local.json", "appsettings.uimock.json"}
 KEYSTORE_SUFFIXES = {".pfx", ".p12"}
-PEM_LIKE_SUFFIXES = {".pem", ".key"}
+# Приватный ключ ищем по содержимому независимо от расширения, но читаем не весь
+# файл: заголовок PEM-ключа всегда в начале, а сканировать крупные сборки целиком
+# не нужно.
+MAX_SCAN_BYTES = 1024 * 1024
 PRIVATE_KEY_MARKERS = (
     b"-----BEGIN PRIVATE KEY-----",
     b"-----BEGIN RSA PRIVATE KEY-----",
@@ -49,7 +52,7 @@ def required_artifact_problems(web, api):
 def contains_private_key(path):
     try:
         with path.open("rb") as handle:
-            data = handle.read()
+            data = handle.read(MAX_SCAN_BYTES)
     except OSError as error:
         raise CheckError(f"{path.name}: не удалось прочитать файл для проверки ключей") from error
     return any(marker in data for marker in PRIVATE_KEY_MARKERS)
@@ -66,7 +69,7 @@ def forbidden_artifact_problems(root, label):
         if suffix in KEYSTORE_SUFFIXES:
             problems.append(f"{label}: {relative(root, path)} — хранилище ключей (PFX/P12) не должно публиковаться")
             continue
-        if suffix in PEM_LIKE_SUFFIXES and contains_private_key(path):
+        if contains_private_key(path):
             problems.append(f"{label}: {relative(root, path)} — содержит приватный ключ")
     return problems
 
@@ -94,9 +97,20 @@ def lookup(document, key):
     return None
 
 
+def dotnet_bool_is_true(value):
+    """Трактует значение как .NET GetValue<bool>: настоящий true или строка
+    "true" в любом регистре с пробелами по краям. Числа и прочие строки не
+    считаются включённым флагом."""
+    if value is True:
+        return True
+    if isinstance(value, str):
+        return value.strip().lower() == "true"
+    return False
+
+
 def ui_mock_is_enabled(document):
     section = lookup(document, "UiMock")
-    return lookup(section, "Enabled") is True
+    return dotnet_bool_is_true(lookup(section, "Enabled"))
 
 
 def analyze(web, api):
