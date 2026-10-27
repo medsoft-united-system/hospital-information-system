@@ -90,10 +90,13 @@
   private IReadOnlyList<AuditEventDto> _items = [];
   private CancellationTokenSource? _cts;
   private PeriodicTimer? _timer;
+  private Task? _pollTask;
   private bool _loading = true;
   private bool _refreshing;
   private bool _inFlight;
   private bool _hasMore;
+  private bool _disposed;
+  private int _generation;
   private int _page = 1;
   private string? _error;
   private AuditEventType? _eventType;
@@ -111,20 +114,26 @@
   protected override async Task OnInitializedAsync()
   {
     _cts = new CancellationTokenSource();
-    await RefreshAsync(initial: true);
-    _ = PollLoopAsync();
+    var loopToken = _cts.Token;
+    await LoadAsync(initial: true);
+    if (_disposed)
+    {
+      return;
+    }
+
+    _pollTask = PollLoopAsync(loopToken);
   }
 
-  private async Task PollLoopAsync()
+  private async Task PollLoopAsync(CancellationToken token)
   {
     _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
     try
     {
-      while (await _timer.WaitForNextTickAsync(_cts!.Token))
+      while (await _timer.WaitForNextTickAsync(token))
       {
         if (_page == 1 && !_inFlight)
         {
-          await RefreshAsync(initial: false);
+          await LoadAsync(initial: false);
           await InvokeAsync(StateHasChanged);
         }
       }
@@ -134,13 +143,22 @@
     }
   }
 
-  private async Task RefreshAsync(bool initial)
+  private async Task LoadAsync(bool initial)
   {
-    if (_cts is null || _inFlight)
+    if (_cts is null || _disposed)
     {
       return;
     }
 
+    // Отметить, что нужна загрузка с актуальным фильтром. Если запрос уже идёт,
+    // он сам увидит смену поколения и повторится с новыми условиями.
+    _generation++;
+    if (_inFlight)
+    {
+      return;
+    }
+
+    var token = _cts.Token;
     _inFlight = true;
     if (initial)
     {
@@ -151,41 +169,59 @@
       _refreshing = true;
     }
 
-    var token = _cts.Token;
     try
     {
-      var query = new AuditQuery(_page, PageSize, _eventType, PeriodStart(), null);
-      var result = await Gateway.ListAsync(query, token);
-      if (token.IsCancellationRequested)
+      int served;
+      do
       {
-        return;
-      }
+        served = _generation;
+        var query = new AuditQuery(_page, PageSize, _eventType, PeriodStart(), null);
+        try
+        {
+          var result = await Gateway.ListAsync(query, token);
+          if (token.IsCancellationRequested)
+          {
+            return;
+          }
 
-      _items = result.Items;
-      _hasMore = result.HasMore;
-      _error = null;
-    }
-    catch (OperationCanceledException) when (token.IsCancellationRequested)
-    {
-    }
-    catch (ApiException exception)
-    {
-      if (!token.IsCancellationRequested)
-      {
-        _error = exception.Message;
+          if (served != _generation)
+          {
+            continue;
+          }
+
+          _items = result.Items;
+          _hasMore = result.HasMore;
+          _error = null;
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+          return;
+        }
+        catch (ApiException exception)
+        {
+          if (served == _generation)
+          {
+            _error = exception.Message;
+          }
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        {
+          if (served == _generation)
+          {
+            _error = "Сервер недоступен. Журнал не обновлён.";
+          }
+        }
       }
-    }
-    catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
-    {
-      if (!token.IsCancellationRequested)
-      {
-        _error = "Сервер недоступен. Журнал не обновлён.";
-      }
+      while (served != _generation && !token.IsCancellationRequested);
     }
     finally
     {
-      _loading = false;
-      _refreshing = false;
+      if (!token.IsCancellationRequested)
+      {
+        _loading = false;
+        _refreshing = false;
+      }
+
       _inFlight = false;
     }
   }
@@ -197,21 +233,21 @@
     _ => null
   };
 
-  private Task ManualRefreshAsync() => RefreshAsync(initial: false);
+  private Task ManualRefreshAsync() => LoadAsync(initial: false);
 
   private async Task OnEventTypeChanged(ChangeEventArgs args)
   {
     _eventTypeValue = args.Value?.ToString() ?? "";
     _eventType = Enum.TryParse<AuditEventType>(_eventTypeValue, out var parsed) ? parsed : null;
     _page = 1;
-    await RefreshAsync(initial: true);
+    await LoadAsync(initial: true);
   }
 
   private async Task OnPeriodChanged(ChangeEventArgs args)
   {
     _period = Enum.TryParse<PeriodFilter>(args.Value?.ToString(), out var parsed) ? parsed : PeriodFilter.All;
     _page = 1;
-    await RefreshAsync(initial: true);
+    await LoadAsync(initial: true);
   }
 
   private async Task GoOlderAsync()
@@ -222,7 +258,7 @@
     }
 
     _page++;
-    await RefreshAsync(initial: true);
+    await LoadAsync(initial: true);
   }
 
   private async Task GoNewerAsync()
@@ -233,17 +269,18 @@
     }
 
     _page--;
-    await RefreshAsync(initial: true);
+    await LoadAsync(initial: true);
   }
 
   private async Task BackToCurrentAsync()
   {
     _page = 1;
-    await RefreshAsync(initial: true);
+    await LoadAsync(initial: true);
   }
 
   public void Dispose()
   {
+    _disposed = true;
     _cts?.Cancel();
     _timer?.Dispose();
     _cts?.Dispose();
