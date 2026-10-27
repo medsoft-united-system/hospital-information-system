@@ -2,7 +2,14 @@ using System.ComponentModel.DataAnnotations;
 using System.Net;
 using System.Net.Http.Json;
 using System.Reflection;
+using System.Text.Json;
 using FluentAssertions;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
+using Moq;
 using HospitalInformationSystem.Contracts.Auth;
 using HospitalInformationSystem.Contracts.Diagnoses;
 using HospitalInformationSystem.Contracts.Lab2;
@@ -162,12 +169,15 @@ public sealed class WebPageRegressionTests
         var staleResponse = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
         var administrator = Lab2Account("admin", ApplicationRoles.Administrator, null, null);
         var doctor = Lab2Account("doctor.demo", ApplicationRoles.MedicalWorker, "Иванов Иван", MedicalWorkerRole.Doctor);
-        var requests = 0;
-        using var http = CreateClient((_, _) => ++requests == 1
-            ? staleResponse.Task
-            : Task.FromResult(Json(new[] { administrator, doctor })));
+        var accountRequests = 0;
+        using var http = CreateClient((request, _) => request.RequestUri!.AbsolutePath.Contains("medical-workers")
+            ? Task.FromResult(Json(Array.Empty<MedicalWorkerDto>()))
+            : ++accountRequests == 1
+                ? staleResponse.Task
+                : Task.FromResult(Json(new[] { administrator, doctor })));
         using var page = new Accounts();
         Inject(page, "Gateway", new AccountManagementGateway(http));
+        Inject(page, "Workers", new MedicalWorkersApiClient(http));
 
         var olderLoad = InvokeAsync(page, "LoadAsync");
         await InvokeAsync(page, "LoadAsync");
@@ -275,6 +285,138 @@ public sealed class WebPageRegressionTests
     }
 
     [Fact]
+    public async Task A_fresh_operations_panel_does_not_render_the_field_name_as_a_password()
+    {
+        var account = Lab2Account("doctor.demo", ApplicationRoles.MedicalWorker, "Иванов Иван", MedicalWorkerRole.Doctor);
+        var html = await RenderComponentHtmlAsync<AccountOperations>(
+            services =>
+            {
+                services.AddSingleton(Mock.Of<IAccountManagementGateway>());
+                services.AddSingleton(Mock.Of<IJSRuntime>());
+            },
+            ParameterView.FromDictionary(new Dictionary<string, object?> { ["Account"] = account }));
+
+        html.Should().NotContain("_generatedPassword");
+        html.Should().NotContain("Новый пароль сотрудника");
+    }
+
+    [Fact]
+    public async Task A_fresh_worker_panel_does_not_render_the_field_name_as_a_password()
+    {
+        var gateway = new Mock<IAccountManagementGateway>();
+        gateway.Setup(service => service.ListAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<Lab2AccountDto>());
+        var html = await RenderComponentHtmlAsync<WorkerAccountPanel>(
+            services =>
+            {
+                services.AddSingleton(gateway.Object);
+                services.AddSingleton(Mock.Of<IJSRuntime>());
+            },
+            ParameterView.FromDictionary(new Dictionary<string, object?> { ["WorkerId"] = Guid.NewGuid() }));
+
+        html.Should().NotContain("_createdPassword");
+        html.Should().NotContain("Учётная запись создана");
+    }
+
+    [Fact]
+    public void Switching_the_selected_account_resets_the_operations_panel()
+    {
+        var first = Lab2Account("a", ApplicationRoles.MedicalWorker, "Имя Один", MedicalWorkerRole.Doctor);
+        var second = Lab2Account("b", ApplicationRoles.MedicalWorker, "Имя Два", MedicalWorkerRole.Nurse);
+        using var page = new AccountOperations();
+        SetProperty(page, "Account", first);
+        Invoke(page, "OnParametersSet");
+        Set(page, "_generatedPassword", "NewPass123456");
+        Set(page, "_notice", "Что-то произошло");
+        Set(page, "_busy", true);
+
+        SetProperty(page, "Account", second);
+        Invoke(page, "OnParametersSet");
+
+        Get<string>(page, "_generatedPassword").Should().BeNull();
+        Get<string>(page, "_notice").Should().BeNull();
+        Get<bool>(page, "_busy").Should().BeFalse();
+        GetField(page, "_confirm").Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Creating_an_account_keeps_the_generated_password_and_the_new_account()
+    {
+        var account = Lab2Account("doctor.demo", ApplicationRoles.MedicalWorker, "Иванов Иван", MedicalWorkerRole.Doctor);
+        using var http = CreateClient((_, _) =>
+            Task.FromResult(Json(new CreateWorkerAccountResultDto(account, "NewPass123456"))));
+        using var page = new WorkerAccountPanel();
+        Inject(page, "Accounts", new AccountManagementGateway(http));
+        Set(page, "_cts", new CancellationTokenSource());
+        var form = Get<object>(page, "_form");
+        form.GetType().GetProperty("UserName")!.SetValue(form, "doctor.demo");
+
+        await InvokeAsync(page, "CreateAsync");
+
+        Get<string>(page, "_createdPassword").Should().Be("NewPass123456");
+        Get<Lab2AccountDto>(page, "_account").Should().Be(account);
+    }
+
+    [Fact]
+    public void A_soft_deleted_worker_is_detected_by_id_not_by_preserved_name()
+    {
+        var deletedWorkerId = Guid.NewGuid();
+        var activeWorkerId = Guid.NewGuid();
+        var deletedWorkerAccount = new Lab2AccountDto(Guid.NewGuid(), "left.demo", ApplicationRoles.MedicalWorker,
+            deletedWorkerId, "Петров Пётр", MedicalWorkerRole.Doctor, false, false, DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow);
+        var activeWorkerAccount = deletedWorkerAccount with { Id = Guid.NewGuid(), MedicalWorkerId = activeWorkerId };
+        using var page = new Accounts();
+        Set(page, "_deletedWorkerIds", (IReadOnlySet<Guid>)new HashSet<Guid> { deletedWorkerId });
+
+        ((bool)Invoke(page, "IsWorkerDeleted", deletedWorkerAccount)!).Should().BeTrue();
+        ((bool)Invoke(page, "IsWorkerDeleted", activeWorkerAccount)!).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task A_stale_audit_response_cannot_overwrite_a_newer_filtered_result()
+    {
+        var stale = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var freshEvent = AuditEvent("Актуальное событие");
+        var requests = 0;
+        using var http = CreateClient((_, _) => ++requests == 1
+            ? stale.Task
+            : Task.FromResult(Json(new PagedResult<AuditEventDto>(new[] { freshEvent }, 1, 50, false))));
+        using var page = new Audit();
+        Inject(page, "Gateway", new AuditGateway(http));
+        Set(page, "_cts", new CancellationTokenSource());
+
+        var firstLoad = InvokeAsync(page, "LoadAsync", true);
+        Set(page, "_eventType", AuditEventType.AccountChanged);
+        await InvokeAsync(page, "LoadAsync", true);
+        stale.SetResult(Json(new PagedResult<AuditEventDto>(new[] { AuditEvent("Устаревшее событие") }, 1, 50, false)));
+        await firstLoad;
+
+        Get<IReadOnlyList<AuditEventDto>>(page, "_items").Should().ContainSingle()
+            .Which.Message.Should().Be("Актуальное событие");
+        Get<bool>(page, "_inFlight").Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task A_disposed_audit_page_does_not_start_polling()
+    {
+        using var http = CreateClient((_, _) =>
+            Task.FromResult(Json(new PagedResult<AuditEventDto>(Array.Empty<AuditEventDto>(), 1, 50, false))));
+        var page = new Audit();
+        Inject(page, "Gateway", new AuditGateway(http));
+        page.Dispose();
+
+        await InvokeAsync(page, "OnInitializedAsync");
+
+        GetField(page, "_pollTask").Should().BeNull();
+        GetField(page, "_timer").Should().BeNull();
+    }
+
+    private static AuditEventDto AuditEvent(string message) => new(Guid.NewGuid(), DateTimeOffset.UtcNow,
+        AuditEventType.AccountChanged, new AuditActorDto(AuditActorKind.System, null, "Система", null, null),
+        message, new Dictionary<string, JsonElement>());
+
+    [Fact]
     public void Audit_polling_is_cancelled_on_dispose()
     {
         var page = new Audit();
@@ -295,7 +437,7 @@ public sealed class WebPageRegressionTests
         Set(page, "_cts", new CancellationTokenSource());
         Set(page, "_inFlight", true);
 
-        await InvokeAsync(page, "RefreshAsync", false);
+        await InvokeAsync(page, "LoadAsync", false);
 
         Get<bool>(page, "_inFlight").Should().BeTrue();
     }
@@ -349,6 +491,21 @@ public sealed class WebPageRegressionTests
 
     private static HttpClient CreateClient(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send) =>
         new(new ResponseHandler(send)) { BaseAddress = new Uri("http://localhost/") };
+
+    private static async Task<string> RenderComponentHtmlAsync<TComponent>(Action<IServiceCollection> configureServices,
+        ParameterView parameters) where TComponent : IComponent
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        configureServices(services);
+        await using var provider = services.BuildServiceProvider();
+        await using var renderer = new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>());
+        return await renderer.Dispatcher.InvokeAsync(async () =>
+        {
+            var output = await renderer.RenderComponentAsync<TComponent>(parameters);
+            return output.ToHtmlString();
+        });
+    }
 
     private static HttpResponseMessage Json<T>(T value) => new(HttpStatusCode.OK) { Content = JsonContent.Create(value) };
     private static void Set(object page, string field, object? value) =>
