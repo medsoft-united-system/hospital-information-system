@@ -33,7 +33,8 @@
   else if (_step == Step.Done)
   {
     <div class="empty-state">
-      <p>Настройка завершена. Теперь входите по паролю и коду из приложения-аутентификатора.</p>
+      <p>Настройка завершена. Для входа дождитесь следующего шестизначного кода в приложении-аутентификаторе:
+        код подтверждения уже использован.</p>
       <a class="btn btn-primary" href="/admin/login">К входу администратора</a>
     </div>
   }
@@ -45,8 +46,8 @@
       <fieldset disabled="@_busy">
         <div class="mr-field">
           <label for="setup-token">Одноразовый токен настройки</label>
-          <InputText id="setup-token" class="form-control" @bind-Value="_credentials.SetupToken"
-                     autocomplete="off" autocapitalize="none" spellcheck="false"/>
+          <InputText id="setup-token" type="password" class="form-control" @bind-Value="_credentials.SetupToken"
+                     autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="256"/>
           <ValidationMessage For="() => _credentials.SetupToken"/>
           <p class="field-hint">Токен выдаётся владельцем стенда локально и не передаётся в адресной строке.</p>
         </div>
@@ -62,7 +63,7 @@
                      autocomplete="new-password" maxlength="128"/>
           <ValidationMessage For="() => _credentials.ConfirmPassword"/>
         </div>
-        <p class="field-hint">Пароль: 12–128 символов, строчная и прописная латинские буквы, цифра и специальный символ.</p>
+        <p class="field-hint">Пароль: 12–128 символов, строчная и прописная латинские буквы и цифра.</p>
         <ErrorAlert Message="@_error"/>
         <button type="submit" class="btn btn-primary">@(_busy ? "Продолжаем…" : "Продолжить")</button>
       </fieldset>
@@ -82,6 +83,11 @@
       <p class="field-hint">Добавьте секрет вручную или отсканируйте ссылку otpauth в приложении
         (например, Google Authenticator). Секрет не отправляется сторонним сервисам.</p>
       <p class="setup-uri">@_authenticatorUri</p>
+      @if (_challengeExpiresAt is { } expiresAt)
+      {
+        <p class="field-hint">Попытка действует до @expiresAt.ToLocalTime().ToString("HH:mm:ss").
+          Если срок истёк или попытки исчерпаны, начните настройку заново.</p>
+      }
     </div>
     <EditForm Model="_confirmation" OnValidSubmit="ConfirmAsync">
       <DataAnnotationsValidator/>
@@ -94,6 +100,7 @@
         </div>
         <ErrorAlert Message="@_error"/>
         <button type="submit" class="btn btn-primary">@(_busy ? "Проверяем…" : "Завершить настройку")</button>
+        <button type="button" class="btn btn-light" @onclick="Restart">Начать заново</button>
       </fieldset>
     </EditForm>
   }
@@ -107,8 +114,10 @@
   private bool _checking = true;
   private bool _busy;
   private bool _copied;
+  private bool _disposed;
   private string? _error;
   private Guid _challengeId;
+  private DateTimeOffset? _challengeExpiresAt;
   private string _secret = "";
   private string _authenticatorUri = "";
   private string _setupToken = "";
@@ -123,10 +132,16 @@
 
   protected override async Task OnInitializedAsync()
   {
+    if (_disposed)
+    {
+      return;
+    }
+
+    var token = _cancellation.Token;
     try
     {
-      var status = await Authentication.GetSetupStatusAsync(_cancellation.Token);
-      if (!_cancellation.IsCancellationRequested)
+      var status = await Authentication.GetSetupStatusAsync(token);
+      if (IsCurrent(token))
       {
         _step = status.SetupRequired ? Step.Credentials : Step.AlreadyDone;
       }
@@ -134,41 +149,50 @@
     catch (Exception exception) when (exception is ApiException or HttpRequestException or TaskCanceledException
       or OperationCanceledException)
     {
-      _error = "Не удалось проверить состояние настройки. Обновите страницу позже.";
+      if (IsCurrent(token))
+      {
+        _error = "Не удалось проверить состояние настройки. Обновите страницу позже.";
+      }
     }
     finally
     {
-      _checking = false;
+      if (IsCurrent(token))
+      {
+        _checking = false;
+      }
     }
   }
 
   private async Task BeginAsync()
   {
-    if (_busy)
+    if (_busy || _disposed)
     {
       return;
     }
 
+    var token = _cancellation.Token;
+    var ownerToken = _credentials.SetupToken.Trim();
     _busy = true;
     _error = null;
     try
     {
       var request = new BeginSetupRequest(_credentials.Password, _credentials.ConfirmPassword);
-      var challenge = await Authentication.BeginSetupAsync(request, _credentials.SetupToken.Trim(),
-        _cancellation.Token);
-      if (_cancellation.IsCancellationRequested)
+      var challenge = await Authentication.BeginSetupAsync(request, ownerToken, token);
+      if (!IsCurrent(token))
       {
         return;
       }
 
       _challengeId = challenge.ChallengeId;
+      _challengeExpiresAt = challenge.ExpiresAt;
       _secret = challenge.SecretKey;
       _authenticatorUri = challenge.AuthenticatorUri;
-      _setupToken = _credentials.SetupToken.Trim();
+      _setupToken = ownerToken;
+      _copied = false;
       _confirmation.Code = "";
       _step = Step.Totp;
     }
-    catch (Exception exception) when (TryHandle(exception))
+    catch (Exception exception) when (TryHandle(exception, token))
     {
     }
     finally
@@ -181,18 +205,19 @@
 
   private async Task ConfirmAsync()
   {
-    if (_busy)
+    if (_busy || _disposed || _challengeId == Guid.Empty)
     {
       return;
     }
 
+    var token = _cancellation.Token;
     _busy = true;
     _error = null;
     try
     {
       await Authentication.ConfirmSetupAsync(new ConfirmSetupRequest(_challengeId, _confirmation.Code.Trim()),
-        _setupToken, _cancellation.Token);
-      if (_cancellation.IsCancellationRequested)
+        _setupToken, token);
+      if (!IsCurrent(token))
       {
         return;
       }
@@ -200,7 +225,7 @@
       ClearSecrets();
       _step = Step.Done;
     }
-    catch (Exception exception) when (TryHandle(exception))
+    catch (Exception exception) when (TryHandle(exception, token))
     {
     }
     finally
@@ -210,15 +235,32 @@
     }
   }
 
-  private bool TryHandle(Exception exception)
+  private void Restart()
   {
-    if (exception is OperationCanceledException && _cancellation.IsCancellationRequested)
+    if (_busy || _disposed)
+    {
+      return;
+    }
+
+    ClearSecrets();
+    _step = Step.Credentials;
+    _error = null;
+  }
+
+  private bool TryHandle(Exception exception, CancellationToken token)
+  {
+    if (exception is OperationCanceledException && token.IsCancellationRequested)
     {
       return true;
     }
 
     if (exception is ApiException api)
     {
+      if (!IsCurrent(token))
+      {
+        return true;
+      }
+
       _error = api.StatusCode switch
       {
         HttpStatusCode.Conflict => "Настройка уже завершена. Перейдите к входу администратора.",
@@ -237,7 +279,10 @@
 
     if (exception is HttpRequestException or TaskCanceledException)
     {
-      _error = "Сервер недоступен. Повторите попытку.";
+      if (IsCurrent(token))
+      {
+        _error = "Сервер недоступен. Повторите попытку.";
+      }
       return true;
     }
 
@@ -246,10 +291,19 @@
 
   private async Task CopySecretAsync()
   {
+    if (_disposed || _secret.Length == 0)
+    {
+      return;
+    }
+
+    var secret = _secret;
     try
     {
-      await Js.InvokeVoidAsync("navigator.clipboard.writeText", _secret);
-      _copied = true;
+      await Js.InvokeVoidAsync("navigator.clipboard.writeText", secret);
+      if (!_disposed && _secret == secret)
+      {
+        _copied = true;
+      }
     }
     catch (JSException)
     {
@@ -265,6 +319,8 @@
     _authenticatorUri = "";
     _setupToken = "";
     _challengeId = Guid.Empty;
+    _challengeExpiresAt = null;
+    _copied = false;
     _credentials.Password = "";
     _credentials.ConfirmPassword = "";
     _credentials.SetupToken = "";
@@ -273,14 +329,23 @@
 
   public void Dispose()
   {
-    ClearSecrets();
+    if (_disposed)
+    {
+      return;
+    }
+
+    _disposed = true;
     _cancellation.Cancel();
+    ClearSecrets();
     _cancellation.Dispose();
   }
 
-  private sealed class CredentialsForm : IValidatableObject
+  private bool IsCurrent(CancellationToken token) => !_disposed && !token.IsCancellationRequested;
+
+  private sealed class CredentialsForm
   {
     [Required(ErrorMessage = "Введите токен настройки.")]
+    [StringLength(256, ErrorMessage = "Токен настройки: не более 256 символов.")]
     public string SetupToken { get; set; } = "";
 
     [Required(ErrorMessage = "Укажите пароль.")]
@@ -288,22 +353,8 @@
     public string Password { get; set; } = "";
 
     [Required(ErrorMessage = "Повторите пароль.")]
+    [Compare(nameof(Password), ErrorMessage = "Пароли не совпадают.")]
     public string ConfirmPassword { get; set; } = "";
-
-    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
-    {
-      if (Password != ConfirmPassword)
-      {
-        yield return new ValidationResult("Пароли не совпадают.", [nameof(ConfirmPassword)]);
-      }
-
-      if (!(Password.Any(char.IsAsciiLetterUpper) && Password.Any(char.IsAsciiLetterLower)
-          && Password.Any(char.IsAsciiDigit) && Password.Any(c => !char.IsLetterOrDigit(c))))
-      {
-        yield return new ValidationResult(
-          "Пароль должен содержать строчную и прописную буквы, цифру и специальный символ.", [nameof(Password)]);
-      }
-    }
   }
 
   private sealed class ConfirmationForm

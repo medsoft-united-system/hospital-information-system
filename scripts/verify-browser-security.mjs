@@ -6,6 +6,7 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { verifyBrowserSystem } from './verify-browser-system.mjs';
 
 function required(name) {
   const value = process.env[name];
@@ -22,6 +23,7 @@ const apiHost = required('BROWSER_API_HOST');
 const apiPort = Number(process.env.BROWSER_API_PORT || 5201);
 const outputFile = process.env.BROWSER_RESULT_FILE;
 const credentials = JSON.parse(readFileSync(credentialsFile, 'utf8'));
+const systemScenario = process.env.BROWSER_SYSTEM_SCENARIO === 'true';
 assert(typeof credentials.userName === 'string' && typeof credentials.password === 'string',
   'The credentials file must contain userName and password.');
 assert(existsSync(path.join(webRoot, 'index.html')), 'Publish the Web application before running the browser check.');
@@ -100,6 +102,12 @@ try {
   });
   evidence.stage = 'open-login';
   await page.goto('https://localhost:5101/login');
+  let medicalCredentials = credentials;
+  if (systemScenario) {
+    evidence.stage = 'system-scenario';
+    evidence.system = { stage: 'initialization' };
+    medicalCredentials = await verifyBrowserSystem(page, credentials, evidence.system);
+  }
   await page.getByLabel('Логин', { exact: true }).waitFor();
   evidence.trustedHttps = true;
 
@@ -124,8 +132,8 @@ try {
   assert(evidence.unconfiguredHeaderRejected, 'The browser must reject an unconfigured cross-origin header.');
 
   evidence.stage = 'login';
-  await page.getByLabel('Логин', { exact: true }).fill(credentials.userName);
-  await page.getByLabel('Пароль', { exact: true }).fill(credentials.password);
+  await page.getByLabel('Логин', { exact: true }).fill(medicalCredentials.userName);
+  await page.getByLabel('Пароль', { exact: true }).fill(medicalCredentials.password);
   await Promise.all([page.waitForURL('**/medical/patients'), page.getByRole('button', { name: 'Войти', exact: true }).click()]);
   await page.getByRole('heading', { name: 'Пациенты', exact: true }).waitFor();
   evidence.login = true;
@@ -146,6 +154,7 @@ try {
   evidence.reloadRefresh = true;
 
   evidence.stage = 'logout';
+  successfulLogout = false;
   await Promise.all([page.waitForURL(url => url.pathname === '/login'), page.getByRole('button', { name: 'Выйти', exact: true }).click()]);
   await page.getByLabel('Логин', { exact: true }).waitFor();
   assert(successfulLogout, 'The UI must confirm server-side logout.');

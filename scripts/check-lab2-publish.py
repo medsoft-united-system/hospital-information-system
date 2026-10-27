@@ -18,10 +18,7 @@ from pathlib import Path
 
 FORBIDDEN_CONFIG_NAMES = {"appsettings.local.json", "appsettings.uimock.json"}
 KEYSTORE_SUFFIXES = {".pfx", ".p12"}
-# Приватный ключ ищем по содержимому независимо от расширения, но читаем не весь
-# файл: заголовок PEM-ключа всегда в начале, а сканировать крупные сборки целиком
-# не нужно.
-MAX_SCAN_BYTES = 1024 * 1024
+SCAN_CHUNK_BYTES = 64 * 1024
 PRIVATE_KEY_MARKERS = (
     b"-----BEGIN PRIVATE KEY-----",
     b"-----BEGIN RSA PRIVATE KEY-----",
@@ -52,10 +49,16 @@ def required_artifact_problems(web, api):
 def contains_private_key(path):
     try:
         with path.open("rb") as handle:
-            data = handle.read(MAX_SCAN_BYTES)
+            overlap = max(map(len, PRIVATE_KEY_MARKERS)) - 1
+            tail = b""
+            while block := handle.read(SCAN_CHUNK_BYTES):
+                data = tail + block
+                if any(marker in data for marker in PRIVATE_KEY_MARKERS):
+                    return True
+                tail = data[-overlap:]
     except OSError as error:
         raise CheckError(f"{path.name}: не удалось прочитать файл для проверки ключей") from error
-    return any(marker in data for marker in PRIVATE_KEY_MARKERS)
+    return False
 
 
 def forbidden_artifact_problems(root, label):
@@ -88,13 +91,17 @@ def uimock_enabled_problems(root, label):
     return problems
 
 
-def lookup(document, key):
-    if not isinstance(document, dict):
-        return None
-    for existing, value in document.items():
-        if existing.lower() == key.lower():
-            return value
-    return None
+def configuration_values(document, prefix=None):
+    if isinstance(document, dict):
+        for key, value in document.items():
+            path = prefix + ":" + key if prefix is not None else key
+            yield from configuration_values(value, path)
+    elif isinstance(document, list):
+        for index, value in enumerate(document):
+            path = prefix + ":" + str(index) if prefix is not None else str(index)
+            yield from configuration_values(value, path)
+    else:
+        yield prefix or "", document
 
 
 def dotnet_bool_is_true(value):
@@ -109,8 +116,8 @@ def dotnet_bool_is_true(value):
 
 
 def ui_mock_is_enabled(document):
-    section = lookup(document, "UiMock")
-    return dotnet_bool_is_true(lookup(section, "Enabled"))
+    return any(key.lower() == "uimock:enabled" and dotnet_bool_is_true(value)
+               for key, value in configuration_values(document))
 
 
 def analyze(web, api):

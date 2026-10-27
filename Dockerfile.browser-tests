@@ -3,5 +3,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends libnss3-tools &
 WORKDIR /verification
 COPY tests/browser-security/package.json tests/browser-security/package-lock.json ./
 RUN npm ci --ignore-scripts
-COPY scripts/verify-browser-security.mjs ./
+COPY scripts/verify-browser-security.mjs scripts/verify-browser-system.mjs ./
 ENTRYPOINT ["node", "/verification/verify-browser-security.mjs"]

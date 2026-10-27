@@ -128,7 +128,7 @@ else if (_model is not null)
           </button>
         </div>
       }
-      @if (_confirmDelete)
+      @if (_confirmDelete && CanManage)
       {
         <div class="confirm-panel" role="alertdialog" aria-labelledby="patient-edit-delete-title">
           <div>
@@ -155,7 +155,10 @@ else
   [Parameter] public Guid? Id { get; set; }
 
   private MedicalWorkerRole? Role => Session.Current?.MedicalWorkerRole;
-  private bool CanManage => Role is MedicalWorkerRole.Doctor or MedicalWorkerRole.Nurse;
+  private bool CanManage => SessionPermissions.CanManagePatients(Session.Current is { } current
+    ? new AuthenticationSessionDto(current.Id, current.UserName, current.Role, current.MedicalWorkerId,
+      current.MedicalWorkerRole)
+    : null);
 
   private PatientForm? _model;
   private PatientDto? _patient;
@@ -166,11 +169,6 @@ else
   private bool _disposed;
   private CancellationTokenSource? _routeCancellation;
   private Guid? _loadedId;
-
-  private bool CanManagePatients => SessionPermissions.CanManagePatients(Session.Current is { } current
-    ? new AuthenticationSessionDto(current.Id, current.UserName, current.Role, current.MedicalWorkerId,
-      current.MedicalWorkerRole)
-    : null);
 
   private static string Today => DateTime.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
 
@@ -277,7 +275,7 @@ else
 
   private async Task ExecuteAsync(Func<CancellationToken, Task> action)
   {
-    if (_busy || _routeCancellation is null || _disposed)
+    if (_busy || _routeCancellation is null || _disposed || !CanManage)
     {
       return;
     }
