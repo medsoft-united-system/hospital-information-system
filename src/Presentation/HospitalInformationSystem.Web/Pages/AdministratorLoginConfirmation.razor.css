@@ -1,0 +1,16 @@
+.confirmation-account {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    margin-bottom: 24px;
+    border: 1px solid #dce5d4;
+    border-radius: 10px;
+    background: #f4f7ef;
+}
+
+.confirmation-account > div { display: grid; gap: 3px; min-width: 0; }
+.confirmation-account strong { overflow-wrap: anywhere; }
+.confirmation-account span { color: #667461; font-size: .8rem; }
+.confirmation-code { max-width: 220px; font-size: 1.35rem; letter-spacing: .2em; }
+.confirmation-back { margin: 24px 0 0; padding-top: 20px; border-top: 1px solid #e1e8df; font-size: .9rem; }

@@ -27,10 +27,12 @@ function totp(secret, offsetSeconds = 0) {
   return String((hash.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, '0');
 }
 
-function apiResponse(page, pathname, status, method = null) {
-  return page.waitForResponse(response => new URL(response.url()).origin === apiOrigin &&
+async function apiResponse(page, pathname, status, method = null) {
+  const response = await page.waitForResponse(response => new URL(response.url()).origin === apiOrigin &&
     new URL(response.url()).pathname === pathname && response.status() === status &&
     (method === null || response.request().method() === method));
+  const body = status === 204 ? null : await response.json();
+  return { json: async () => body };
 }
 
 async function apiRequest(page, bearer, method, pathname, body = undefined) {
@@ -56,13 +58,32 @@ async function login(page, credentials, administrator = false, code = null) {
   }
   await page.getByLabel('Логин', { exact: true }).fill(credentials.userName);
   await page.getByLabel('Пароль', { exact: true }).fill(credentials.password);
-  if (administrator) await page.getByLabel('Код подтверждения', { exact: true }).fill(code);
+  if (administrator) {
+    assert.equal(await page.getByLabel('Код подтверждения', { exact: true }).count(), 0,
+      'The password page must not contain a TOTP field.');
+    const [challenge] = await Promise.all([
+      apiResponse(page, '/api/auth/admin/login', 200, 'POST'),
+      page.waitForURL(url => url.pathname === '/admin/login/confirm'),
+      page.getByRole('button', { name: 'Продолжить', exact: true }).click()
+    ]);
+    const firstStep = await challenge.json();
+    assert.equal(firstStep.accessToken, undefined, 'The password step must not issue an access token.');
+    await page.reload();
+    await page.getByLabel('Код подтверждения', { exact: true }).waitFor();
+    if (process.env.BROWSER_UI_SCREENSHOT_DIRECTORY) await page.screenshot({
+      path: `${process.env.BROWSER_UI_SCREENSHOT_DIRECTORY}/administrator-code.png`, fullPage: true
+    });
+    await page.getByLabel('Код подтверждения', { exact: true }).fill(code);
+    assert.equal(await page.getByLabel('Пароль', { exact: true }).count(), 0,
+      'The confirmation page must not contain the password.');
+  }
   const home = administrator ? '/admin/medical-workers' : '/medical/patients';
   const list = administrator ? '/api/medical-workers' : '/api/patients';
   const [authenticated] = await Promise.all([
-    apiResponse(page, '/api/auth/login', 200, 'POST'), apiResponse(page, list, 200, 'GET'),
+    apiResponse(page, administrator ? '/api/auth/admin/confirm' : '/api/auth/login', 200, 'POST'),
+    apiResponse(page, list, 200, 'GET'),
     page.waitForURL(url => url.pathname === home),
-    page.getByRole('button', { name: 'Войти', exact: true }).click()
+    page.getByRole('button', { name: administrator ? 'Подтвердить вход' : 'Войти', exact: true }).click()
   ]);
   await page.getByRole('heading', { name: administrator ? 'Медработники' : 'Пациенты', exact: true }).waitFor();
   return authenticated.json();
@@ -184,9 +205,9 @@ export async function verifyBrowserSystem(page, credentials, evidence) {
     await page.getByLabel('Фамилия', { exact: true }).fill('Браузерный');
     await page.getByLabel('Имя', { exact: true }).fill('Врач');
     await page.getByLabel('Должность', { exact: true }).fill('Врач-терапевт');
-    assert.equal(await page.getByLabel('Роль', { exact: true }).inputValue(), 'Other',
+    assert.equal(await page.getByLabel('Медицинская роль', { exact: true }).inputValue(), 'Other',
       'A new worker form must select other by default.');
-    await page.getByLabel('Роль', { exact: true }).selectOption({ label: 'Врач' });
+    await page.getByLabel('Медицинская роль', { exact: true }).selectOption({ label: 'Врач' });
     const [createdWorker] = await Promise.all([apiResponse(page, '/api/medical-workers', 201, 'POST'),
       page.getByRole('button', { name: 'Сохранить', exact: true }).click()]);
     const worker = await createdWorker.json();
@@ -198,6 +219,27 @@ export async function verifyBrowserSystem(page, credentials, evidence) {
     evidence.medicalRoleSaved = true;
     await row.getByRole('link', { name: 'Редактировать: Браузерный Врач', exact: true }).click();
     await page.getByRole('heading', { name: 'Учётная запись сотрудника', exact: true }).waitFor();
+    await page.getByLabel('Логин', { exact: true }).waitFor();
+    const formBounds = await page.locator('.worker-form').boundingBox();
+    const summaryBounds = await page.locator('.worker-summary').boundingBox();
+    const accountBounds = await page.locator('.account-panel').boundingBox();
+    assert(formBounds && summaryBounds && accountBounds && Math.abs(summaryBounds.x - accountBounds.x) < 2 &&
+      Math.abs(summaryBounds.width - accountBounds.width) < 2 &&
+      accountBounds.y - (summaryBounds.y + summaryBounds.height) >= 0 &&
+      accountBounds.y - (summaryBounds.y + summaryBounds.height) <= 20 &&
+      accountBounds.x + accountBounds.width < formBounds.x,
+      'The account section must fit beneath the compact summary beside the worker form.');
+    if (process.env.BROWSER_UI_SCREENSHOT_DIRECTORY) {
+      await page.screenshot({ path: `${process.env.BROWSER_UI_SCREENSHOT_DIRECTORY}/worker-card-desktop.png`, fullPage: true });
+      const viewport = page.viewportSize();
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.screenshot({ path: `${process.env.BROWSER_UI_SCREENSHOT_DIRECTORY}/worker-card-mobile.png`, fullPage: true });
+      const mobile = await page.evaluate(() => ({ content: document.documentElement.scrollWidth, viewport: window.innerWidth }));
+      assert(mobile.content <= mobile.viewport,
+        `The mobile worker card must not overflow horizontally (${mobile.content} vs ${mobile.viewport}).`);
+      await page.setViewportSize(viewport);
+    }
+    evidence.workerAccountLayoutAligned = true;
     const doctorName = 'browser.doctor';
     await page.getByLabel('Логин', { exact: true }).fill(doctorName);
     const [createdAccount] = await Promise.all([
@@ -208,6 +250,19 @@ export async function verifyBrowserSystem(page, credentials, evidence) {
     await page.getByLabel('Сгенерированный пароль', { exact: true }).waitFor();
     const oldPassword = await page.getByLabel('Сгенерированный пароль', { exact: true }).inputValue();
     assert(oldPassword === account.generatedPassword, 'The UI must show the actual password returned by account creation.');
+    if (process.env.BROWSER_UI_SCREENSHOT_DIRECTORY) {
+      const mask = [page.getByLabel('Сгенерированный пароль', { exact: true })];
+      await page.locator('#main-content').focus();
+      await page.screenshot({ path: `${process.env.BROWSER_UI_SCREENSHOT_DIRECTORY}/worker-account-created.png`,
+        fullPage: true, mask, maskColor: '#e7ece5' });
+      const viewport = page.viewportSize();
+      await page.setViewportSize({ width: 390, height: 844 });
+      assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+        'The generated password and account operations must fit on mobile.');
+      await page.screenshot({ path: `${process.env.BROWSER_UI_SCREENSHOT_DIRECTORY}/worker-account-created-mobile.png`,
+        fullPage: true, mask, maskColor: '#e7ece5' });
+      await page.setViewportSize(viewport);
+    }
     await page.getByRole('button', { name: 'Сгенерировать новый пароль', exact: true }).click();
     const [resetResponse] = await Promise.all([
       apiResponse(page, `/api/accounts/${account.account.id}/reset-password`, 200, 'POST'),

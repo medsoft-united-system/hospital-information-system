@@ -281,6 +281,12 @@ public sealed class SetupPageTests
             CancellationToken cancellationToken) => Confirm(request, setupToken, cancellationToken);
         public Task<AuthenticationSessionDto> LoginAsync(LoginRequest request, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
+        public Task<AdministratorLoginChallengeDto> BeginAdministratorLoginAsync(BeginAdministratorLoginRequest request,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+        public Task<AdministratorLoginChallengeDto> GetAdministratorLoginChallengeAsync(CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+        public Task<AuthenticationSessionDto> ConfirmAdministratorLoginAsync(ConfirmAdministratorLoginRequest request,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
         public Task<AuthenticationSessionDto?> GetSessionAsync(CancellationToken cancellationToken) =>
             throw new NotSupportedException();
         public Task LogoutAsync(CancellationToken cancellationToken) => throw new NotSupportedException();

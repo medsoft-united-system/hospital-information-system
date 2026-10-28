@@ -8,7 +8,7 @@
       <span class="eyebrow">УЧЕБНАЯ HIS</span>
       <h1 id="login-title">@(IsAdministrator ? "Вход администратора" : "Вход медработника")</h1>
       <p>@(IsAdministrator
-        ? "Войдите для управления сотрудниками, справочниками и учётными записями."
+        ? "Сначала введите логин и пароль. На следующем шаге подтвердите вход кодом из приложения."
         : "Войдите для работы с пациентами и медицинскими картами.")</p>
     </div>
   </div>
@@ -28,18 +28,8 @@
                    autocomplete="current-password" maxlength="128"/>
         <ValidationMessage For="() => _form.Password"/>
       </div>
-      @if (IsAdministrator)
-      {
-        <div class="mr-field">
-          <label for="totp">Код подтверждения</label>
-          <InputText id="totp" class="form-control" @bind-Value="_form.TotpCode" inputmode="numeric"
-                     autocomplete="one-time-code" maxlength="6" placeholder="123456"/>
-          <ValidationMessage For="() => _form.TotpCode"/>
-          <p class="field-hint">Для администратора: шесть цифр из приложения-аутентификатора.</p>
-        </div>
-      }
       <ErrorAlert Message="@_error"/>
-      <button type="submit" class="btn btn-primary">@(_busy ? "Вход…" : "Войти")</button>
+      <button type="submit" class="btn btn-primary">@(_busy ? "Проверка…" : IsAdministrator ? "Продолжить" : "Войти")</button>
     </fieldset>
   </EditForm>
   <p class="portal-switch">
@@ -86,12 +76,20 @@
     _error = null;
     try
     {
-      var totp = IsAdministrator && !string.IsNullOrWhiteSpace(_form.TotpCode) ? _form.TotpCode.Trim() : null;
-      await Authentication.LoginAsync(new LoginRequest(_form.UserName.Trim(), _form.Password, totp, Portal),
-        _cancellation.Token);
-      if (!_cancellation.IsCancellationRequested)
+      if (IsAdministrator)
       {
-        Navigation.NavigateTo(LoginNavigation.GetReturnPath(Portal, ReturnUrl), replace: true);
+        await Authentication.BeginAdministratorLoginAsync(
+          new BeginAdministratorLoginRequest(_form.UserName.Trim(), _form.Password), _cancellation.Token);
+        if (!_cancellation.IsCancellationRequested)
+          Navigation.NavigateTo("/admin/login/confirm?returnUrl=" +
+            Uri.EscapeDataString(LoginNavigation.GetReturnPath(Portal, ReturnUrl)), replace: true);
+      }
+      else
+      {
+        await Authentication.LoginAsync(new LoginRequest(_form.UserName.Trim(), _form.Password, Portal: Portal),
+          _cancellation.Token);
+        if (!_cancellation.IsCancellationRequested)
+          Navigation.NavigateTo(LoginNavigation.GetReturnPath(Portal, ReturnUrl), replace: true);
       }
     }
     catch (OperationCanceledException) when (_cancellation.IsCancellationRequested)
@@ -113,7 +111,6 @@
     finally
     {
       _form.Password = "";
-      _form.TotpCode = "";
       _busy = false;
     }
   }
@@ -121,7 +118,6 @@
   public void Dispose()
   {
     _form.Password = "";
-    _form.TotpCode = "";
     _cancellation.Cancel();
     _cancellation.Dispose();
   }
@@ -136,7 +132,5 @@
     [StringLength(128, ErrorMessage = "Пароль: не более 128 символов.")]
     public string Password { get; set; } = "";
 
-    [RegularExpression("[0-9]{6}", ErrorMessage = "Код подтверждения: шесть цифр.")]
-    public string TotpCode { get; set; } = "";
   }
 }

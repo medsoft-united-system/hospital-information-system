@@ -16,9 +16,7 @@ public sealed class ApiAntiforgeryMiddleware(RequestDelegate next)
             }
             catch (AntiforgeryValidationException)
             {
-                if (HttpMethods.IsPost(context.Request.Method) &&
-                    string.Equals(context.Request.Path.Value?.TrimEnd('/'), "/api/auth/login",
-                        StringComparison.OrdinalIgnoreCase))
+                if (HttpMethods.IsPost(context.Request.Method) && AuthenticationAuditService.IsLoginPath(context.Request.Path))
                     await audit.LoginCsrfRejectedAsync(context.RequestAborted);
                 await Results.Problem(statusCode: StatusCodes.Status400BadRequest,
                     title: "Не удалось проверить безопасность запроса.",

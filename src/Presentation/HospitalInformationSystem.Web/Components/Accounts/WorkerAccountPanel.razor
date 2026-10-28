@@ -3,9 +3,10 @@
 @inject HospitalInformationSystem.Web.Gateways.IAccountManagementGateway Accounts
 
 <section class="surface account-panel" aria-labelledby="account-panel-title">
-  <div class="registry-heading">
-    <div><h2 id="account-panel-title">Учётная запись сотрудника</h2>
-      <p>Доступ сотрудника к системе. Пароль генерируется сервером.</p></div>
+  <div class="account-heading">
+    <div class="account-heading-icon"><Icon Name="key"/></div>
+    <div><span class="account-eyebrow">ДОСТУП К СИСТЕМЕ</span>
+      <h2 id="account-panel-title">Учётная запись сотрудника</h2></div>
   </div>
 
   <GeneratedPasswordCard Password="@_createdPassword" Title="Учётная запись создана"
@@ -37,19 +38,33 @@
   }
   else
   {
+    <div class="account-introduction">
+      <span class="account-pending"><span></span>Ещё не создана</span>
+      <p>Выберите логин для входа. Пароль появится сразу после создания учётной записи.</p>
+      @if (WorkerRole is { } role)
+      {
+        <div class="account-access-role"><span>Роль доступа</span><strong>@MedicalRoleLabels.Describe(role)</strong></div>
+      }
+    </div>
     <EditForm Model="_form" OnValidSubmit="CreateAsync">
       <DataAnnotationsValidator/>
       <fieldset disabled="@_creating">
         <div class="mr-field">
           <label for="new-account-login">Логин</label>
           <InputText id="new-account-login" class="form-control" @bind-Value="_form.UserName" maxlength="16"
-                     autocomplete="off" autocapitalize="none" spellcheck="false"/>
+                     autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Например, ivanov.a"/>
           <ValidationMessage For="() => _form.UserName"/>
-          <p class="field-hint">Логин: 3–16 символов, латинские буквы, цифры и знаки <code>._@@+-</code>.
-            Роль и связь с сотрудником назначаются автоматически.</p>
+          <p class="field-hint">3–16 символов: латинские буквы, цифры и <code>._@@+-</code>.</p>
+        </div>
+        <div class="account-password-note">
+          <Icon Name="check"/>
+          <div><strong>Пароль подготовим автоматически</strong>
+            <p>Скопируйте его и передайте сотруднику. После закрытия пароль можно будет только заменить.</p></div>
         </div>
         <ErrorAlert Message="@_createError"/>
-        <button type="submit" class="btn btn-primary">@(_creating ? "Создание…" : "Создать учётную запись")</button>
+        <button type="submit" class="btn btn-primary account-create-button">
+          @(_creating ? "Создание…" : "Создать учётную запись") <Icon Name="forward"/>
+        </button>
       </fieldset>
     </EditForm>
   }
@@ -58,6 +73,7 @@
 @code {
   [Parameter, EditorRequired] public Guid WorkerId { get; set; }
   [Parameter] public bool WorkerDeleted { get; set; }
+  [Parameter] public MedicalWorkerRole? WorkerRole { get; set; }
   [Parameter] public EventCallback OnChanged { get; set; }
 
   private readonly AccountForm _form = new();

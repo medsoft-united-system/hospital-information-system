@@ -84,11 +84,13 @@ public sealed partial class UiMockHttpMessageHandler(UiMockState state) : HttpMe
     private HttpResponseMessage Authentication(HttpRequestMessage request, string[] path, string? body)
     {
         if (path.Length == 4 && path[2] == "setup") return Setup(request, path[3], body);
+        if (path.Length == 4 && path[2] == "admin") return AdministratorAuthentication(request, path[3], body);
         if (path.Length != 3) return NotFound();
         if (path[2] == "session" && request.Method == HttpMethod.Get)
             return state.HasActiveSession ? Json(state.CurrentSession!) : Unauthorized();
         if (path[2] == "logout" && request.Method == HttpMethod.Post)
         {
+            _administratorLogin = null;
             if (!state.HasActiveSession) return Unauthorized();
             state.AddAudit("UserLogout", "Выход из демонстрационной сессии.");
             state.SignOut();
@@ -96,6 +98,7 @@ public sealed partial class UiMockHttpMessageHandler(UiMockState state) : HttpMe
         }
         if (path[2] == "login" && request.Method == HttpMethod.Post)
         {
+            _administratorLogin = null;
             if (state.SetupRequired)
                 return Error(HttpStatusCode.Conflict, "Сначала завершите демонстрационную настройку.");
             var input = Read<LoginRequest>(body);

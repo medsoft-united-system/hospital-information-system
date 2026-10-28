@@ -41,6 +41,7 @@ public static class ApiSecurityRegistration
         services.AddSingleton<JwtKeyMaterial>();
         services.AddScoped<TokenSessionService>();
         services.AddScoped<RefreshCookieService>();
+        services.AddSingleton<AdministratorLoginChallenges>();
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
         services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
             .Configure<JwtKeyMaterial>((options, keys) =>
@@ -124,8 +125,7 @@ public static class ApiSecurityRegistration
             options.OnRejected = async (context, cancellationToken) =>
             {
                 var request = context.HttpContext.Request;
-                if (HttpMethods.IsPost(request.Method) &&
-                    string.Equals(request.Path.Value?.TrimEnd('/'), "/api/auth/login", StringComparison.OrdinalIgnoreCase))
+                if (HttpMethods.IsPost(request.Method) && AuthenticationAuditService.IsLoginPath(request.Path))
                     await context.HttpContext.RequestServices.GetRequiredService<AuthenticationAuditService>()
                         .LoginRateLimitedAsync(cancellationToken);
                 if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))

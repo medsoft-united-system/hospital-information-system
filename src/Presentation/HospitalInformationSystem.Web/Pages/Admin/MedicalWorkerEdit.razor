@@ -22,110 +22,116 @@
 }
 else if (_model is not null)
 {
-  <div class="profile-layout">
-    <aside class="profile-panel" aria-label="Сведения о сотруднике">
-      <span class="eyebrow">КАРТОЧКА СОТРУДНИКА</span>
-      <div class="profile-avatar">
-        <Icon Name="patients"/>
-      </div>
-      <h2>@(string.IsNullOrWhiteSpace(_model.LastName) ? "Новый сотрудник" : _model.LastName)<span>@_model.FirstName</span>
-      </h2>
-      <p
-        class="profile-position">@(string.IsNullOrWhiteSpace(_model.Position) ? "Должность ещё не указана" : _model.Position)</p>
-      <p class="profile-position">Роль: @MedicalRoleLabels.Describe(_model.Role)</p>
-      <WorkerStatus IsDeleted="@(_worker?.IsDeleted ?? false)"/>
-      <div class="profile-note">
-        <Icon Name="record"/>
-        <p>Актуальные сведения помогают поддерживать порядок в реестре учреждения.</p></div>
-    </aside>
-    <section class="surface edit-surface" aria-label="Редактирование данных">
-      <EditForm Model="_model" OnValidSubmit="SaveAsync">
-        <DataAnnotationsValidator/>
-        <fieldset disabled="@_busy">
-          <div class="form-section">
-            <div class="section-title"><span class="step-number">01</span>
-              <div><h2>Основные сведения</h2>
-                <p>Укажите имя и фамилию сотрудника.</p></div>
-            </div>
-            <div class="form-grid">
-              <div><label for="lastName">Фамилия</label>
-                <InputText id="lastName" class="form-control" @bind-Value="_model.LastName" maxlength="24"
-                           placeholder="Например, Иванов" autocomplete="family-name"/>
-                <ValidationMessage For="() => _model.LastName"/>
-              </div>
-              <div><label for="firstName">Имя</label>
-                <InputText id="firstName" class="form-control" @bind-Value="_model.FirstName" maxlength="24"
-                           placeholder="Например, Алексей" autocomplete="given-name"/>
-                <ValidationMessage For="() => _model.FirstName"/>
-              </div>
-            </div>
+  <div class="profile-layout worker-layout">
+    <aside class="worker-sidebar" aria-label="Сотрудник и доступ к системе">
+      <section class="worker-summary" aria-label="Сведения о сотруднике">
+        <span class="eyebrow">КАРТОЧКА СОТРУДНИКА</span>
+        <div class="worker-identity">
+          <div class="worker-avatar"><Icon Name="patients"/></div>
+          <div class="worker-identity-text">
+            <h2>@(string.IsNullOrWhiteSpace(_model.LastName) ? "Новый сотрудник" : _model.LastName) @_model.FirstName</h2>
+            <p>@(string.IsNullOrWhiteSpace(_model.Position) ? "Должность ещё не указана" : _model.Position)</p>
           </div>
-          <div class="form-section">
-            <div class="section-title"><span class="step-number">02</span>
-              <div><h2>Работа в учреждении</h2>
-                <p>Выберите подсказку или введите свою должность.</p></div>
-            </div>
-            <div><label for="position">Должность</label>
-              <InputText id="position" class="form-control" @bind-Value="_model.Position" list="positions"
-                         maxlength="24" placeholder="Например, врач-терапевт"/>
-              <ValidationMessage For="() => _model.Position"/>
-              <datalist id="positions">
-                <option>Врач-терапевт</option>
-                <option>Врач-хирург</option>
-                <option>Врач-анестезиолог</option>
-                <option>Медицинская сестра</option>
-              </datalist>
-            </div>
-            <p class="field-hint">Имя и фамилия — от 1 до 24 символов, должность — от 3 до 24 символов.</p>
-          </div>
-          <div class="form-section">
-            <div class="section-title"><span class="step-number">03</span>
-              <div><h2>Медицинская роль</h2>
-                <p>Определяет права в клинических модулях. Должность на роль не влияет.</p></div>
-            </div>
-            <div><label for="role">Роль</label>
-              <InputSelect id="role" class="form-control" @bind-Value="_model.Role">
-                <option value="@MedicalWorkerRole.Doctor">Врач</option>
-                <option value="@MedicalWorkerRole.Nurse">Медсестра / медбрат</option>
-                <option value="@MedicalWorkerRole.LaboratoryTechnician">Лаборант</option>
-                <option value="@MedicalWorkerRole.Other">Другая роль</option>
-              </InputSelect>
-              <ValidationMessage For="() => _model.Role"/>
-            </div>
-            @if (RoleChanged)
-            {
-              <p class="field-hint" role="status">После сохранения новой роли текущий вход сотрудника будет прекращён —
-                ему понадобится войти заново.</p>
-            }
-          </div>
-          <div class="form-actions">
-            <a class="btn btn-light" href="/admin/medical-workers">Отмена</a>
-            <button type="submit" class="btn btn-primary">
-              <Icon Name="check"/> @(_busy ? "Сохранение…" : "Сохранить")</button>
-          </div>
-        </fieldset>
-      </EditForm>
-      @if (_worker is { IsDeleted: false })
+        </div>
+        <div class="worker-summary-meta">
+          <span class="worker-role">@MedicalRoleLabels.Describe(_model.Role)</span>
+          <WorkerStatus IsDeleted="@(_worker?.IsDeleted ?? false)"/>
+        </div>
+      </section>
+      @if (Id is { } workerId)
       {
-        <div class="delete-section">
-          <div><strong>Сотрудник больше не работает?</strong>
-            <p>Можно пометить его запись как удалённую.</p></div>
-          <button type="button" class="btn btn-soft-danger" disabled="@_busy" @onclick="() => _confirmDelete = true">
-            <Icon Name="delete"/>
-            Пометить удалённым
-          </button>
+        <WorkerAccountPanel @key="workerId" WorkerId="workerId" WorkerDeleted="@(_worker?.IsDeleted ?? false)"
+                            WorkerRole="@_worker?.Role"/>
+      }
+      else
+      {
+        <div class="worker-access-preview">
+          <Icon Name="key"/>
+          <div><strong>Следующий шаг — доступ к системе</strong>
+            <p>Сохраните сотрудника, затем создайте ему учётную запись.</p></div>
         </div>
       }
-      @if (_confirmDelete)
-      {
-        <ConfirmDelete Worker="_worker" Busy="_busy" OnConfirm="DeleteAsync" OnCancel="() => _confirmDelete = false"/>
-      }
-    </section>
+    </aside>
+      <section class="surface edit-surface worker-form" aria-label="Редактирование данных">
+        <EditForm Model="_model" OnValidSubmit="SaveAsync">
+          <DataAnnotationsValidator/>
+          <fieldset disabled="@_busy">
+            <div class="form-section">
+              <div class="section-title"><span class="step-number">01</span>
+                <div><h2>Основные сведения</h2>
+                  <p>Укажите имя и фамилию сотрудника.</p></div>
+              </div>
+              <div class="form-grid">
+                <div><label for="lastName">Фамилия</label>
+                  <InputText id="lastName" class="form-control" @bind-Value="_model.LastName" maxlength="24"
+                             placeholder="Например, Иванов" autocomplete="family-name"/>
+                  <ValidationMessage For="() => _model.LastName"/>
+                </div>
+                <div><label for="firstName">Имя</label>
+                  <InputText id="firstName" class="form-control" @bind-Value="_model.FirstName" maxlength="24"
+                             placeholder="Например, Алексей" autocomplete="given-name"/>
+                  <ValidationMessage For="() => _model.FirstName"/>
+                </div>
+              </div>
+            </div>
+            <div class="form-section">
+              <div class="section-title"><span class="step-number">02</span>
+                <div><h2>Работа в учреждении</h2>
+                  <p>Должность описывает работу, а роль определяет доступ к системе.</p></div>
+              </div>
+              <div class="form-grid">
+                <div><label for="position">Должность</label>
+                  <InputText id="position" class="form-control" @bind-Value="_model.Position" list="positions"
+                             maxlength="24" placeholder="Например, врач-терапевт"/>
+                  <ValidationMessage For="() => _model.Position"/>
+                  <datalist id="positions">
+                    <option>Врач-терапевт</option>
+                    <option>Врач-хирург</option>
+                    <option>Врач-анестезиолог</option>
+                    <option>Медицинская сестра</option>
+                  </datalist>
+                </div>
+                <div><label for="role">Медицинская роль</label>
+                  <InputSelect id="role" class="form-control" @bind-Value="_model.Role">
+                    <option value="@MedicalWorkerRole.Doctor">Врач</option>
+                    <option value="@MedicalWorkerRole.Nurse">Медсестра / медбрат</option>
+                    <option value="@MedicalWorkerRole.LaboratoryTechnician">Лаборант</option>
+                    <option value="@MedicalWorkerRole.Other">Другая роль</option>
+                  </InputSelect>
+                  <ValidationMessage For="() => _model.Role"/>
+                </div>
+              </div>
+              <p class="field-hint">Имя и фамилия — от 1 до 24 символов, должность — от 3 до 24 символов.</p>
+              @if (RoleChanged)
+              {
+                <p class="field-hint" role="status">После сохранения новой роли текущий вход сотрудника будет прекращён —
+                  ему понадобится войти заново.</p>
+              }
+            </div>
+            <div class="form-actions">
+              <a class="btn btn-light" href="/admin/medical-workers">Отмена</a>
+              <button type="submit" class="btn btn-primary">
+                <Icon Name="check"/> @(_busy ? "Сохранение…" : "Сохранить")</button>
+            </div>
+          </fieldset>
+        </EditForm>
+        @if (_worker is { IsDeleted: false })
+        {
+          <div class="delete-section">
+            <div><strong>Сотрудник больше не работает?</strong>
+              <p>Можно пометить его запись как удалённую.</p></div>
+            <button type="button" class="btn btn-soft-danger" disabled="@_busy" @onclick="() => _confirmDelete = true">
+              <Icon Name="delete"/>
+              Пометить удалённым
+            </button>
+          </div>
+        }
+        @if (_confirmDelete)
+        {
+          <ConfirmDelete Worker="_worker" Busy="_busy" OnConfirm="DeleteAsync" OnCancel="() => _confirmDelete = false"/>
+        }
+      </section>
   </div>
-  @if (Id is { } workerId)
-  {
-    <WorkerAccountPanel @key="workerId" WorkerId="workerId" WorkerDeleted="@(_worker?.IsDeleted ?? false)"/>
-  }
 }
 else
 {

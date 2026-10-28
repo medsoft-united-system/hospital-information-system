@@ -20,7 +20,7 @@ internal sealed class JwtBrowserTestHandler : DelegatingHandler
         var response = await base.SendAsync(request, cancellationToken);
         if (response.Headers.TryGetValues("Set-Cookie", out var values))
             foreach (var value in values) _cookies.SetCookies(uri, value);
-        if (response.IsSuccessStatusCode && uri.AbsolutePath is "/api/auth/login" or "/api/auth/refresh")
+        if (response.IsSuccessStatusCode && uri.AbsolutePath is "/api/auth/login" or "/api/auth/refresh" or "/api/auth/admin/confirm")
         {
             using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
             _accessToken = json.RootElement.GetProperty("accessToken").GetString();

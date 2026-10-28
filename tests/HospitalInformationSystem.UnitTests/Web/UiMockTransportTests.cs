@@ -16,6 +16,32 @@ namespace HospitalInformationSystem.UnitTests.Web;
 
 public sealed class UiMockTransportTests
 {
+    [Fact]
+    public async Task AdministratorLogin_TwoSteps_ShouldKeepSessionAnonymousUntilCodeAndConsumeChallenge()
+    {
+        using var fixture = new Fixture();
+        var attempt = await fixture.Auth.BeginAdministratorLoginAsync(
+            new BeginAdministratorLoginRequest("admin.demo", UiMockState.DemonstrationPassword), CancellationToken.None);
+
+        attempt.UserName.Should().Be("admin.demo");
+        fixture.Session.Current.Should().BeNull();
+        fixture.Session.AccessToken.Should().BeNull();
+        (await fixture.Auth.GetAdministratorLoginChallengeAsync(CancellationToken.None)).UserName.Should().Be("admin.demo");
+        var wrongCode = () => fixture.Auth.ConfirmAdministratorLoginAsync(
+            new ConfirmAdministratorLoginRequest("000000"), CancellationToken.None);
+        (await wrongCode.Should().ThrowAsync<ApiException>()).Which.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        fixture.Session.Current.Should().BeNull();
+
+        var signedIn = await fixture.Auth.ConfirmAdministratorLoginAsync(
+            new ConfirmAdministratorLoginRequest(UiMockState.DemonstrationTotpCode), CancellationToken.None);
+
+        signedIn.AccountRole.Should().Be(ApplicationRoles.Administrator);
+        fixture.Session.AccessToken.Should().NotBeNullOrEmpty();
+        var replay = () => fixture.Auth.ConfirmAdministratorLoginAsync(
+            new ConfirmAdministratorLoginRequest(UiMockState.DemonstrationTotpCode), CancellationToken.None);
+        (await replay.Should().ThrowAsync<ApiException>()).Which.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
     [Theory]
     [InlineData(UiMockPersona.Administrator, ApplicationRoles.Administrator, null)]
     [InlineData(UiMockPersona.Doctor, ApplicationRoles.MedicalWorker, MedicalWorkerRole.Doctor)]

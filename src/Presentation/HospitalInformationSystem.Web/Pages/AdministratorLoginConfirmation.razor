@@ -1,0 +1,136 @@
+@page "/admin/login/confirm"
+@layout LoginLayout
+@implements IDisposable
+@inject HospitalInformationSystem.Web.Gateways.IAuthenticationGateway Authentication
+@inject NavigationManager Navigation
+
+<PageTitle>Подтверждение входа · Учебная HIS</PageTitle>
+
+<section class="surface login-card" aria-labelledby="confirmation-title">
+  <div class="registry-heading">
+    <div>
+      <span class="eyebrow">ШАГ 2 ИЗ 2</span>
+      <h1 id="confirmation-title">Подтверждение входа</h1>
+      <p>Введите шесть цифр из приложения-аутентификатора.</p>
+    </div>
+  </div>
+  @if (_loading)
+  {
+    <p role="status">Проверяем попытку входа…</p>
+  }
+  else if (_challenge is not null)
+  {
+    <div class="confirmation-account">
+      <Icon Name="user"/>
+      <div><strong>@_challenge.UserName</strong><span>Пароль подтверждён · Администратор</span></div>
+    </div>
+    <EditForm Model="_form" OnValidSubmit="ConfirmAsync">
+      <DataAnnotationsValidator/>
+      <fieldset disabled="@_busy" aria-busy="@_busy">
+        <legend class="visually-hidden">Код из приложения-аутентификатора</legend>
+        <div class="mr-field">
+          <label for="totp">Код подтверждения</label>
+          <InputText id="totp" class="form-control confirmation-code" @bind-Value="_form.Code"
+                     inputmode="numeric" autocomplete="one-time-code" maxlength="6" autofocus/>
+          <ValidationMessage For="() => _form.Code"/>
+          <p class="field-hint">Попытка действует до @_challenge.ExpiresAtUtc.ToLocalTime().ToString("HH:mm:ss").</p>
+        </div>
+        <ErrorAlert Message="@_error"/>
+        <button type="submit" class="btn btn-primary">@(_busy ? "Проверка…" : "Подтвердить вход")</button>
+      </fieldset>
+    </EditForm>
+  }
+  else
+  {
+    <ErrorAlert Message="@_error"/>
+    <button type="button" class="btn btn-secondary" @onclick="LoadAsync">Повторить проверку</button>
+  }
+  <p class="confirmation-back"><a href="@PasswordPath">Вернуться к вводу пароля</a></p>
+</section>
+
+@code {
+  [SupplyParameterFromQuery(Name = "returnUrl")] public string? ReturnUrl { get; set; }
+  private readonly CodeForm _form = new();
+  private readonly CancellationTokenSource _cancellation = new();
+  private AdministratorLoginChallengeDto? _challenge;
+  private bool _loading = true;
+  private bool _busy;
+  private string? _error;
+  private string PasswordPath => "/admin/login?returnUrl=" +
+    Uri.EscapeDataString(HospitalInformationSystem.Web.Components.Authentication.LoginNavigation.GetReturnPath(
+      LoginPortal.Administrator, ReturnUrl));
+
+  protected override Task OnInitializedAsync() => LoadAsync();
+
+  private async Task LoadAsync()
+  {
+    _loading = true;
+    _error = null;
+    try
+    {
+      var challenge = await Authentication.GetAdministratorLoginChallengeAsync(_cancellation.Token);
+      if (_cancellation.IsCancellationRequested) return;
+      _challenge = challenge;
+      if (_challenge.ExpiresAtUtc <= DateTimeOffset.UtcNow) Navigation.NavigateTo(PasswordPath, replace: true);
+    }
+    catch (ApiException exception) when (exception.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+    {
+      if (!_cancellation.IsCancellationRequested) Navigation.NavigateTo(PasswordPath, replace: true);
+    }
+    catch (OperationCanceledException) when (_cancellation.IsCancellationRequested) { }
+    catch (Exception exception) when (exception is ApiException or HttpRequestException or TaskCanceledException)
+    {
+      _error = "Не удалось проверить попытку входа. Повторите проверку или введите пароль заново.";
+    }
+    finally { _loading = false; }
+  }
+
+  private async Task ConfirmAsync()
+  {
+    if (_busy || _challenge is null) return;
+    if (_challenge.ExpiresAtUtc <= DateTimeOffset.UtcNow)
+    {
+      Navigation.NavigateTo(PasswordPath, replace: true);
+      return;
+    }
+    _busy = true;
+    _error = null;
+    try
+    {
+      await Authentication.ConfirmAdministratorLoginAsync(new ConfirmAdministratorLoginRequest(_form.Code),
+        _cancellation.Token);
+      if (!_cancellation.IsCancellationRequested)
+        Navigation.NavigateTo(HospitalInformationSystem.Web.Components.Authentication.LoginNavigation.GetReturnPath(
+          LoginPortal.Administrator, ReturnUrl), replace: true);
+    }
+    catch (OperationCanceledException) when (_cancellation.IsCancellationRequested) { }
+    catch (ApiException exception)
+    {
+      _error = exception.StatusCode switch
+      {
+        System.Net.HttpStatusCode.Unauthorized => "Код не подошёл или попытка входа завершена. Проверьте код или введите пароль заново.",
+        System.Net.HttpStatusCode.TooManyRequests => "Слишком много попыток. Повторите позже.",
+        _ => exception.Message
+      };
+    }
+    catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+    {
+      _error = "Сервер недоступен. Повторите попытку.";
+    }
+    finally { _form.Code = ""; _busy = false; }
+  }
+
+  public void Dispose()
+  {
+    _form.Code = "";
+    _cancellation.Cancel();
+    _cancellation.Dispose();
+  }
+
+  private sealed class CodeForm
+  {
+    [Required(ErrorMessage = "Введите код из приложения.")]
+    [RegularExpression("[0-9]{6}", ErrorMessage = "Код должен содержать шесть цифр.")]
+    public string Code { get; set; } = "";
+  }
+}

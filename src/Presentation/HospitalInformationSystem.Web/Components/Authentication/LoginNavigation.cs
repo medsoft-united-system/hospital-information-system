@@ -21,7 +21,8 @@ public static class LoginNavigation
             target.Authority != LocalOrigin.Authority ||
             !target.LocalPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) || target.LocalPath.Contains('\\') ||
             target.LocalPath.Split('/').Any(segment => segment is "." or "..") ||
-            target.AbsolutePath.Equals("/admin/login", StringComparison.OrdinalIgnoreCase))
+            (target.AbsolutePath.Equals("/admin/login", StringComparison.OrdinalIgnoreCase) ||
+             target.AbsolutePath.StartsWith("/admin/login/", StringComparison.OrdinalIgnoreCase)))
             return home;
 
         return requestedPath;

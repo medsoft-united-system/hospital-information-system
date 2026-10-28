@@ -26,6 +26,36 @@ public sealed class SessionApiClient(HttpClient http, SessionState session, Anti
         }
     }
 
+    public async Task<AdministratorLoginChallengeDto> BeginAdministratorLoginAsync(
+        BeginAdministratorLoginRequest request, CancellationToken cancellationToken)
+    {
+        using var operation = await operations.EnterAsync(cancellationToken);
+        try
+        {
+            var challenge = await http.SendJsonAsync<AdministratorLoginChallengeDto>(HttpMethod.Post,
+                "api/auth/admin/login", request, null, cancellationToken);
+            tokens.Reset();
+            session.SetSession(null);
+            return challenge;
+        }
+        catch (ApiException exception) when (exception.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            tokens.Reset();
+            session.SetSession(null);
+            throw;
+        }
+    }
+
+    public async Task ConfirmAdministratorLoginAsync(ConfirmAdministratorLoginRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var operation = await operations.EnterAsync(cancellationToken);
+        var current = await http.SendJsonAsync<AuthenticationTokensDto>(HttpMethod.Post,
+            "api/auth/admin/confirm", request, null, cancellationToken);
+        tokens.Reset();
+        session.SetTokens(current);
+    }
+
     public async Task LogoutAsync(CancellationToken cancellationToken)
     {
         using var operation = await operations.EnterAsync(cancellationToken);

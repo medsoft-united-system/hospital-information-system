@@ -197,7 +197,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); fl
   .mode-picker { width: 100%; margin: 0; }
   .mode-switch { width: 100%; }
   .mode-switch a { flex: 1; padding: 10px; }
-  .main-nav { gap: 4px; padding-bottom: 12px; }
+  .main-nav { gap: 4px; padding-bottom: 12px; flex-wrap: wrap; }
   .main-nav a { padding: 10px 14px; }
   .nav-note { display: none; }
   main { padding-top: 28px; padding-bottom: 32px; }

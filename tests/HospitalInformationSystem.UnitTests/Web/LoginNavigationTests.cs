@@ -39,6 +39,8 @@ public sealed class LoginNavigationTests
     [InlineData("/admin/accounts\r\nLocation: https://attacker.example")]
     [InlineData("/admin/login")]
     [InlineData("/ADMIN/LOGIN?returnUrl=/admin/accounts")]
+    [InlineData("/admin/login/confirm")]
+    [InlineData("/ADMIN/LOGIN/CONFIRM?returnUrl=/admin/accounts")]
     public void GetReturnPath_InvalidRoute_ShouldUsePortalHome(string? requested)
     {
         LoginNavigation.GetReturnPath(LoginPortal.Administrator, requested).Should().Be("/admin/medical-workers");

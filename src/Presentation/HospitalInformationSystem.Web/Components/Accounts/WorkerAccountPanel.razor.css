@@ -1,0 +1,43 @@
+.account-panel { overflow: hidden; }
+.account-heading { display: flex; align-items: center; gap: 12px; padding: 22px 22px 0; }
+.account-heading-icon { display: grid; place-items: center; flex-shrink: 0; width: 38px; height: 38px; background: #eff4e9; color: #6c8860; border-radius: 10px; }
+.account-eyebrow { color: #87947d; font-size: 8px; letter-spacing: .08em; }
+.account-heading h2 { margin: 5px 0 0; color: #344c39; font-size: 15px; font-weight: 600; line-height: 1.35; }
+.account-introduction { padding: 20px 22px 0; }
+.account-pending { display: inline-flex; align-items: center; gap: 7px; color: #7b8173; font-size: 10px; }
+.account-pending > span { width: 5px; height: 5px; border-radius: 50%; background: #acb49f; }
+.account-introduction > p { margin: 10px 0 0; color: #7b8874; font-size: 11px; line-height: 1.6; }
+.account-access-role { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 14px; padding: 12px 0; border-top: 1px solid #edf0e8; border-bottom: 1px solid #edf0e8; font-size: 10px; }
+.account-access-role > span { color: #87947d; }
+.account-access-role > strong { color: #4f6b46; font-weight: 500; text-align: right; }
+.account-panel ::deep form { padding: 18px 22px 22px; }
+.account-panel .mr-field { min-width: 0; padding: 0; gap: 8px; }
+.account-panel .mr-field label { font-size: 11px; }
+.account-panel .field-hint { margin: 0; font-size: 10px; line-height: 1.5; }
+.account-panel fieldset { min-width: 0; }
+.account-panel ::deep .form-control { min-width: 0; }
+.account-password-note { display: flex; align-items: flex-start; gap: 10px; margin-top: 18px; padding: 12px; background: #f7f8f3; border: 1px solid #e8eddf; border-radius: 8px; }
+.account-password-note ::deep svg { flex-shrink: 0; margin-top: 1px; width: 15px; height: 15px; color: #6d8b5e; }
+.account-password-note strong { display: block; font-size: 10px; font-weight: 500; color: #5d7354; line-height: 1.5; }
+.account-password-note p { margin: 5px 0 0; font-size: 10px; color: #83917b; line-height: 1.6; }
+.account-panel .account-create-button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin-top: 18px; padding: 12px 14px; font-size: 11px; }
+.account-panel .account-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 20px 22px; }
+.account-facts > div:first-child { grid-column: 1 / -1; }
+.account-panel .account-facts dd { font-size: 11px; }
+.account-panel ::deep .account-operations { padding: 18px 22px 22px; border-top: 1px solid #edf0e8; }
+.account-panel ::deep .account-operations > .button-row { display: grid; grid-template-columns: minmax(0, 1fr); }
+.account-panel ::deep .account-operations > .button-row .btn { justify-content: center; width: 100%; }
+.account-panel ::deep .password-card { margin: 18px 22px 0; padding: 14px; gap: 12px; }
+.account-panel ::deep .account-operations .password-card { margin: 0; }
+.account-panel ::deep .password-row input { min-width: 0; flex-basis: 100%; }
+.account-panel ::deep .password-row .btn { width: 100%; }
+.account-panel ::deep .password-card p { font-size: 11px; line-height: 1.5; }
+
+@media (max-width: 600px) {
+    .account-heading { padding: 20px 20px 0; }
+    .account-introduction { padding: 18px 20px 0; }
+    .account-panel ::deep form, .account-panel .account-facts { padding-left: 20px; padding-right: 20px; }
+    .account-panel ::deep .account-operations { padding-left: 20px; padding-right: 20px; }
+    .account-panel ::deep .password-card { margin-left: 20px; margin-right: 20px; }
+    .account-panel ::deep .account-operations .password-card { margin-left: 0; margin-right: 0; }
+}

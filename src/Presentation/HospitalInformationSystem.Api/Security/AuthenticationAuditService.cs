@@ -6,6 +6,11 @@ namespace HospitalInformationSystem.Api.Security;
 
 public sealed class AuthenticationAuditService(IAuditWriter audit, HospitalDbContext db, IHttpContextAccessor contexts)
 {
+    public static bool IsLoginPath(PathString path) => path.Value?.TrimEnd('/') is { } value &&
+        (value.Equals("/api/auth/login", StringComparison.OrdinalIgnoreCase) ||
+         value.Equals("/api/auth/admin/login", StringComparison.OrdinalIgnoreCase) ||
+         value.Equals("/api/auth/admin/confirm", StringComparison.OrdinalIgnoreCase));
+
     public async Task LoginFailedAsync(string? attemptedUserName, CancellationToken cancellationToken)
     {
         audit.Append(AuditEventType.LoginFailed, "Вход отклонён.",

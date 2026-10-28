@@ -37,6 +37,21 @@ public sealed class AuthenticationGateway(HttpClient http, SessionApiClient clie
             : throw new ApiException("Сервер не вернул действующую сессию.");
     }
 
+    public Task<AdministratorLoginChallengeDto> BeginAdministratorLoginAsync(BeginAdministratorLoginRequest request,
+        CancellationToken cancellationToken) => client.BeginAdministratorLoginAsync(request, cancellationToken);
+
+    public Task<AdministratorLoginChallengeDto> GetAdministratorLoginChallengeAsync(CancellationToken cancellationToken) =>
+        GatewayHttpTransport.SendAsync<AdministratorLoginChallengeDto>(http, HttpMethod.Get,
+            "api/auth/admin/challenge", null, cancellationToken);
+
+    public async Task<AuthenticationSessionDto> ConfirmAdministratorLoginAsync(ConfirmAdministratorLoginRequest request,
+        CancellationToken cancellationToken)
+    {
+        await client.ConfirmAdministratorLoginAsync(request, cancellationToken);
+        return session.Current is { } current ? ToContract(current)
+            : throw new ApiException("Сервер не вернул действующую сессию.");
+    }
+
     public async Task<AuthenticationSessionDto?> GetSessionAsync(CancellationToken cancellationToken)
     {
         var version = session.Version;

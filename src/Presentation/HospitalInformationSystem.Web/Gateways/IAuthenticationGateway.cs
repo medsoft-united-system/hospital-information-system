@@ -11,6 +11,11 @@ public interface IAuthenticationGateway
     Task ConfirmSetupAsync(ConfirmSetupRequest request, string setupToken,
         CancellationToken cancellationToken);
     Task<AuthenticationSessionDto> LoginAsync(LoginRequest request, CancellationToken cancellationToken);
+    Task<AdministratorLoginChallengeDto> BeginAdministratorLoginAsync(BeginAdministratorLoginRequest request,
+        CancellationToken cancellationToken);
+    Task<AdministratorLoginChallengeDto> GetAdministratorLoginChallengeAsync(CancellationToken cancellationToken);
+    Task<AuthenticationSessionDto> ConfirmAdministratorLoginAsync(ConfirmAdministratorLoginRequest request,
+        CancellationToken cancellationToken);
     Task<AuthenticationSessionDto?> GetSessionAsync(CancellationToken cancellationToken);
     Task LogoutAsync(CancellationToken cancellationToken);
 }

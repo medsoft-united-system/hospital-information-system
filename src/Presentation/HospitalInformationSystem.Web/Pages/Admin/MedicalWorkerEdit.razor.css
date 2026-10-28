@@ -1,0 +1,40 @@
+.worker-layout { grid-template-columns: minmax(300px, 350px) minmax(0, 1fr); gap: 24px; }
+.worker-sidebar { display: grid; gap: 18px; min-width: 0; }
+.worker-summary { padding: 22px; border: 1px solid #dce5d4; border-radius: 12px; background: #eaf0e2; }
+.worker-summary > .eyebrow { display: block; margin-bottom: 18px; color: #7c8e70; font-size: 9px; letter-spacing: 1px; }
+.worker-identity { display: flex; align-items: center; gap: 14px; }
+.worker-identity-text { min-width: 0; }
+.worker-avatar { display: grid; place-items: center; flex-shrink: 0; width: 50px; height: 50px; border: 1px solid #d6e0cc; border-radius: 50%; background: #f8faf4; color: #7b936b; }
+.worker-avatar ::deep svg { width: 25px; height: 25px; }
+.worker-summary h2 { margin: 0; font: 400 24px/1.2 Georgia, "Times New Roman", serif; overflow-wrap: anywhere; }
+.worker-identity p { margin: 7px 0 0; color: #708269; font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+.worker-summary-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 18px; padding-top: 14px; border-top: 1px solid #d5dfcd; }
+.worker-role { flex: 1; min-width: 0; font-size: 11px; color: #5e7655; }
+.worker-summary ::deep .status { background: #f8fbf3; }
+.worker-sidebar ::deep .account-panel { margin-top: 0; }
+.worker-access-preview { display: flex; align-items: flex-start; gap: 12px; padding: 20px 22px; border: 1px dashed #d5dfcd; border-radius: 12px; color: #708269; }
+.worker-access-preview ::deep svg { flex-shrink: 0; margin-top: 2px; }
+.worker-access-preview strong { font-size: 12px; font-weight: 500; color: #4f6551; }
+.worker-access-preview p { margin: 8px 0 0; font-size: 11px; line-height: 1.6; }
+.worker-form { min-width: 0; padding: 0 28px; }
+.worker-form .form-section { padding: 26px 0; }
+.worker-form .section-title { margin-bottom: 22px; }
+.worker-form .form-grid { gap: 20px; }
+.worker-form .form-actions, .worker-form .delete-section { padding: 20px 0; }
+
+@media (max-width: 1080px) {
+    .worker-layout { grid-template-columns: 300px minmax(0, 1fr); gap: 20px; }
+    .worker-form { padding: 0 22px; }
+    .worker-form .form-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 800px) {
+    .worker-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    .worker-form .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 600px) {
+    .worker-summary, .worker-access-preview { padding: 20px; }
+    .worker-form { padding: 0 20px; }
+    .worker-form .form-grid { grid-template-columns: minmax(0, 1fr); }
+}
