@@ -22,6 +22,3 @@ development-security.json
 *-password.txt
 **/__pycache__/
 *.pyc
-
-# Markdown documentation is kept locally in docs/
-*.md

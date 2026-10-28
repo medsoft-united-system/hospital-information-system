@@ -1,3 +1,4 @@
+import argparse
 import importlib.util
 import json
 import os
@@ -139,6 +140,21 @@ class SecureDevelopmentLauncherTests(unittest.TestCase):
     def test_application_failure_is_returned_to_the_terminal(self):
         result = self.start("--api-only", environment={"LAUNCHER_EXIT": "72"})
         self.assertEqual(result.returncode, 72)
+
+    def test_explicit_environment_reaches_child_without_changing_global_environment(self):
+        before = dict(os.environ)
+        environment = dict(os.environ, LAUNCHER_PROBE=str(self.probe),
+                           ConnectionStrings__Postgres="Host=demo;Password=OnlyInChildEnvironment")
+        arguments = argparse.Namespace(security_directory=str(self.root), api_container=True, api_only=True,
+                                       web_only=False, no_build=True, dotnet=str(self.fake_dotnet),
+                                       docker=str(self.fake_dotnet))
+
+        self.assertEqual(launcher.run(arguments, environment=environment), 0)
+
+        self.assertEqual(dict(os.environ), before)
+        self.assertNotIn("ASPNETCORE_Kestrel__Certificates__Default__Password", environment)
+        probe = json.loads(self.probe.read_text())
+        self.assertEqual(probe["database"], "Host=demo;Password=OnlyInChildEnvironment")
 
     def test_manifest_cannot_read_password_outside_the_security_directory(self):
         self.manifest["serverPfxPasswordFile"] = str(self.root.parent / "password.txt")

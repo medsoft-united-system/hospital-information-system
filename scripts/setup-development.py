@@ -99,7 +99,7 @@ def main():
         }
         write_private(local_path, json.dumps(config, ensure_ascii=False, indent=2) + "\n")
     print("Настройки БД готовы. Пароль администратора задаётся в мастере /admin/setup вместе с TOTP.")
-    print("Подготовьте сертификаты через generate-development-certificates.py и запускайте run-secure-development.py.")
+    print("Подготовьте сертификаты через generate-development-certificates.py, затем: python3 scripts/run-application.py --start-database.")
     print("Существующая база и её пароль не изменялись. Не добавляйте локальные файлы в Git.")
 
 

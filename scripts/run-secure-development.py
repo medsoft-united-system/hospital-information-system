@@ -17,7 +17,7 @@ PROJECTS = {
 CONTAINER_IMAGE = "medsoft-api:development"
 
 
-def certificate_environment(directory):
+def certificate_environment(directory, environment=None):
     directory = Path(directory).expanduser().resolve()
     manifest = json.loads((directory / "development-security.json").read_text(encoding="utf-8"))
     if manifest.get("schemaVersion") != 1:
@@ -34,7 +34,7 @@ def certificate_environment(directory):
     password = paths[1].read_text(encoding="utf-8").rstrip("\r\n")
     if not password or any(character in password for character in "\r\n\0"):
         raise ValueError("Файл должен содержать один непустой пароль PFX.")
-    environment = os.environ.copy()
+    environment = dict(os.environ if environment is None else environment)
     environment["ASPNETCORE_Kestrel__Certificates__Default__Path"] = str(paths[0])
     environment["ASPNETCORE_Kestrel__Certificates__Default__Password"] = password
     return environment
@@ -131,8 +131,8 @@ def api_configuration(directory, host_environment, name, native=False):
     return [] if native else options + [CONTAINER_IMAGE], environment
 
 
-def run(arguments):
-    environment = certificate_environment(arguments.security_directory)
+def run(arguments, *, environment=None):
+    environment = certificate_environment(arguments.security_directory, environment)
     selected = ["api"] if arguments.api_only else ["web"] if arguments.web_only else ["api", "web"]
     use_container = arguments.api_container and "api" in selected
     if sys.platform == "darwin" and "api" in selected and not use_container:
@@ -187,6 +187,12 @@ def run(arguments):
             stop_process(process)
 
 
+def run_application(directory, environment, *, no_build=False, docker="docker"):
+    return run(argparse.Namespace(
+        security_directory=str(directory), api_container=True, api_only=False, web_only=False,
+        no_build=no_build, dotnet="dotnet", docker=docker), environment=environment)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Запустить API и Web с учебным PFX, не передавая пароль в аргументах.")
     parser.add_argument("--security-directory", required=True, help="Каталог, созданный generate-development-certificates.py.")
@@ -203,6 +209,6 @@ def main():
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except (OSError, ValueError, KeyError) as error:
+    except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
         print(str(error), file=sys.stderr)
         sys.exit(1)
