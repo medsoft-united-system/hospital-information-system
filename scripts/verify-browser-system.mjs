@@ -59,12 +59,13 @@ async function login(page, credentials, administrator = false, code = null) {
   if (administrator) await page.getByLabel('Код подтверждения', { exact: true }).fill(code);
   const home = administrator ? '/admin/medical-workers' : '/medical/patients';
   const list = administrator ? '/api/medical-workers' : '/api/patients';
-  await Promise.all([
+  const [authenticated] = await Promise.all([
     apiResponse(page, '/api/auth/login', 200, 'POST'), apiResponse(page, list, 200, 'GET'),
     page.waitForURL(url => url.pathname === home),
     page.getByRole('button', { name: 'Войти', exact: true }).click()
   ]);
   await page.getByRole('heading', { name: administrator ? 'Медработники' : 'Пациенты', exact: true }).waitFor();
+  return authenticated.json();
 }
 
 async function logout(page) {
@@ -88,15 +89,57 @@ async function fillSetup(page, credentials) {
 }
 
 async function createAccount(page, bearer, role, userName) {
+  const details = role === 'nurse' ? { firstName: 'Медсестра', position: 'Медицинская сестра' }
+    : role === 'laboratory-technician' ? { firstName: 'Лаборант', position: 'Лаборант' }
+    : { firstName: 'Сотрудник', position: 'Сотрудник' };
   const worker = await apiRequest(page, bearer, 'POST', '/api/medical-workers', {
-    firstName: role === 'nurse' ? 'Медсестра' : 'Лаборант', lastName: 'Браузерный',
-    position: role === 'nurse' ? 'Медицинская сестра' : 'Лаборант', role
+    ...details, lastName: 'Браузерный', ...(role === 'other' ? {} : { role })
   });
   assert.equal(worker.status, 201, 'The administrator must be able to create a medical worker.');
+  assert.equal(worker.body.role, role, 'An omitted medical role must default to other.');
   const account = await apiRequest(page, bearer, 'POST', `/api/medical-workers/${worker.body.id}/account`, { userName });
   assert.equal(account.status, 201, 'The administrator must be able to create a linked account.');
   assert(typeof account.body.generatedPassword === 'string', 'Account creation must return its generated password.');
   return { userName, password: account.body.generatedPassword };
+}
+
+async function visibleRevocation(page, administratorBearer, accountId, reason, count) {
+  const audit = await apiRequest(page, administratorBearer, 'GET', '/api/audit?Page=1&PageSize=100');
+  assert.equal(audit.status, 200, 'The administrator must read revocation audit events.');
+  const event = audit.body.items.find(item => item.eventType === 'AccountChanged' &&
+    item.metadata.accountId === accountId && item.metadata.revokeReason === reason &&
+    item.metadata.revokedRefreshTokenCount === count);
+  assert(event, 'The audit must store the exact revocation reason, account and session count.');
+  await page.bringToFront();
+  await page.locator(`tr[data-event-id="${event.eventId}"]`)
+    .getByText(`Отозвано refresh-токенов: ${count}.`, { exact: true })
+    .waitFor({ state: 'visible', timeout: 2500 });
+}
+
+async function verifyRevocation(page, administratorBearer, credentials, accountId, reason, operation, restore = null) {
+  const browser = page.context().browser();
+  assert(browser, 'The revocation scenario requires an independent browser context.');
+  const context = await browser.newContext();
+  try {
+    const employee = await context.newPage();
+    await employee.goto(webOrigin + '/login');
+    const authenticated = await login(employee, credentials);
+    assert(typeof authenticated.accessToken === 'string', 'Login must issue an access token.');
+    const result = await operation();
+    assert.equal(result.status, 200, 'The administrator revocation operation must succeed.');
+    if (result.body?.revokedRefreshTokenCount !== undefined)
+      assert.equal(result.body.revokedRefreshTokenCount, 1, 'Exactly one independently logged-in session must be revoked.');
+    const oldBearer = 'Bearer ' + authenticated.accessToken;
+    const deniedAccess = await apiRequest(employee, oldBearer, 'GET', '/api/patients');
+    assert.equal(deniedAccess.status, 401, 'The pre-change access token must lose access immediately.');
+    const deniedRefresh = await apiRequest(employee, oldBearer, 'POST', '/api/auth/refresh');
+    assert.equal(deniedRefresh.status, 401, 'The independent employee refresh cookie must be revoked.');
+    await visibleRevocation(page, administratorBearer, accountId, reason, 1);
+    return result;
+  } finally {
+    await context.close();
+    if (restore) await restore();
+  }
 }
 
 export async function verifyBrowserSystem(page, credentials, evidence) {
@@ -141,6 +184,8 @@ export async function verifyBrowserSystem(page, credentials, evidence) {
     await page.getByLabel('Фамилия', { exact: true }).fill('Браузерный');
     await page.getByLabel('Имя', { exact: true }).fill('Врач');
     await page.getByLabel('Должность', { exact: true }).fill('Врач-терапевт');
+    assert.equal(await page.getByLabel('Роль', { exact: true }).inputValue(), 'Other',
+      'A new worker form must select other by default.');
     await page.getByLabel('Роль', { exact: true }).selectOption({ label: 'Врач' });
     const [createdWorker] = await Promise.all([apiResponse(page, '/api/medical-workers', 201, 'POST'),
       page.getByRole('button', { name: 'Сохранить', exact: true }).click()]);
@@ -195,6 +240,8 @@ export async function verifyBrowserSystem(page, credentials, evidence) {
       'Returning to the visible audit page must refresh before the next periodic tick.');
     evidence.auditRefreshOnVisibility = true;
     const administratorBearer = bearers.get(administratorName);
+    await visibleRevocation(page, administratorBearer, account.account.id, 'password-reset', 0);
+    evidence.zeroRevocationCountVisible = true;
     const mutation = await page.evaluate(async ({ origin, bearer }) => {
       const headers = { Authorization: bearer };
       const csrf = await fetch(origin + '/api/auth/csrf', { credentials: 'include', headers }).then(response => response.json());
@@ -217,9 +264,44 @@ export async function verifyBrowserSystem(page, credentials, evidence) {
     assert(latency <= 2000, 'A committed audit event must become visible in the UI within two seconds.');
     evidence.auditEventMatchedById = true;
 
+    let doctorCredentials = { userName: doctorName, password: reset.generatedPassword };
+    evidence.stage = 'password-reset-revocation';
+    const activeReset = await verifyRevocation(page, administratorBearer, doctorCredentials, account.account.id,
+      'password-reset', () => apiRequest(page, administratorBearer, 'POST',
+        `/api/accounts/${account.account.id}/reset-password`));
+    assert(typeof activeReset.body.generatedPassword === 'string', 'Reset must return the replacement password.');
+    doctorCredentials = { userName: doctorName, password: activeReset.body.generatedPassword };
+    evidence.passwordResetRevokesAccessAndRefresh = true;
+
+    evidence.stage = 'deactivation-revocation';
+    await verifyRevocation(page, administratorBearer, doctorCredentials, account.account.id,
+      'account-deactivated', () => apiRequest(page, administratorBearer, 'PUT',
+        `/api/accounts/${account.account.id}/activity`, { isActive: false }),
+      async () => {
+        const restored = await apiRequest(page, administratorBearer, 'PUT',
+          `/api/accounts/${account.account.id}/activity`, { isActive: true });
+        assert.equal(restored.status, 200, 'The doctor account must be restored to active after the revocation check.');
+      });
+    evidence.deactivationRevokesAccessAndRefresh = true;
+
+    evidence.stage = 'medical-role-revocation';
+    const workerValues = { firstName: worker.firstName, lastName: worker.lastName, position: worker.position };
+    await verifyRevocation(page, administratorBearer, doctorCredentials, account.account.id,
+      'medical-role-changed', () => apiRequest(page, administratorBearer, 'PUT',
+        `/api/medical-workers/${worker.id}`, { ...workerValues, role: 'nurse' }),
+      async () => {
+        const restored = await apiRequest(page, administratorBearer, 'PUT',
+          `/api/medical-workers/${worker.id}`, { ...workerValues, role: 'doctor' });
+        assert.equal(restored.status, 200, 'The doctor role must be restored after the revocation check.');
+      });
+    evidence.medicalRoleChangeRevokesAccessAndRefresh = true;
+    evidence.revocationCountsVisible = true;
+
     evidence.stage = 'clinical-roles';
     const nurse = await createAccount(page, administratorBearer, 'nurse', 'browser.nurse');
     const reader = await createAccount(page, administratorBearer, 'laboratory-technician', 'browser.lab');
+    const other = await createAccount(page, administratorBearer, 'other', 'browser.other');
+    evidence.otherRoleDefaultsOnServer = true;
     await logout(page);
     await login(page, nurse);
     await page.getByRole('link', { name: 'Добавить пациента', exact: true }).click();
@@ -246,22 +328,27 @@ export async function verifyBrowserSystem(page, credentials, evidence) {
     evidence.nurseCreatesPatientAndRecord = true;
     evidence.nurseCannotEditRecord = true;
     await logout(page);
-    await login(page, reader);
-    assert.equal(await page.getByRole('link', { name: 'Добавить пациента', exact: true }).count(), 0,
-      'The laboratory role must not see patient creation.');
-    await page.locator(`a[href="/medical/patients/${patient.id}/medical-record"]`).click();
-    await page.getByRole('tab', { name: 'Диагнозы', exact: true }).waitFor();
-    assert.equal(await page.getByRole('button', { name: 'Редактировать', exact: true }).count(), 0,
-      'The laboratory role must only read the medical record.');
-    const deniedPatient = await apiRequest(page, bearers.get(reader.userName), 'POST', '/api/patients', {
-      firstName: 'Forbidden', lastName: 'Synthetic', birthDate: '2000-01-01', sex: 'Unknown'
-    });
-    assert.equal(deniedPatient.status, 403, 'The API must reject patient creation by the laboratory role.');
-    evidence.laboratoryRoleReadOnly = true;
-    await logout(page);
+    for (const [role, employee] of [['laboratory', reader], ['other', other]]) {
+      await login(page, employee);
+      assert.equal(await page.getByRole('link', { name: 'Добавить пациента', exact: true }).count(), 0,
+        'A read-only medical role must not see patient creation.');
+      await page.locator(`a[href="/medical/patients/${patient.id}/medical-record"]`).click();
+      await page.getByRole('tab', { name: 'Диагнозы', exact: true }).waitFor();
+      assert.equal(await page.getByRole('button', { name: 'Редактировать', exact: true }).count(), 0,
+        'A read-only medical role must not see medical record editing.');
+      const deniedPatient = await apiRequest(page, bearers.get(employee.userName), 'POST', '/api/patients', {
+        firstName: 'Forbidden', lastName: 'Synthetic', birthDate: '2000-01-01', sex: 'Unknown'
+      });
+      assert.equal(deniedPatient.status, 403, 'The API must reject patient creation by a read-only medical role.');
+      const deniedRecord = await apiRequest(page, bearers.get(employee.userName), 'POST',
+        `/api/patients/${patient.id}/medical-record`);
+      assert.equal(deniedRecord.status, 403, 'The API must reject record creation by a read-only medical role.');
+      evidence[role === 'laboratory' ? 'laboratoryRoleReadOnly' : 'otherRoleReadOnly'] = true;
+      await logout(page);
+    }
     await page.goto(webOrigin + '/login');
     evidence.stage = 'complete';
-    return { userName: doctorName, password: reset.generatedPassword };
+    return doctorCredentials;
   } finally {
     page.off('request', rememberBearer);
     bearers.clear();

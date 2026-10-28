@@ -1,9 +1,18 @@
+using System.Text.Json;
 using HospitalInformationSystem.Contracts.Security;
 
 namespace HospitalInformationSystem.Web;
 
 public static class AuditLabels
 {
+    public static string? RefreshRevocationSummary(IReadOnlyDictionary<string, JsonElement>? metadata)
+    {
+        if (metadata is null || !metadata.TryGetValue("revokedRefreshTokenCount", out var value) ||
+            value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out var count) || count < 0)
+            return null;
+        return $"Отозвано refresh-токенов: {count}.";
+    }
+
     public static string EventType(AuditEventType type) => type switch
     {
         AuditEventType.AdministratorLogin => "Вход администратора",

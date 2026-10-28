@@ -24,7 +24,13 @@
             <small class="actor-detail">@detail</small>
           }
         </td>
-        <td data-label="Сообщение">@item.Message</td>
+        <td data-label="Сообщение">
+          @item.Message
+          @if (AuditLabels.RefreshRevocationSummary(item.Metadata) is { } revocation)
+          {
+            <small class="field-hint d-block">@revocation</small>
+          }
+        </td>
       </tr>
     }
     </tbody>
