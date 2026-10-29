@@ -87,7 +87,8 @@ public static class ApiSecurityRegistration
         });
         services.AddCors(options => options.AddDefaultPolicy(policy => policy.WithOrigins(origins)
             .WithMethods("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-            .WithHeaders("Content-Type", "X-CSRF-TOKEN", "Authorization", "X-Setup-Token", "X-Medical-Worker-Id")
+            .WithHeaders("Content-Type", "X-CSRF-TOKEN", "Authorization", "X-Setup-Token", "X-Medical-Worker-Id",
+                BrowserTabSession.HeaderName)
             .AllowCredentials()));
         services.Configure<FormOptions>(options =>
         {

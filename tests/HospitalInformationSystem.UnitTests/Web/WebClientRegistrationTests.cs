@@ -8,6 +8,8 @@ using HospitalInformationSystem.Web.Development;
 using HospitalInformationSystem.Web.Gateways;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
+using Moq;
 
 namespace HospitalInformationSystem.UnitTests.Web;
 
@@ -38,12 +40,13 @@ public sealed class WebClientRegistrationTests
     }
 
     [Fact]
-    public void AddWebClient_NormalConfiguration_ShouldOmitMockStateAndTransport()
+    public async Task AddWebClient_NormalConfiguration_ShouldOmitMockStateAndTransport()
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(
             new Dictionary<string, string?> { ["ApiBaseUrl"] = "https://api.example.invalid/" }).Build();
         var services = new ServiceCollection().AddHospitalWebClients(configuration, "Production");
-        using var provider = services.BuildServiceProvider();
+        services.AddSingleton(Mock.Of<IJSRuntime>());
+        await using var provider = services.BuildServiceProvider();
 
         provider.GetService<UiMockState>().Should().BeNull();
         provider.GetService<UiMockHttpMessageHandler>().Should().BeNull();
@@ -77,12 +80,13 @@ public sealed class WebClientRegistrationTests
     [InlineData("https://localhost:5201/")]
     [InlineData("https://127.0.0.1:5201/")]
     [InlineData("https://[::1]:5201/")]
-    public void AddWebClient_ExplicitHttpsOrigin_ShouldPreserveApiAddress(string address)
+    public async Task AddWebClient_ExplicitHttpsOrigin_ShouldPreserveApiAddress(string address)
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(
             new Dictionary<string, string?> { ["ApiBaseUrl"] = address }).Build();
         var services = new ServiceCollection().AddHospitalWebClients(configuration, "Development");
-        using var provider = services.BuildServiceProvider();
+        services.AddSingleton(Mock.Of<IJSRuntime>());
+        await using var provider = services.BuildServiceProvider();
 
         provider.GetRequiredService<HttpClient>().BaseAddress.Should().Be(new Uri(address));
     }

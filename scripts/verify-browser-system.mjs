@@ -3,6 +3,20 @@ import { createHmac } from 'node:crypto';
 
 const webOrigin = 'https://localhost:5101';
 const apiOrigin = 'https://localhost:5201';
+const tabIds = new WeakMap();
+
+export async function bufferBrowserApiResponses(context) {
+  await context.addInitScript(({ origin }) => {
+    const fetch = window.fetch.bind(window);
+    window.fetch = async (...arguments_) => {
+      const response = await fetch(...arguments_);
+      const url = new URL(response.url);
+      if (url.origin === origin && url.pathname.startsWith('/api/') && response.body !== null)
+        await response.clone().arrayBuffer();
+      return response;
+    };
+  }, { origin: apiOrigin });
+}
 
 function totp(secret, offsetSeconds = 0) {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -31,13 +45,18 @@ async function apiResponse(page, pathname, status, method = null) {
   const response = await page.waitForResponse(response => new URL(response.url()).origin === apiOrigin &&
     new URL(response.url()).pathname === pathname && response.status() === status &&
     (method === null || response.request().method() === method));
+  const tabId = response.request().headers()['x-medsoft-tab-id'];
+  assert.match(tabId ?? '', /^[a-f0-9]{32}$/, 'Browser API requests must identify their current tab.');
+  tabIds.set(page, tabId);
   const body = status === 204 ? null : await response.json();
   return { json: async () => body };
 }
 
 async function apiRequest(page, bearer, method, pathname, body = undefined) {
-  return page.evaluate(async ({ origin, bearer, method, pathname, body }) => {
-    const headers = { Authorization: bearer };
+  const tabId = tabIds.get(page);
+  assert(tabId, 'The browser scenario must observe an API request from this tab before direct API checks.');
+  return page.evaluate(async ({ origin, bearer, method, pathname, body, tabId }) => {
+    const headers = { Authorization: bearer, 'X-MedSoft-Tab-Id': tabId };
     if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
       const csrfResponse = await fetch(origin + '/api/auth/csrf', { credentials: 'include', headers });
       if (!csrfResponse.ok) return { status: csrfResponse.status(), body: null };
@@ -47,7 +66,7 @@ async function apiRequest(page, bearer, method, pathname, body = undefined) {
     const response = await fetch(origin + pathname, { method, credentials: 'include', headers,
       body: body === undefined ? undefined : JSON.stringify(body) });
     return { status: response.status, body: response.ok && response.status !== 204 ? await response.json() : null };
-  }, { origin: apiOrigin, bearer, method, pathname, body });
+  }, { origin: apiOrigin, bearer, method, pathname, body, tabId });
 }
 
 async function login(page, credentials, administrator = false, code = null) {
@@ -142,6 +161,7 @@ async function verifyRevocation(page, administratorBearer, credentials, accountI
   assert(browser, 'The revocation scenario requires an independent browser context.');
   const context = await browser.newContext();
   try {
+    await bufferBrowserApiResponses(context);
     const employee = await context.newPage();
     await employee.goto(webOrigin + '/login');
     const authenticated = await login(employee, credentials);
@@ -160,6 +180,118 @@ async function verifyRevocation(page, administratorBearer, credentials, accountI
   } finally {
     await context.close();
     if (restore) await restore();
+  }
+}
+
+async function restoreTab(page, userName) {
+  const tabId = tabIds.get(page);
+  const [response] = await Promise.all([
+    apiResponse(page, '/api/auth/refresh', 200, 'POST'),
+    page.reload()
+  ]);
+  const tokens = await response.json();
+  assert.equal(tokens.session.userName, userName, 'Reload must restore the user belonging to this tab.');
+  assert.equal(tabIds.get(page), tabId, 'Reload must preserve the tab identifier.');
+  await page.locator('.mode-label').filter({ hasText: userName + ' ·' }).waitFor();
+  return tokens;
+}
+
+async function assertSession(page, tokens, userName) {
+  const session = await apiRequest(page, 'Bearer ' + tokens.accessToken, 'GET', '/api/auth/session');
+  assert.equal(session.status, 200, 'Another tab must not revoke this tab access token.');
+  assert.equal(session.body.userName, userName, 'A tab must retain its own account identity.');
+}
+
+async function verifyParallelTabs(administrator, administratorBearer, administratorName, doctor, nurse, evidence) {
+  const context = administrator.context();
+  const pages = [];
+  const administratorTokens = { accessToken: administratorBearer.slice('Bearer '.length) };
+  try {
+    const doctorPage = await context.newPage();
+    pages.push(doctorPage);
+    await doctorPage.goto(webOrigin + '/login');
+    await doctorPage.getByLabel('Логин', { exact: true }).waitFor();
+    let doctorTokens = await login(doctorPage, doctor);
+    const nursePage = await context.newPage();
+    pages.push(nursePage);
+    await nursePage.goto(webOrigin + '/login');
+    await nursePage.getByLabel('Логин', { exact: true }).waitFor();
+    let nurseTokens = await login(nursePage, nurse);
+
+    const identifiers = [administrator, doctorPage, nursePage].map(page => tabIds.get(page));
+    assert.equal(new Set(identifiers).size, 3, 'Pages in one browser context must receive independent tab identifiers.');
+    const cookies = await context.cookies(apiOrigin);
+    for (const tabId of identifiers) {
+      const cookie = cookies.find(item => item.name === 'MedSoft.Refresh.' + tabId);
+      assert(cookie?.httpOnly && cookie.secure && cookie.path === '/',
+        'Each tab must have an independent HttpOnly Secure refresh cookie.');
+    }
+    await Promise.all([
+      assertSession(administrator, administratorTokens, administratorName),
+      assertSession(doctorPage, doctorTokens, doctor.userName),
+      assertSession(nursePage, nurseTokens, nurse.userName)
+    ]);
+    const mutations = await Promise.all([
+      apiRequest(doctorPage, 'Bearer ' + doctorTokens.accessToken, 'POST', '/api/patients', {
+        firstName: 'Врач', lastName: 'Параллельный', birthDate: '2000-01-01', sex: 'Unknown'
+      }),
+      apiRequest(nursePage, 'Bearer ' + nurseTokens.accessToken, 'POST', '/api/patients', {
+        firstName: 'Медсестра', lastName: 'Параллельный', birthDate: '2000-01-02', sex: 'Unknown'
+      })
+    ]);
+    assert(mutations.every(result => result.status === 201),
+      'Different accounts in tabs sharing browser cookies must perform mutations concurrently.');
+    evidence.differentAccountsMutateInParallel = true;
+    for (let round = 0; round < 2; round++) {
+      [doctorTokens, nurseTokens] = await Promise.all([
+        restoreTab(doctorPage, doctor.userName), restoreTab(nursePage, nurse.userName)
+      ]);
+      await assertSession(administrator, administratorTokens, administratorName);
+    }
+    evidence.differentAccountsReloadIndependently = true;
+
+    const [duplicate] = await Promise.all([
+      context.waitForEvent('page'),
+      doctorPage.evaluate(origin => { window.open(origin + '/login', '_blank'); }, webOrigin)
+    ]);
+    pages.push(duplicate);
+    await duplicate.getByLabel('Логин', { exact: true }).waitFor();
+    let duplicateTokens = await login(duplicate, doctor);
+    assert.notEqual(tabIds.get(duplicate), tabIds.get(doctorPage),
+      'An opener-created tab must not reuse the copied sessionStorage identifier.');
+    const decode = token => JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString());
+    const first = decode(doctorTokens.accessToken);
+    const second = decode(duplicateTokens.accessToken);
+    assert.equal(first.sub, second.sub, 'Both independent sessions must belong to the same doctor.');
+    assert.notEqual(first.sid, second.sid, 'The same account must receive independent session families in separate tabs.');
+    assert.notEqual(first.jti, second.jti, 'The same account must receive independent session rows in separate tabs.');
+    await assertSession(doctorPage, doctorTokens, doctor.userName);
+    [doctorTokens, duplicateTokens] = await Promise.all([
+      restoreTab(doctorPage, doctor.userName), restoreTab(duplicate, doctor.userName)
+    ]);
+    await Promise.all([
+      assertSession(doctorPage, doctorTokens, doctor.userName),
+      assertSession(duplicate, duplicateTokens, doctor.userName),
+      assertSession(nursePage, nurseTokens, nurse.userName)
+    ]);
+    evidence.sameAccountTabsHaveIndependentSessions = true;
+    evidence.openerTabStorageIsolated = true;
+
+    await logout(duplicate);
+    await duplicate.reload();
+    await duplicate.getByLabel('Логин', { exact: true }).waitFor();
+    await logout(nursePage);
+    await Promise.all([
+      assertSession(administrator, administratorTokens, administratorName),
+      assertSession(doctorPage, doctorTokens, doctor.userName)
+    ]);
+    doctorTokens = await restoreTab(doctorPage, doctor.userName);
+    await assertSession(doctorPage, doctorTokens, doctor.userName);
+    evidence.logoutDoesNotAffectOtherTabs = true;
+    await logout(doctorPage);
+    await assertSession(administrator, administratorTokens, administratorName);
+  } finally {
+    await Promise.all(pages.map(page => page.close()));
   }
 }
 
@@ -297,8 +429,8 @@ export async function verifyBrowserSystem(page, credentials, evidence) {
     const administratorBearer = bearers.get(administratorName);
     await visibleRevocation(page, administratorBearer, account.account.id, 'password-reset', 0);
     evidence.zeroRevocationCountVisible = true;
-    const mutation = await page.evaluate(async ({ origin, bearer }) => {
-      const headers = { Authorization: bearer };
+    const mutation = await page.evaluate(async ({ origin, bearer, tabId }) => {
+      const headers = { Authorization: bearer, 'X-MedSoft-Tab-Id': tabId };
       const csrf = await fetch(origin + '/api/auth/csrf', { credentials: 'include', headers }).then(response => response.json());
       headers['X-CSRF-TOKEN'] = csrf.requestToken;
       headers['Content-Type'] = 'application/json';
@@ -306,7 +438,7 @@ export async function verifyBrowserSystem(page, credentials, evidence) {
       const response = await fetch(origin + '/api/medical-workers', { method: 'POST', credentials: 'include', headers,
         body: JSON.stringify({ firstName: 'Аудит', lastName: 'Браузерный', position: 'Проверка аудита', role: 'other' }) });
       return { status: response.status, workerId: response.ok ? (await response.json()).id : null, startedAt };
-    }, { origin: apiOrigin, bearer: administratorBearer });
+    }, { origin: apiOrigin, bearer: administratorBearer, tabId: tabIds.get(page) });
     assert.equal(mutation.status, 201, 'The audit latency mutation must succeed.');
     const audit = await apiRequest(page, administratorBearer, 'GET', '/api/audit?Page=1&PageSize=100');
     assert.equal(audit.status, 200, 'The administrator must read the real audit endpoint.');
@@ -357,6 +489,9 @@ export async function verifyBrowserSystem(page, credentials, evidence) {
     const reader = await createAccount(page, administratorBearer, 'laboratory-technician', 'browser.lab');
     const other = await createAccount(page, administratorBearer, 'other', 'browser.other');
     evidence.otherRoleDefaultsOnServer = true;
+    evidence.stage = 'parallel-browser-tabs';
+    await verifyParallelTabs(page, administratorBearer, administratorName, doctorCredentials, nurse, evidence);
+    evidence.stage = 'clinical-roles';
     await logout(page);
     await login(page, nurse);
     await page.getByRole('link', { name: 'Добавить пациента', exact: true }).click();

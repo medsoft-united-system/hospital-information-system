@@ -8,7 +8,8 @@ using Microsoft.AspNetCore.Components.WebAssembly.Http;
 namespace HospitalInformationSystem.Web.Authentication;
 
 public sealed class BrowserSessionHandler(SessionState session, AntiforgeryTokenStore tokens,
-    AuthenticationOperationCoordinator operations, Uri? apiOrigin = null) : DelegatingHandler
+    AuthenticationOperationCoordinator operations, Uri? apiOrigin = null,
+    IBrowserTabSession? tabSession = null) : DelegatingHandler
 {
     private readonly SemaphoreSlim _tokenLock = new(1, 1);
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
@@ -24,7 +25,8 @@ public sealed class BrowserSessionHandler(SessionState session, AntiforgeryToken
         var originalSession = session.Current;
         using var retry = await CloneAsync(request, cancellationToken);
         RequireSessionVersion(version);
-        Prepare(request);
+        await PrepareAsync(request, cancellationToken);
+        RequireSessionVersion(version);
         await AddAntiforgeryAsync(request, version, cancellationToken);
         RequireSessionVersion(version);
         var response = await base.SendAsync(request, cancellationToken);
@@ -46,7 +48,8 @@ public sealed class BrowserSessionHandler(SessionState session, AntiforgeryToken
         {
             var retryVersion = refreshedVersion.Value;
             RequireSessionVersion(retryVersion);
-            Prepare(retry);
+            await PrepareAsync(retry, cancellationToken);
+            RequireSessionVersion(retryVersion);
             await AddAntiforgeryAsync(retry, retryVersion, cancellationToken);
             RequireSessionVersion(retryVersion);
             var retried = await base.SendAsync(retry, cancellationToken);
@@ -73,7 +76,8 @@ public sealed class BrowserSessionHandler(SessionState session, AntiforgeryToken
                        session.AccessToken is not null ? session.Version : null;
             tokens.Reset();
             using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(uri, "/api/auth/refresh"));
-            Prepare(request);
+            await PrepareAsync(request, cancellationToken);
+            RequireSessionVersion(version);
             await AddAntiforgeryAsync(request, version, cancellationToken);
             RequireSessionVersion(version);
             using var response = await base.SendAsync(request, cancellationToken);
@@ -121,8 +125,16 @@ public sealed class BrowserSessionHandler(SessionState session, AntiforgeryToken
         }
     }
 
-    private void Prepare(HttpRequestMessage request)
+    private async Task PrepareAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        if (tabSession is not null)
+        {
+            var id = await tabSession.GetIdAsync(cancellationToken);
+            if (!BrowserTabSession.IsValid(id))
+                throw new InvalidOperationException("Некорректный идентификатор сессии вкладки.");
+            request.Headers.Remove(BrowserTabSession.HeaderName);
+            request.Headers.Add(BrowserTabSession.HeaderName, id);
+        }
         request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
         request.Headers.Authorization = session.AccessToken is { } access ? new AuthenticationHeaderValue("Bearer", access) : null;
         request.Headers.Remove("X-CSRF-TOKEN");
@@ -141,7 +153,8 @@ public sealed class BrowserSessionHandler(SessionState session, AntiforgeryToken
             {
                 var version = tokens.Version;
                 using var csrf = new HttpRequestMessage(HttpMethod.Get, new Uri(request.RequestUri!, "/api/auth/csrf"));
-                Prepare(csrf);
+                await PrepareAsync(csrf, cancellationToken);
+                RequireSessionVersion(sessionVersion);
                 using var response = await base.SendAsync(csrf, cancellationToken);
                 var result = await ApiResponseReader.ReadAsync<AntiforgeryTokenDto>(response, cancellationToken);
                 RequireSessionVersion(sessionVersion);

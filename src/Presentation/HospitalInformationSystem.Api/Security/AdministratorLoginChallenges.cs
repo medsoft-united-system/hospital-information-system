@@ -27,7 +27,8 @@ public sealed class AdministratorLoginChallenges(IDataProtectionProvider protect
             {
                 AbsoluteExpirationRelativeToNow = Lifetime, Size = 1
             });
-        context.Response.Cookies.Append(CookieName, _protector.Protect(attempt.Id), Options(attempt.ExpiresAtUtc));
+        context.Response.Cookies.Append(BrowserTabCookieNames.ForRequest(context, CookieName),
+            _protector.Protect(attempt.Id), Options(attempt.ExpiresAtUtc));
         return attempt;
     }
 
@@ -95,7 +96,7 @@ public sealed class AdministratorLoginChallenges(IDataProtectionProvider protect
         var id = ReadId(context);
         if (id is not null)
             lock (_gate) _pending.Remove(id);
-        context.Response.Cookies.Delete(CookieName, Options(null));
+        context.Response.Cookies.Delete(BrowserTabCookieNames.ForRequest(context, CookieName), Options(null));
     }
 
     private AdministratorLoginAttempt? Find(string id)
@@ -108,7 +109,8 @@ public sealed class AdministratorLoginChallenges(IDataProtectionProvider protect
 
     private string? ReadId(HttpContext context)
     {
-        if (context.Request.Cookies[CookieName] is not { Length: > 0 and <= 2048 } value) return null;
+        if (context.Request.Cookies[BrowserTabCookieNames.ForRequest(context, CookieName)] is not
+            { Length: > 0 and <= 2048 } value) return null;
         try
         {
             var id = _protector.Unprotect(value);

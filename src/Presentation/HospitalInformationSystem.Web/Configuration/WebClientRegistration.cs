@@ -19,6 +19,8 @@ public static class WebClientRegistration
         services.AddScoped<SessionState>();
         services.AddScoped<AntiforgeryTokenStore>();
         services.AddScoped<AuthenticationOperationCoordinator>();
+        if (!mock.Enabled)
+            services.AddScoped<IBrowserTabSession, BrowserTabSessionAccessor>();
         if (mock.Enabled)
         {
             services.AddScoped<UiMockState>();
@@ -27,7 +29,8 @@ public static class WebClientRegistration
 
         services.AddScoped(provider => new HttpClient(new BrowserSessionHandler(
             provider.GetRequiredService<SessionState>(), provider.GetRequiredService<AntiforgeryTokenStore>(),
-            provider.GetRequiredService<AuthenticationOperationCoordinator>(), apiOrigin)
+            provider.GetRequiredService<AuthenticationOperationCoordinator>(), apiOrigin,
+            mock.Enabled ? null : provider.GetRequiredService<IBrowserTabSession>())
         {
             InnerHandler = mock.Enabled ? provider.GetRequiredService<UiMockHttpMessageHandler>() : new HttpClientHandler()
         })

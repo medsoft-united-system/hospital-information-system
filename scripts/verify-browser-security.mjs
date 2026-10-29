@@ -6,7 +6,7 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright';
-import { verifyBrowserSystem } from './verify-browser-system.mjs';
+import { bufferBrowserApiResponses, verifyBrowserSystem } from './verify-browser-system.mjs';
 
 function required(name) {
   const value = process.env[name];
@@ -30,7 +30,8 @@ assert(existsSync(path.join(webRoot, 'index.html')), 'Publish the Web applicatio
 const temporary = mkdtempSync(path.join(os.tmpdir(), 'medsoft-browser-security-'));
 const browsers = [];
 const evidence = { certificateRejectedWithoutCa: false, trustedHttps: false, setupPreflight: false,
-  bearerPreflight: false, unconfiguredHeaderRejected: false, login: false, reloadRefresh: false, logout: false,
+  bearerPreflight: false, tabHeaderPreflight: false, unconfiguredHeaderRejected: false,
+  login: false, reloadRefresh: false, logout: false,
   stage: 'initialization', preflightRequests: [], apiResponses: [] };
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json',
   '.wasm': 'application/wasm', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png',
@@ -82,7 +83,9 @@ try {
   await untrusted.close();
 
   const browser = await openBrowser(browserHome('trusted', true));
-  const page = await browser.newPage();
+  const context = await browser.newContext();
+  await bufferBrowserApiResponses(context);
+  const page = await context.newPage();
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Network.enable');
   cdp.on('Network.requestWillBeSent', ({ request }) => {
@@ -110,15 +113,19 @@ try {
   }
   await page.getByLabel('Логин', { exact: true }).waitFor();
   evidence.trustedHttps = true;
+  const tabId = await page.evaluate(() => sessionStorage.getItem('MedSoft.TabId'));
+  assert.match(tabId ?? '', /^[a-f0-9]{32}$/, 'The browser must retain a non-secret per-tab identifier.');
 
-  const setupStatus = await page.evaluate(async () => {
-    const csrf = await fetch('https://localhost:5201/api/auth/csrf', { credentials: 'include' }).then(response => response.json());
+  const setupStatus = await page.evaluate(async tabId => {
+    const headers = { 'X-MedSoft-Tab-Id': tabId };
+    const csrf = await fetch('https://localhost:5201/api/auth/csrf', { credentials: 'include', headers })
+      .then(response => response.json());
     const response = await fetch('https://localhost:5201/api/auth/setup/begin', { method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf.requestToken,
+      headers: { ...headers, 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf.requestToken,
         'X-Setup-Token': 'synthetic-invalid-owner-for-cors-verification' },
       body: JSON.stringify({ password: 'Synthetic.Cors-Only.425!', confirmPassword: 'Synthetic.Cors-Only.425!' }) });
     return response.status;
-  });
+  }, tabId);
   assert.equal(setupStatus, 403, 'CORS must allow the setup headers while the API rejects an invalid owner token.');
   evidence.setupPreflight = true;
 
@@ -137,13 +144,17 @@ try {
   await Promise.all([page.waitForURL('**/medical/patients'), page.getByRole('button', { name: 'Войти', exact: true }).click()]);
   await page.getByRole('heading', { name: 'Пациенты', exact: true }).waitFor();
   evidence.login = true;
-  const csrfAfterLogin = await page.evaluate(async () => {
+  const csrfAfterLogin = await page.evaluate(async tabId => {
     const response = await fetch('https://localhost:5201/api/patients', {
-      credentials: 'include', headers: { Authorization: 'Bearer synthetic-invalid-token-for-cors-verification' } });
+      credentials: 'include', headers: { Authorization: 'Bearer synthetic-invalid-token-for-cors-verification',
+        'X-MedSoft-Tab-Id': tabId } });
     return response.status;
-  });
+  }, tabId);
   assert.equal(csrfAfterLogin, 401, 'CORS must permit Authorization while the API rejects an invalid bearer.');
   evidence.bearerPreflight = true;
+  assert(evidence.preflightRequests.some(request => request.headers.includes('x-medsoft-tab-id')),
+    'The API must allow the per-tab header in real browser CORS preflights.');
+  evidence.tabHeaderPreflight = true;
 
   const refreshesBeforeReload = successfulRefreshes;
   evidence.stage = 'reload';
@@ -158,11 +169,13 @@ try {
   await Promise.all([page.waitForURL(url => url.pathname === '/login'), page.getByRole('button', { name: 'Выйти', exact: true }).click()]);
   await page.getByLabel('Логин', { exact: true }).waitFor();
   assert(successfulLogout, 'The UI must confirm server-side logout.');
-  const refreshAfterLogout = await page.evaluate(async () => {
-    const csrf = await fetch('https://localhost:5201/api/auth/csrf', { credentials: 'include' }).then(response => response.json());
+  const refreshAfterLogout = await page.evaluate(async tabId => {
+    const headers = { 'X-MedSoft-Tab-Id': tabId };
+    const csrf = await fetch('https://localhost:5201/api/auth/csrf', { credentials: 'include', headers })
+      .then(response => response.json());
     return (await fetch('https://localhost:5201/api/auth/refresh', { method: 'POST', credentials: 'include',
-      headers: { 'X-CSRF-TOKEN': csrf.requestToken } })).status;
-  });
+      headers: { ...headers, 'X-CSRF-TOKEN': csrf.requestToken } })).status;
+  }, tabId);
   assert.equal(refreshAfterLogout, 401, 'Logout must prevent refresh-cookie restoration.');
   evidence.logout = true;
   evidence.stage = 'complete';

@@ -42,6 +42,7 @@ if (!app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Testing"
 app.UseMiddleware<ApiTransportSecurityMiddleware>();
 app.UseRouting();
 app.UseCors();
+app.UseMiddleware<BrowserTabSessionMiddleware>();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();

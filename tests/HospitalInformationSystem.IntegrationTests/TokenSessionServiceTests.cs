@@ -6,7 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Audit;
 using HospitalInformationSystem.Contracts.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Identity;
@@ -19,8 +18,8 @@ using Xunit;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
-public sealed class TokenSessionServiceTests(SecureHospitalApiFactory factory, TokenSigningFixture signing)
-    : IClassFixture<SecureHospitalApiFactory>, IClassFixture<TokenSigningFixture>
+public sealed class TokenSessionServiceTests(SecureHospitalApiFactory factory)
+    : IClassFixture<SecureHospitalApiFactory>
 {
     [Fact]
     public async Task IssueSession_ActiveMedicalAccount_ShouldStoreOnlyRefreshHashAndIssueValidRs256Access()
@@ -199,10 +198,9 @@ public sealed class TokenSessionServiceTests(SecureHospitalApiFactory factory, T
         return await Service(scope.ServiceProvider).ValidatePrincipalAsync(principal, CancellationToken.None);
     }
 
-    private TokenSessionService Service(IServiceProvider services) => new(services.GetRequiredService<HospitalDbContext>(),
-        services.GetRequiredService<IAccountService>(), signing.Keys, signing.Options, TimeProvider.System,
-        services.GetRequiredService<IAuditWriter>(), services.GetRequiredService<IAuditActorAccessor>());
+    private static TokenSessionService Service(IServiceProvider services) =>
+        services.GetRequiredService<TokenSessionService>();
 
     private ClaimsPrincipal Principal(TokenSessionResult result) => new JwtSecurityTokenHandler { MapInboundClaims = false }
-        .ValidateToken(result.Tokens.AccessToken, signing.Keys.ValidationParameters, out _);
+        .ValidateToken(result.Tokens.AccessToken, factory.Services.GetRequiredService<JwtKeyMaterial>().ValidationParameters, out _);
 }
