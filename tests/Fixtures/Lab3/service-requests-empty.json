@@ -1,0 +1,11 @@
+{
+  "resourceType": "Bundle",
+  "type": "searchset",
+  "total": 0,
+  "link": [
+    {
+      "relation": "self",
+      "url": "https://his-api:5201/fhir/ServiceRequest?status=active&_count=20"
+    }
+  ]
+}
