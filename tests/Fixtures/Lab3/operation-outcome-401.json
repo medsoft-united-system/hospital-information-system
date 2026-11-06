@@ -1,0 +1,18 @@
+{
+  "resourceType": "OperationOutcome",
+  "issue": [
+    {
+      "severity": "error",
+      "code": "login",
+      "details": {
+        "coding": [
+          {
+            "system": "urn:medsoft:lab3:error",
+            "code": "unauthorized"
+          }
+        ]
+      },
+      "diagnostics": "Требуется действующий сервисный токен доступа."
+    }
+  ]
+}

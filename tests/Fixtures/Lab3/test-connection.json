@@ -1,0 +1,6 @@
+{
+  "status": "connected",
+  "serviceAccountId": "55555555-5555-4555-8555-555555555555",
+  "role": "LIS",
+  "fhirVersion": "5.0.0"
+}

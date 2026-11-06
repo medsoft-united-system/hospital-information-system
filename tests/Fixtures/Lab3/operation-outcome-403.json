@@ -1,0 +1,18 @@
+{
+  "resourceType": "OperationOutcome",
+  "issue": [
+    {
+      "severity": "error",
+      "code": "forbidden",
+      "details": {
+        "coding": [
+          {
+            "system": "urn:medsoft:lab3:error",
+            "code": "forbidden"
+          }
+        ]
+      },
+      "diagnostics": "Сервисному аккаунту запрещена эта операция."
+    }
+  ]
+}

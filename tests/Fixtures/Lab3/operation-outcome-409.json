@@ -1,0 +1,18 @@
+{
+  "resourceType": "OperationOutcome",
+  "issue": [
+    {
+      "severity": "error",
+      "code": "conflict",
+      "details": {
+        "coding": [
+          {
+            "system": "urn:medsoft:lab3:error",
+            "code": "result_already_exists"
+          }
+        ]
+      },
+      "diagnostics": "Результат этого назначения уже зарегистрирован."
+    }
+  ]
+}

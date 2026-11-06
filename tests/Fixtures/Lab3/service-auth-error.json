@@ -1,0 +1,5 @@
+{
+  "code": "invalid_credentials",
+  "message": "Недействительные учётные данные сервисного аккаунта.",
+  "traceId": "fixture-trace"
+}

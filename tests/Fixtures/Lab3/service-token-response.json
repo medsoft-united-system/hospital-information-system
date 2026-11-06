@@ -1,0 +1,6 @@
+{
+  "accessToken": "fixture-access-token-not-a-jwt",
+  "accessTokenExpiresAt": "2026-11-05T10:10:00Z",
+  "refreshToken": "fixture-refresh-token-not-a-secret",
+  "refreshTokenExpiresAt": "2026-11-12T10:00:00Z"
+}

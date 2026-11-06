@@ -1,0 +1,18 @@
+{
+  "resourceType": "OperationOutcome",
+  "issue": [
+    {
+      "severity": "error",
+      "code": "not-found",
+      "details": {
+        "coding": [
+          {
+            "system": "urn:medsoft:lab3:error",
+            "code": "not_found"
+          }
+        ]
+      },
+      "diagnostics": "Запрошенный ресурс не найден."
+    }
+  ]
+}

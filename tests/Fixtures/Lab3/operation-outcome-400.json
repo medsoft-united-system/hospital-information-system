@@ -1,0 +1,18 @@
+{
+  "resourceType": "OperationOutcome",
+  "issue": [
+    {
+      "severity": "error",
+      "code": "invalid",
+      "details": {
+        "coding": [
+          {
+            "system": "urn:medsoft:lab3:error",
+            "code": "invalid_resource"
+          }
+        ]
+      },
+      "diagnostics": "Ресурс не соответствует согласованному профилю FHIR R5."
+    }
+  ]
+}

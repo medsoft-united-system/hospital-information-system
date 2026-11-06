@@ -1,0 +1,18 @@
+{
+  "resourceType": "OperationOutcome",
+  "issue": [
+    {
+      "severity": "error",
+      "code": "exception",
+      "details": {
+        "coding": [
+          {
+            "system": "urn:medsoft:lab3:error",
+            "code": "internal_error"
+          }
+        ]
+      },
+      "diagnostics": "Не удалось обработать запрос. Сообщите идентификатор запроса администратору."
+    }
+  ]
+}
