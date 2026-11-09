@@ -107,7 +107,7 @@ public static class ApiSecurityRegistration
         services.AddRateLimiter(options =>
         {
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-                context.Request.Path.StartsWithSegments("/api")
+                context.Request.Path.StartsWithSegments("/api") || context.Request.Path.StartsWithSegments("/fhir")
                     ? RateLimitPartition.GetConcurrencyLimiter("api", _ => new ConcurrencyLimiterOptions
                     {
                         PermitLimit = 32, QueueLimit = 0
