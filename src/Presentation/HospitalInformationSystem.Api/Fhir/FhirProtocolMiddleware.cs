@@ -1,6 +1,7 @@
 using FluentValidation;
 using HospitalInformationSystem.Application.Common;
 using HospitalInformationSystem.Domain.Common;
+using HospitalInformationSystem.Domain.MedicalRecords;
 
 namespace HospitalInformationSystem.Api.Fhir;
 
@@ -20,9 +21,11 @@ public sealed class FhirProtocolMiddleware(RequestDelegate next, ILogger<FhirPro
         FhirHttpException? error = null;
         try
         {
-            if (!HttpMethods.IsGet(context.Request.Method))
+            var observation = context.Request.Path.Equals("/fhir/Observation", StringComparison.OrdinalIgnoreCase) ||
+                              context.Request.Path.Equals("/fhir/Observation/", StringComparison.OrdinalIgnoreCase);
+            if (!HttpMethods.IsGet(context.Request.Method) && !(observation && HttpMethods.IsPost(context.Request.Method)))
             {
-                context.Response.Headers.Allow = "GET";
+                context.Response.Headers.Allow = observation ? "GET, POST" : "GET";
                 throw FromStatus(405);
             }
             EnsureJsonAccepted(context.Request);
@@ -93,6 +96,8 @@ public sealed class FhirProtocolMiddleware(RequestDelegate next, ILogger<FhirPro
         DomainValidationException or ValidationException =>
             new FhirHttpException(400, "invalid_resource", "Некорректные параметры FHIR-запроса."),
         ServiceAccountAccessDeniedException or ClinicalAccessDeniedException => FromStatus(403),
+        LaboratoryAnalysisResultAlreadyExistsException =>
+            new FhirHttpException(409, "result_already_exists", "По этому назначению уже сохранён результат."),
         BusinessConflictException or BusinessRuleConflictException => FromStatus(409),
         BadHttpRequestException request => FromStatus(request.StatusCode),
         _ => FromStatus(500)

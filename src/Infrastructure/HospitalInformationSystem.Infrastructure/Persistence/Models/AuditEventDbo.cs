@@ -7,6 +7,7 @@ public sealed class AuditEventDbo
     public string EventType { get; set; } = string.Empty;
     public string ActorKind { get; set; } = string.Empty;
     public Guid? ActorUserId { get; set; }
+    public Guid? ActorServiceAccountId { get; set; }
     public string ActorDisplayName { get; set; } = string.Empty;
     public string? RequestId { get; set; }
     public string? Component { get; set; }

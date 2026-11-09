@@ -15,6 +15,9 @@ public sealed class AuditEventFactory(TimeProvider timeProvider)
             throw new DomainValidationException("Указан неизвестный тип события или инициатора аудита.");
         if ((actor.Kind == AuditActorKind.User) != actor.UserId.HasValue || actor.UserId == Guid.Empty)
             throw new DomainValidationException("Проверенный идентификатор обязателен только для пользователя.");
+        if ((actor.Kind == AuditActorKind.ServiceAccount) != actor.ServiceAccountId.HasValue ||
+            actor.ServiceAccountId == Guid.Empty)
+            throw new DomainValidationException("Проверенный идентификатор сервиса обязателен только для сервисного аккаунта.");
         RequireText(message, 2000, "описание события");
         RequireText(actor.DisplayName, 256, "имя инициатора");
         OptionalText(actor.RequestId, 128, "идентификатор запроса");

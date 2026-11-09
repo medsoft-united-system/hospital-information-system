@@ -1,4 +1,5 @@
 using HospitalInformationSystem.Application.Fhir;
+using HospitalInformationSystem.Application.MedicalRecords.Commands.RecordLaboratoryAnalysisResult;
 using HospitalInformationSystem.Contracts.ServiceAuth;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -11,8 +12,27 @@ namespace HospitalInformationSystem.Api.Fhir;
 [Authorize(AuthenticationSchemes = ServiceAuthenticationDefaults.Scheme,
     Policy = ServiceAuthenticationDefaults.Policies.FhirRead)]
 public sealed class FhirController(ISender sender, FhirResponseWriter writer, FhirSearchParser parser,
-    FhirCursorProtector cursors, FhirEndpointOptions endpoint) : ControllerBase
+    FhirCursorProtector cursors, FhirEndpointOptions endpoint, FhirObservationReader observations) : ControllerBase
 {
+    [HttpPost("Observation")]
+    [Authorize(AuthenticationSchemes = ServiceAuthenticationDefaults.Scheme,
+        Policy = ServiceAuthenticationDefaults.Policies.ObservationCreate)]
+    [RequestSizeLimit(64 * 1024)]
+    public async Task<IActionResult> CreateObservationAsync(CancellationToken cancellationToken)
+    {
+        FhirSearchParser.RejectQuery(Request.Query);
+        var input = await observations.ReadAsync(Request, cancellationToken);
+        var order = await sender.Send(new GetFhirServiceRequestQuery(input.RequestId), cancellationToken);
+        var result = await sender.Send(new RecordLaboratoryAnalysisResultCommand(input.RequestId, input.PatientId,
+            input.LoincCode, input.Value, input.IssuedAtUtc), cancellationToken);
+        var observation = FhirResourceMapper.ToObservation(new FhirObservationReadModel(result.Id,
+            result.LaboratoryAnalysisRequestId, result.PatientId, order.LoincCode, order.DisplayName, result.Value,
+            result.IssuedAtUtc));
+        Response.Headers.Location = endpoint.PublicBaseUrl + "/Observation/" + result.Id.ToString("D");
+        await writer.WriteAsync(HttpContext, observation, StatusCodes.Status201Created, cancellationToken);
+        return new EmptyResult();
+    }
+
     [HttpGet("metadata")]
     [AllowAnonymous]
     public async Task<IActionResult> MetadataAsync(CancellationToken cancellationToken)

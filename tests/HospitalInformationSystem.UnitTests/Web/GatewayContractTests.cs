@@ -108,6 +108,26 @@ public sealed class GatewayContractTests
         eventAction.Should().Throw<JsonException>();
     }
 
+    [Fact]
+    public void Serialize_ServiceAuditActor_ShouldKeepSeparateIdAndPreserveLegacyContract()
+    {
+        var id = Guid.NewGuid();
+        var service = new AuditActorDto(AuditActorKind.ServiceAccount, null, "lis.external", "request", null, id);
+
+        var json = JsonSerializer.Serialize(service, JsonOptions);
+        var restored = JsonSerializer.Deserialize<AuditActorDto>(json, JsonOptions);
+        var legacy = JsonSerializer.Deserialize<AuditActorDto>(
+            """{"kind":"system","userId":null,"displayName":"System","requestId":null,"component":"HIS"}""",
+            JsonOptions);
+
+        json.Should().Contain("\"kind\":\"serviceAccount\"")
+            .And.Contain($"\"serviceAccountId\":\"{id:D}\"");
+        restored!.ServiceAccountId.Should().Be(id);
+        restored.UserId.Should().BeNull();
+        legacy!.ServiceAccountId.Should().BeNull();
+        JsonSerializer.Serialize(legacy, JsonOptions).Should().NotContain("serviceAccountId");
+    }
+
     [Theory]
     [InlineData(HttpStatusCode.NotFound)]
     [InlineData(HttpStatusCode.NotImplemented)]

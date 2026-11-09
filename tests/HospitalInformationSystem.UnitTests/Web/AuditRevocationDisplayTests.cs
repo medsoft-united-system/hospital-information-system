@@ -48,10 +48,23 @@ public sealed class AuditRevocationDisplayTests
             .And.NotContain("Отозвано refresh-токенов");
     }
 
-    private static async Task<string> RenderAsync(IReadOnlyDictionary<string, JsonElement>? metadata)
+    [Fact]
+    public async Task Render_ServiceActor_ShouldShowServiceNameAndIdWithoutHumanLabel()
+    {
+        var serviceId = Guid.NewGuid();
+        var actor = new AuditActorDto(AuditActorKind.ServiceAccount, null, "lis.external", "request", null, serviceId);
+
+        var html = await RenderAsync(new Dictionary<string, JsonElement>(), actor);
+
+        html.Should().Contain("Сервисный аккаунт").And.Contain("lis.external")
+            .And.Contain($"ID сервиса: {serviceId}").And.NotContain("Пользователь");
+    }
+
+    private static async Task<string> RenderAsync(IReadOnlyDictionary<string, JsonElement>? metadata,
+        AuditActorDto? actor = null)
     {
         var item = new AuditEventDto(Guid.NewGuid(), DateTimeOffset.UtcNow, AuditEventType.AccountChanged,
-            new AuditActorDto(AuditActorKind.User, Guid.NewGuid(), "Администратор", null, null),
+            actor ?? new AuditActorDto(AuditActorKind.User, Guid.NewGuid(), "Администратор", null, null),
             "Сброшен пароль учётной записи.", metadata!);
         var services = new ServiceCollection().AddLogging();
         await using var provider = services.BuildServiceProvider();

@@ -28,6 +28,12 @@ public sealed class FhirHumanBoundaryTests(SecureHospitalApiFactory factory) : I
             var outcome = Parse<OperationOutcome>(await response.Content.ReadAsStringAsync());
             outcome.Issue.Single().Code.Should().Be(OperationOutcome.IssueType.Login);
         }
+        client.DefaultRequestHeaders.Remove("X-CSRF-TOKEN");
+        using var create = await client.PostAsync("/fhir/Observation", new StringContent("{}",
+            System.Text.Encoding.UTF8, "application/fhir+json"));
+        create.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        Parse<OperationOutcome>(await create.Content.ReadAsStringAsync()).Issue.Single().Code
+            .Should().Be(OperationOutcome.IssueType.Login);
         (await client.GetAsync("/api/auth/session")).StatusCode.Should().Be(HttpStatusCode.OK);
         using var metadata = await client.GetAsync("/fhir/metadata");
         metadata.StatusCode.Should().Be(HttpStatusCode.OK);

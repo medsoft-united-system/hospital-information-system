@@ -43,7 +43,7 @@ public static partial class MedicalRecordService
             request.LoincCodeSnapshot != loincCode?.Trim())
             throw new DomainValidationException("Пациент или код LOINC не соответствуют назначенному анализу.");
         if (request.Status != LaboratoryAnalysisRequestStatus.Active || request.Result is not null)
-            throw new BusinessRuleConflictException("Результат этого анализа уже зарегистрирован.");
+            throw new LaboratoryAnalysisResultAlreadyExistsException();
         var at = LaboratoryEventTime(record, now);
         var result = LaboratoryAnalysisResultFactory.Create(request.Id, patientId, value, issuedAtUtc, at,
             serviceAccountId);
