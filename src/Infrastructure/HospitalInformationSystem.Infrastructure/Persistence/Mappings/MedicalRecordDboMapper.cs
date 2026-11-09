@@ -15,6 +15,10 @@ internal static partial class MedicalRecordDboMapper
     public static partial PrescriptionDbo ToDbo(this Prescription source);
     public static partial MedicalRecordHistoryEvent ToDomain(this MedicalRecordHistoryEventDbo source);
     public static partial MedicalRecordHistoryEventDbo ToDbo(this MedicalRecordHistoryEvent source);
+    public static partial LaboratoryAnalysisRequest ToDomain(this LaboratoryAnalysisRequestDbo source);
+    public static partial LaboratoryAnalysisRequestDbo ToDbo(this LaboratoryAnalysisRequest source);
+    public static partial LaboratoryAnalysisResult ToDomain(this LaboratoryAnalysisResultDbo source);
+    public static partial LaboratoryAnalysisResultDbo ToDbo(this LaboratoryAnalysisResult source);
 
     public static partial void UpdateDbo(this MedicalRecordDiagnosis source, MedicalRecordDiagnosisDbo target);
     public static partial void UpdateDbo(this Prescription source, PrescriptionDbo target);

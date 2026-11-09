@@ -8,5 +8,6 @@ public sealed class MedicalRecord
     public long Version { get; set; }
     public IReadOnlyCollection<MedicalRecordDiagnosis> Diagnoses { get; set; } = [];
     public IReadOnlyCollection<Prescription> Prescriptions { get; set; } = [];
+    public IReadOnlyCollection<LaboratoryAnalysisRequest> LaboratoryAnalysisRequests { get; set; } = [];
     public IReadOnlyCollection<MedicalRecordHistoryEvent> HistoryEvents { get; set; } = [];
 }

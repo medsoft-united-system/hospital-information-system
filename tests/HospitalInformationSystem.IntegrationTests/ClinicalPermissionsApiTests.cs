@@ -16,6 +16,26 @@ public sealed class ClinicalPermissionsApiTests(SecureHospitalApiFactory factory
     : IClassFixture<SecureHospitalApiFactory>
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CreateLaboratoryRequests_AnonymousOrAdministrator_ShouldNotGetClinicalAccess(bool administrator)
+    {
+        using var client = factory.CreateCookieClient();
+        await SetCsrfAsync(client);
+        if (administrator)
+        {
+            (await client.PostAsJsonAsync("/api/auth/login", factory.AdministratorLogin())).EnsureSuccessStatusCode();
+            await SetCsrfAsync(client);
+        }
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/medical-records/{Guid.NewGuid()}/laboratory-analysis-requests",
+            new { LaboratoryTestDefinitionIds = new[] { Guid.NewGuid() }, Comment = (string?)null });
+
+        response.StatusCode.Should().Be(administrator ? HttpStatusCode.Forbidden : HttpStatusCode.Unauthorized);
+    }
+
+    [Theory]
     [InlineData(WorkerRole.Doctor, true, true)]
     [InlineData(WorkerRole.Nurse, true, false)]
     [InlineData(WorkerRole.LaboratoryTechnician, false, false)]
@@ -49,6 +69,8 @@ public sealed class ClinicalPermissionsApiTests(SecureHospitalApiFactory factory
 
         var operations = new (HttpMethod Method, string Url, object? Body)[]
         {
+            (HttpMethod.Post, $"/api/medical-records/{missing}/laboratory-analysis-requests",
+                new { LaboratoryTestDefinitionIds = new[] { Guid.NewGuid() }, Comment = (string?)null }),
             (HttpMethod.Post, $"/api/medical-records/{missing}/diagnoses", new { DiagnosisId = Guid.NewGuid() }),
             (HttpMethod.Delete, $"/api/medical-records/{missing}/diagnoses/{Guid.NewGuid()}", null),
             (HttpMethod.Post, $"/api/medical-records/{missing}/prescriptions", new { Text = "Проверка доступа" }),

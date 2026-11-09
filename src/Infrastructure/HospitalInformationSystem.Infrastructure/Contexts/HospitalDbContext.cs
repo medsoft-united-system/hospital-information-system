@@ -86,6 +86,9 @@ public sealed partial class HospitalDbContext(DbContextOptions<HospitalDbContext
         if (ChangeTracker.Entries<MedicalRecordHistoryEventDbo>()
             .Any(entry => entry.State is EntityState.Modified or EntityState.Deleted))
             throw new InvalidOperationException("Сохранённые события истории нельзя изменять или удалять.");
+        if (ChangeTracker.Entries<LaboratoryAnalysisResultDbo>()
+            .Any(entry => entry.State is EntityState.Modified or EntityState.Deleted))
+            throw new InvalidOperationException("Сохранённые результаты анализов нельзя изменять или удалять.");
     }
 
     private void UpdateAccountTimestamps()

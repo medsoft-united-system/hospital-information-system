@@ -6,5 +6,7 @@ public enum MedicalRecordEventType
     DiagnosisAdded,
     DiagnosisRemoved,
     PrescriptionAdded,
-    PrescriptionCancelled
+    PrescriptionCancelled,
+    LaboratoryAnalysisRequested,
+    LaboratoryAnalysisResultRecorded
 }

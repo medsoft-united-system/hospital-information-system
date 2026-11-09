@@ -15,6 +15,7 @@ public sealed class MedicalRecordRepository(HospitalDbContext db) : IMedicalReco
     private IQueryable<MedicalRecordDbo> AggregateQuery(bool tracking) =>
         (tracking ? db.MedicalRecords : db.MedicalRecords.AsNoTracking())
         .Include(x => x.Diagnoses).Include(x => x.Prescriptions).Include(x => x.HistoryEvents)
+        .Include(x => x.LaboratoryAnalysisRequests).ThenInclude(x => x.Result)
         .AsSplitQuery();
 
     public Task<MedicalRecord?> FindAsync(Guid id, bool tracking, CancellationToken cancellationToken) =>
@@ -22,6 +23,10 @@ public sealed class MedicalRecordRepository(HospitalDbContext db) : IMedicalReco
 
     public Task<MedicalRecord?> FindByPatientAsync(Guid patientId, CancellationToken cancellationToken) =>
         ReadAsync(x => x.PatientId == patientId, tracking: false, cancellationToken);
+
+    public Task<Guid?> FindRecordIdByLaboratoryAnalysisRequestAsync(Guid id, CancellationToken cancellationToken) =>
+        db.LaboratoryAnalysisRequests.AsNoTracking().Where(x => x.Id == id)
+            .Select(x => (Guid?)x.MedicalRecordId).SingleOrDefaultAsync(cancellationToken);
 
     private async Task<MedicalRecord?> ReadAsync(
         Expression<Func<MedicalRecordDbo, bool>> predicate, bool tracking, CancellationToken cancellationToken)
@@ -61,11 +66,35 @@ public sealed class MedicalRecordRepository(HospitalDbContext db) : IMedicalReco
             else row.Prescriptions.Add(prescription.ToDbo());
         }
 
+        var analyses = row.LaboratoryAnalysisRequests.ToDictionary(x => x.Id);
+        foreach (var analysis in record.LaboratoryAnalysisRequests)
+        {
+            if (!analyses.TryGetValue(analysis.Id, out var existing))
+            {
+                row.LaboratoryAnalysisRequests.Add(analysis.ToDbo());
+                continue;
+            }
+
+            existing.Status = analysis.Status;
+            if (existing.Result is null)
+            {
+                if (analysis.Result is not null) existing.Result = analysis.Result.ToDbo();
+            }
+            else if (analysis.Result is null || !SameResult(existing.Result, analysis.Result))
+                throw new InvalidOperationException("Сохранённый результат анализа нельзя изменить или удалить.");
+        }
+
         var eventIds = row.HistoryEvents.Select(x => x.Id).ToHashSet();
         foreach (var historyEvent in record.HistoryEvents.Where(x => !eventIds.Contains(x.Id)))
             row.HistoryEvents.Add(historyEvent.ToDbo());
         return Task.CompletedTask;
     }
+
+    private static bool SameResult(LaboratoryAnalysisResultDbo saved, LaboratoryAnalysisResult incoming) =>
+        saved.Id == incoming.Id && saved.LaboratoryAnalysisRequestId == incoming.LaboratoryAnalysisRequestId &&
+        saved.PatientId == incoming.PatientId && saved.Value == incoming.Value &&
+        saved.IssuedAtUtc == incoming.IssuedAtUtc && saved.ReceivedAtUtc == incoming.ReceivedAtUtc &&
+        saved.CreatedByServiceAccountId == incoming.CreatedByServiceAccountId;
 
     public Task<bool> ExistsForPatientAsync(Guid patientId, CancellationToken cancellationToken) =>
         db.MedicalRecords.AnyAsync(x => x.PatientId == patientId, cancellationToken);

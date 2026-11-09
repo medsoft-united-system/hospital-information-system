@@ -2,6 +2,9 @@ using System.Text.Json;
 using HospitalInformationSystem.Application.Common;
 using HospitalInformationSystem.Contracts.MedicalRecords;
 using HospitalInformationSystem.Domain.MedicalRecords;
+using HospitalInformationSystem.Domain.LaboratoryTests;
+using ContractAnalysisStatus = HospitalInformationSystem.Contracts.MedicalRecords.LaboratoryAnalysisRequestStatus;
+using DomainAuthorKind = HospitalInformationSystem.Domain.MedicalRecords.MedicalRecordAuthorKind;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Snapshot;
 
@@ -18,6 +21,8 @@ public static class MedicalRecordSnapshotReplay
 
         var diagnoses = new Dictionary<Guid, MedicalRecordDiagnosisDto>();
         var prescriptions = new Dictionary<Guid, PrescriptionDto>();
+        var laboratoryRequests = new Dictionary<Guid, LaboratoryAnalysisRequestDto>();
+        var laboratoryResultIds = new HashSet<Guid>();
         var diagnosisIds = new HashSet<Guid>();
         var prescriptionIds = new HashSet<Guid>();
         var cancelledPrescriptionIds = new HashSet<Guid>();
@@ -36,6 +41,8 @@ public static class MedicalRecordSnapshotReplay
             Require(item.OccurredAtUtc >= previousTime, "время события меньше времени предыдущего");
             Require(version != 0 || item.EventType == MedicalRecordEventType.MedicalRecordCreated,
                 "первое событие должно создавать карту");
+            var humanAuthor = item.EventType == MedicalRecordEventType.LaboratoryAnalysisResultRecorded
+                ? (Guid?)null : RequireHumanAuthor(item);
 
             switch (item.EventType)
             {
@@ -60,7 +67,7 @@ public static class MedicalRecordSnapshotReplay
                         "повторное добавление той же записи диагноза");
                     diagnoses.Add(payload.MedicalRecordDiagnosisId, new MedicalRecordDiagnosisDto(
                         payload.MedicalRecordDiagnosisId, payload.Code, payload.Name, item.OccurredAtUtc,
-                        item.PerformedByMedicalWorkerId));
+                        humanAuthor!.Value));
                     break;
                 }
                 case MedicalRecordEventType.DiagnosisRemoved:
@@ -86,7 +93,7 @@ public static class MedicalRecordSnapshotReplay
                          replacedPrescriptionIds.Add(payload.ReplacesPrescriptionId.Value)),
                         "заменяемое назначение не было отменено или уже заменено");
                     prescriptions.Add(payload.PrescriptionId, new PrescriptionDto(payload.PrescriptionId, payload.Text,
-                        item.OccurredAtUtc, item.PerformedByMedicalWorkerId, payload.ReplacesPrescriptionId));
+                        item.OccurredAtUtc, humanAuthor!.Value, payload.ReplacesPrescriptionId));
                     break;
                 }
                 case MedicalRecordEventType.PrescriptionCancelled:
@@ -98,6 +105,66 @@ public static class MedicalRecordSnapshotReplay
                     Require(prescription!.Text == payload.Text, "изменён исторический текст назначения");
                     prescriptions.Remove(payload.PrescriptionId);
                     cancelledPrescriptionIds.Add(payload.PrescriptionId);
+                    break;
+                }
+                case MedicalRecordEventType.LaboratoryAnalysisRequested:
+                {
+                    var payload = Read<LaboratoryAnalysisRequestedPayload>(item);
+                    RequireEntityId(item, payload.LaboratoryAnalysisRequestId);
+                    Require(payload.MedicalRecordId == record.Id && payload.PatientId == record.PatientId,
+                        "назначение анализа относится к другой карте или пациенту");
+                    Require(payload.RequestedByMedicalWorkerId == humanAuthor &&
+                            payload.LaboratoryTestDefinitionId != Guid.Empty,
+                        "неверный автор или отсутствующий анализ справочника");
+                    Require(LaboratoryTestDefinitionRules.IsValidCode(payload.LoincCode) &&
+                            payload.LoincCode.Trim() == payload.LoincCode &&
+                            LaboratoryTestDefinitionRules.IsValidDisplayName(payload.DisplayName) &&
+                            payload.DisplayName.Trim() == payload.DisplayName,
+                        "некорректные исторические код или название анализа");
+                    Require(LaboratoryAnalysisRules.IsValidComment(payload.Comment) &&
+                            LaboratoryAnalysisRules.NormalizeComment(payload.Comment) == payload.Comment,
+                        "некорректный комментарий анализа");
+                    Require(payload.AuthoredAtUtc == item.OccurredAtUtc,
+                        "время назначения анализа не совпадает со временем события");
+                    Require(!laboratoryResultIds.Contains(payload.LaboratoryAnalysisRequestId) &&
+                            laboratoryRequests.TryAdd(payload.LaboratoryAnalysisRequestId,
+                                new LaboratoryAnalysisRequestDto(payload.LaboratoryAnalysisRequestId,
+                                    payload.MedicalRecordId, payload.PatientId, payload.RequestedByMedicalWorkerId,
+                                    payload.LaboratoryTestDefinitionId, payload.LoincCode, payload.DisplayName,
+                                    payload.Comment, payload.AuthoredAtUtc, ContractAnalysisStatus.Active, null)),
+                        "повторный идентификатор назначения анализа");
+                    break;
+                }
+                case MedicalRecordEventType.LaboratoryAnalysisResultRecorded:
+                {
+                    var serviceAuthor = RequireServiceAuthor(item);
+                    var payload = Read<LaboratoryAnalysisResultRecordedPayload>(item);
+                    RequireEntityId(item, payload.LaboratoryAnalysisResultId);
+                    Require(laboratoryRequests.TryGetValue(payload.LaboratoryAnalysisRequestId, out var request),
+                        "результат для отсутствующего назначения анализа");
+                    Require(request!.PatientId == payload.PatientId && payload.PatientId == record.PatientId &&
+                            request.LoincCode == payload.LoincCode,
+                        "пациент или код результата не совпадают с назначением");
+                    Require(request.Status == ContractAnalysisStatus.Active && request.Result is null,
+                        "повторная регистрация результата анализа");
+                    Require(payload.LaboratoryAnalysisResultId != payload.LaboratoryAnalysisRequestId &&
+                            !laboratoryRequests.ContainsKey(payload.LaboratoryAnalysisResultId) &&
+                            laboratoryResultIds.Add(payload.LaboratoryAnalysisResultId),
+                        "повторный идентификатор результата анализа");
+                    Require(payload.CreatedByServiceAccountId == serviceAuthor,
+                        "сервисный автор результата не совпадает с автором события");
+                    Require(LaboratoryAnalysisRules.IsValidValue(payload.Value) && payload.Value.Trim() == payload.Value &&
+                            LaboratoryAnalysisRules.IsValidIssuedAt(payload.IssuedAtUtc),
+                        "некорректное значение или время фиксации результата");
+                    Require(payload.ReceivedAtUtc == item.OccurredAtUtc,
+                        "время регистрации результата не совпадает со временем события");
+                    laboratoryRequests[payload.LaboratoryAnalysisRequestId] = request with
+                    {
+                        Status = ContractAnalysisStatus.Completed,
+                        Result = new LaboratoryAnalysisResultDto(payload.LaboratoryAnalysisResultId,
+                            payload.LaboratoryAnalysisRequestId, payload.PatientId, payload.Value, payload.IssuedAtUtc,
+                            payload.ReceivedAtUtc, payload.CreatedByServiceAccountId)
+                    };
                     break;
                 }
                 default:
@@ -113,7 +180,10 @@ public static class MedicalRecordSnapshotReplay
         return snapshot ?? Capture();
 
         MedicalRecordSnapshotDto Capture() => new(record.Id, record.PatientId, at, version,
-            diagnoses.Values.ToArray(), prescriptions.Values.ToArray());
+            diagnoses.Values.ToArray(), prescriptions.Values.ToArray())
+        {
+            LaboratoryAnalysisRequests = laboratoryRequests.Values.ToArray()
+        };
     }
 
     private static T Read<T>(MedicalRecordHistoryEvent item) where T : class
@@ -132,6 +202,24 @@ public static class MedicalRecordSnapshotReplay
 
     private static void RequireEntityId(MedicalRecordHistoryEvent item, Guid id) =>
         Require(id != Guid.Empty && item.EntityId == id, "идентификатор события не совпадает с payload");
+
+    private static Guid RequireHumanAuthor(MedicalRecordHistoryEvent item)
+    {
+        Require(item.AuthorKind == DomainAuthorKind.MedicalWorker &&
+                item.PerformedByMedicalWorkerId is { } id && id != Guid.Empty &&
+                item.PerformedByServiceAccountId is null,
+            "человеческое событие должно иметь одного автора-медработника");
+        return item.PerformedByMedicalWorkerId.GetValueOrDefault();
+    }
+
+    private static Guid RequireServiceAuthor(MedicalRecordHistoryEvent item)
+    {
+        Require(item.AuthorKind == DomainAuthorKind.ServiceAccount &&
+                item.PerformedByServiceAccountId is { } id && id != Guid.Empty &&
+                item.PerformedByMedicalWorkerId is null,
+            "результат анализа должен иметь одного сервисного автора");
+        return item.PerformedByServiceAccountId.GetValueOrDefault();
+    }
 
     private static void Require(bool condition, string detail)
     {

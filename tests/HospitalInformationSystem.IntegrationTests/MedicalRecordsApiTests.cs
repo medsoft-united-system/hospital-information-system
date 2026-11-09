@@ -277,7 +277,7 @@ public sealed class MedicalRecordsApiTests(MedicalRecordsApiFactory factory)
         observed.Diagnoses.Should().ContainSingle();
         observed.Prescriptions.Should().ContainSingle(x => x.Id == original.Id);
         observation.Commands.Should()
-            .HaveCount(4, "заголовок и три коллекции читаются отдельно, без перемножения строк");
+            .HaveCount(5, "заголовок и четыре коллекции читаются отдельно, без перемножения строк");
         observation.Commands.Should().NotContain(sql =>
             sql.Contains("medical_record_diagnoses", StringComparison.Ordinal)
             && sql.Contains("prescriptions", StringComparison.Ordinal)

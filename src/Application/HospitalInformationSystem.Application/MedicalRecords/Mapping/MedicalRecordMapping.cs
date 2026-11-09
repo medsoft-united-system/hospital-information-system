@@ -23,6 +23,20 @@ public static partial class MedicalRecordMapping
     [MapperIgnoreSource(nameof(Prescription.CancelledByMedicalWorkerId))]
     public static partial PrescriptionDto ToDto(this Prescription prescription);
 
+    [MapProperty(nameof(LaboratoryAnalysisRequest.LoincCodeSnapshot), nameof(LaboratoryAnalysisRequestDto.LoincCode))]
+    [MapProperty(nameof(LaboratoryAnalysisRequest.DisplayNameSnapshot), nameof(LaboratoryAnalysisRequestDto.DisplayName))]
+    public static partial LaboratoryAnalysisRequestDto ToDto(this LaboratoryAnalysisRequest request);
+
+    public static partial LaboratoryAnalysisResultDto ToDto(this LaboratoryAnalysisResult result);
+
+    [MapEnum(EnumMappingStrategy.ByName)]
+    private static partial Contracts.MedicalRecords.LaboratoryAnalysisRequestStatus MapLaboratoryStatus(
+        Domain.MedicalRecords.LaboratoryAnalysisRequestStatus status);
+
+    [MapEnum(EnumMappingStrategy.ByName)]
+    private static partial Contracts.MedicalRecords.MedicalRecordAuthorKind MapHistoryAuthorKind(
+        Domain.MedicalRecords.MedicalRecordAuthorKind kind);
+
     [MapProperty(nameof(MedicalRecordHistoryEvent.PerformedByNameSnapshot), nameof(MedicalRecordHistoryEventDto.PerformedByName))]
     [MapProperty(nameof(MedicalRecordHistoryEvent.PerformedByPositionSnapshot), nameof(MedicalRecordHistoryEventDto.PerformedByPosition))]
     [MapperIgnoreSource(nameof(MedicalRecordHistoryEvent.Id))]

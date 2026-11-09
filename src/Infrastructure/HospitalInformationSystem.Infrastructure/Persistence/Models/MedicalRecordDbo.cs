@@ -8,5 +8,6 @@ public sealed class MedicalRecordDbo
     public long Version { get; set; }
     public List<MedicalRecordDiagnosisDbo> Diagnoses { get; set; } = [];
     public List<PrescriptionDbo> Prescriptions { get; set; } = [];
+    public List<LaboratoryAnalysisRequestDbo> LaboratoryAnalysisRequests { get; set; } = [];
     public List<MedicalRecordHistoryEventDbo> HistoryEvents { get; set; } = [];
 }
