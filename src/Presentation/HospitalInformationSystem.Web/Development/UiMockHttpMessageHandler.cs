@@ -63,6 +63,7 @@ public sealed partial class UiMockHttpMessageHandler(UiMockState state) : HttpMe
                 {
                     "medical-workers" => MedicalWorkers(request, path, body),
                     "diagnoses" => Diagnoses(request, path, body, import),
+                    "laboratory-tests" => LaboratoryTests(request, path, body),
                     "patients" => Patients(request, path, body),
                     "medical-records" => MedicalRecords(request, path, body),
                     "accounts" => Accounts(request, path, body),

@@ -1,0 +1,5 @@
+.mr-laboratory-snapshot { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line); }
+.mr-laboratory-snapshot h3 { padding: 0 28px; margin-bottom: 16px; }
+@media (max-width: 600px) {
+  .mr-laboratory-snapshot h3 { padding: 0 18px; }
+}

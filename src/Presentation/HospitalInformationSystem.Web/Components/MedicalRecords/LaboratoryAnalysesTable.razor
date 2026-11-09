@@ -1,0 +1,79 @@
+@using HospitalInformationSystem.Contracts.MedicalRecords
+
+<div class="laboratory-results" aria-label="@(Historical ? "Анализы на выбранный момент" : "Лабораторные анализы пациента")">
+  <p class="laboratory-units"><Icon Name="record"/> Учебный режим: единицы измерения не используются</p>
+  @if (Historical)
+  {
+    <p class="laboratory-historical">Назначения и результаты показаны на выбранный момент времени.</p>
+  }
+  @if (Requests.Count == 0)
+  {
+    <div class="empty-state">@(Historical ? "На выбранный момент анализы не были назначены." : "В карте пока нет лабораторных анализов.")</div>
+  }
+  else
+  {
+    <div class="table-responsive">
+      <table class="table mr-table laboratory-results-table">
+        <thead><tr>
+          <th scope="col">Назначен</th><th scope="col">Исследование</th><th scope="col">Врач</th>
+          <th scope="col">Статус</th><th scope="col">Результат</th><th scope="col">Зафиксирован в LIS</th>
+          <th scope="col">Получен в HIS</th>
+        </tr></thead>
+        <tbody>
+        @foreach (var request in Requests.OrderByDescending(x => x.AuthoredAtUtc).ThenBy(x => x.Id))
+        {
+          <tr @key="request.Id">
+            <td data-label="Назначен"><time datetime="@request.AuthoredAtUtc.ToString("O")">@LaboratoryAnalysisPresentation.FormatDate(request.AuthoredAtUtc)</time></td>
+            <td data-label="Исследование" class="laboratory-test-name">
+              <strong>@request.DisplayName</strong><code>LOINC @request.LoincCode</code>
+              @if (!string.IsNullOrWhiteSpace(request.Comment))
+              {
+                <small class="laboratory-comment">@request.Comment</small>
+              }
+            </td>
+            <td data-label="Врач">
+              @if (RequesterNames.TryGetValue(request.Id, out var name))
+              {
+                @name
+              }
+              else
+              {
+                <span title="@request.RequestedByMedicalWorkerId">Медработник · @request.RequestedByMedicalWorkerId.ToString("N")[..8]</span>
+              }
+            </td>
+            <td data-label="Статус"><span class="laboratory-state @(request.Status == LaboratoryAnalysisRequestStatus.Completed ? "completed" : "active")">@StatusLabel(request.Status)</span></td>
+            <td data-label="Результат" class="laboratory-value">@(request.Result?.Value ?? "—")</td>
+            <td data-label="Зафиксирован в LIS">
+              @if (request.Result is { } result)
+              {
+                <time datetime="@result.IssuedAtUtc.ToString("O")">@LaboratoryAnalysisPresentation.FormatDate(result.IssuedAtUtc)</time>
+              }
+              else { <span>—</span> }
+            </td>
+            <td data-label="Получен в HIS">
+              @if (request.Result is { } received)
+              {
+                <time datetime="@received.ReceivedAtUtc.ToString("O")">@LaboratoryAnalysisPresentation.FormatDate(received.ReceivedAtUtc)</time>
+              }
+              else { <span>—</span> }
+            </td>
+          </tr>
+        }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@code {
+  [Parameter] public IReadOnlyCollection<LaboratoryAnalysisRequestDto> Requests { get; set; } = [];
+  [Parameter] public IReadOnlyDictionary<Guid, string> RequesterNames { get; set; } = new Dictionary<Guid, string>();
+  [Parameter] public bool Historical { get; set; }
+
+  private static string StatusLabel(LaboratoryAnalysisRequestStatus status) => status switch
+  {
+    LaboratoryAnalysisRequestStatus.Active => "Назначен",
+    LaboratoryAnalysisRequestStatus.Completed => "Выполнен",
+    _ => "Неизвестный статус"
+  };
+}

@@ -40,10 +40,15 @@ public sealed partial class UiMockHttpMessageHandler
             var snapshot = record.States.LastOrDefault(x => x.At <= at);
             return snapshot.State is null ? NotFound() : Json(new MedicalRecordSnapshotDto(record.Current.Id,
                 record.Current.PatientId, at.Value, snapshot.State.Version,
-                snapshot.State.Diagnoses, snapshot.State.Prescriptions));
+                snapshot.State.Diagnoses, snapshot.State.Prescriptions)
+            {
+                LaboratoryAnalysisRequests = snapshot.State.LaboratoryAnalysisRequests
+            });
         }
         if (state.CurrentMedicalRole != "doctor") return Forbidden();
         if (ValidateAuthor(request) is { } error) return error;
+        if (path.Length == 4 && path[3] == "laboratory-analysis-requests" && request.Method == HttpMethod.Post)
+            return CreateLaboratoryAnalysisRequests(record, body);
         var now = DateTimeOffset.UtcNow;
         var authorId = state.CurrentSession!.MedicalWorkerId!.Value;
         HttpResponseMessage? response = null;

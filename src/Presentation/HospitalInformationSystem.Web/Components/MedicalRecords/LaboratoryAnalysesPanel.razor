@@ -1,0 +1,326 @@
+@using HospitalInformationSystem.Contracts.LaboratoryTests
+@using HospitalInformationSystem.Contracts.MedicalRecords
+@using HospitalInformationSystem.Web.Gateways
+@implements IDisposable
+@inject ILaboratoryTestsGateway Catalog
+@inject IMedicalRecordsGateway Records
+
+<div class="laboratory-panel">
+  <div class="registry-heading">
+    <div><h2>Лабораторные анализы</h2><p>Назначенные исследования и полученные результаты. Время показано в вашем часовом поясе.</p></div>
+    <div class="laboratory-heading-actions">
+      <button class="btn btn-light" disabled="@IsBusy" @onclick="RefreshAsync">@(_refreshing ? "Обновление…" : "Обновить анализы")</button>
+      @if (CanAssign)
+      {
+        <button class="btn btn-primary" disabled="@IsBusy" @onclick="OpenFormAsync"><Icon Name="plus"/> Назначить анализы</button>
+      }
+    </div>
+  </div>
+  @if (!CanAssign)
+  {
+    <p class="laboratory-reader-note">Доступен просмотр. Назначать исследования может только врач.</p>
+  }
+  <ErrorAlert Message="@_error"/>
+  @if (_notice is not null)
+  {
+    <p class="laboratory-notice" role="status">@_notice</p>
+  }
+  @if (_formOpen && CanAssign)
+  {
+    <form class="laboratory-order-form" @onsubmit="SubmitAsync" @onsubmit:preventDefault>
+      <fieldset disabled="@IsBusy">
+        <div class="laboratory-form-heading"><div><h3>Новое назначение</h3><p>Каждый выбранный анализ станет отдельным заказом.</p></div>
+          <button type="button" class="btn btn-light" @onclick="CloseForm">Отмена</button></div>
+        <div class="search-field laboratory-search"><Icon Name="search"/>
+          <input type="search" aria-label="Поиск анализа для назначения" placeholder="Название исследования или LOINC" @bind="_search" @bind:event="oninput"/>
+        </div>
+        <ErrorAlert Message="@_catalogError"/>
+        @if (_catalogLoading)
+        {
+          <p class="laboratory-form-message" role="status">Загрузка доступных исследований…</p>
+        }
+        else if (_catalog is null)
+        {
+          <button type="button" class="btn btn-outline-primary" @onclick="LoadCatalogAsync">Повторить загрузку справочника</button>
+        }
+        else if (_catalog.Count == 0)
+        {
+          <p class="laboratory-form-message">Нет активных анализов. Администратор должен добавить или активировать исследования в справочнике.</p>
+        }
+        else
+        {
+          <div class="laboratory-options" role="group" aria-label="Доступные лабораторные анализы">
+          @foreach (var test in VisibleCatalog)
+          {
+            <label class="laboratory-option @(_selected.Contains(test.Id) ? "selected" : "")" @key="test.Id">
+              <input type="checkbox" checked="@_selected.Contains(test.Id)" @onchange="e => ToggleSelection(test.Id, e)"/>
+              <span><strong>@test.DisplayName</strong><code>LOINC @test.LoincCode</code></span>
+            </label>
+          }
+          </div>
+          @if (!VisibleCatalog.Any())
+          {
+            <p class="laboratory-form-message">По вашему запросу анализы не найдены.</p>
+          }
+        }
+        <div class="laboratory-comment-field">
+          <label for="@CommentInputId">Комментарий к назначению <span>необязательно</span></label>
+          <textarea id="@CommentInputId" class="form-control" rows="3" placeholder="Например, контроль натощак" @bind="_comment" @bind:event="oninput"></textarea>
+          <small>@_comment.Trim().EnumerateRunes().Count() / 2000 символов</small>
+          @if (!IsCommentValid(_comment))
+          {
+            <p class="validation-message">Комментарий должен содержать не более 2000 символов без нулевого символа.</p>
+          }
+        </div>
+        <ErrorAlert Message="@_formError"/>
+        <div class="laboratory-submit-row">
+          <span aria-live="polite">Выбрано: <strong>@_selected.Count</strong> · Будет создано отдельных заказов: <strong>@_selected.Count</strong></span>
+          <button type="submit" class="btn btn-primary" disabled="@(_catalogLoading || _catalog is null || _selected.Count is < 1 or > 100 || !IsCommentValid(_comment))">
+            <Icon Name="check"/> @(_submitting ? "Назначение…" : "Подтвердить назначение")
+          </button>
+        </div>
+      </fieldset>
+    </form>
+  }
+  @if (_historyError is not null)
+  {
+    <p class="laboratory-author-warning">@_historyError</p>
+  }
+  <LaboratoryAnalysesTable Requests="VisibleRequests" RequesterNames="_requesterNames"/>
+</div>
+
+@code {
+  [Parameter, EditorRequired] public MedicalRecordDto Record { get; set; } = default!;
+  [Parameter] public bool CanAssign { get; set; }
+  [Parameter] public bool ParentBusy { get; set; }
+  [Parameter] public EventCallback<bool> BusyChanged { get; set; }
+  [Parameter] public EventCallback<IReadOnlyList<LaboratoryAnalysisRequestDto>> RequestsCreated { get; set; }
+  [Parameter] public EventCallback RefreshRequested { get; set; }
+
+  private Guid? _contextRecordId;
+  private CancellationTokenSource? _cts;
+  private bool _disposed;
+  private bool _formOpen;
+  private bool _catalogLoading;
+  private bool _submitting;
+  private bool _refreshing;
+  private int _catalogVersion;
+  private int _historyVersion;
+  private long _loadedHistoryRecordVersion = -1;
+  private IReadOnlyList<LaboratoryTestDefinitionDto>? _catalog;
+  private readonly HashSet<Guid> _selected = [];
+  private IReadOnlyDictionary<Guid, string> _requesterNames = new Dictionary<Guid, string>();
+  private readonly Dictionary<Guid, LaboratoryAnalysisRequestDto> _createdOverlay = [];
+  private string _search = "";
+  private string _comment = "";
+  private string? _error;
+  private string? _notice;
+  private string? _formError;
+  private string? _catalogError;
+  private string? _historyError;
+  private bool IsBusy => ParentBusy || _submitting || _refreshing;
+  private string CommentInputId => $"laboratory-comment-{Record.Id:N}";
+  private IEnumerable<LaboratoryTestDefinitionDto> VisibleCatalog => (_catalog ?? [])
+    .Where(x => x.IsActive && $"{x.LoincCode} {x.DisplayName}".Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase));
+  private IReadOnlyCollection<LaboratoryAnalysisRequestDto> VisibleRequests => Record.LaboratoryAnalysisRequests
+    .Concat(_createdOverlay.Values.Where(x => !Record.LaboratoryAnalysisRequests.Any(existing => existing.Id == x.Id)))
+    .ToArray();
+
+  protected override async Task OnParametersSetAsync()
+  {
+    if (_disposed) return;
+    if (_contextRecordId != Record.Id)
+    {
+      _cts?.Cancel();
+      _cts?.Dispose();
+      _cts = new CancellationTokenSource();
+      _contextRecordId = Record.Id;
+      _catalogVersion++;
+      _historyVersion++;
+      _loadedHistoryRecordVersion = -1;
+      _catalog = null;
+      _requesterNames = new Dictionary<Guid, string>();
+      _createdOverlay.Clear();
+      _selected.Clear();
+      _formOpen = _submitting = _refreshing = _catalogLoading = false;
+      _search = _comment = "";
+      _error = _notice = _formError = _catalogError = _historyError = null;
+    }
+    if (!CanAssign) { _formOpen = false; _selected.Clear(); }
+    foreach (var id in Record.LaboratoryAnalysisRequests.Select(x => x.Id)) _createdOverlay.Remove(id);
+    if (_loadedHistoryRecordVersion != Record.Version) await LoadRequesterNamesAsync();
+  }
+
+  private async Task OpenFormAsync()
+  {
+    if (!CanAssign || IsBusy || _disposed || _cts is null) return;
+    _formOpen = true;
+    _selected.Clear();
+    _search = _comment = "";
+    _formError = _error = _notice = null;
+    await LoadCatalogAsync();
+  }
+
+  private void CloseForm()
+  {
+    if (IsBusy || _disposed) return;
+    _formOpen = false;
+    _selected.Clear();
+    _catalogVersion++;
+    _catalogLoading = false;
+    _formError = null;
+  }
+
+  private async Task LoadCatalogAsync()
+  {
+    if (_cts is null || _disposed || !CanAssign || !_formOpen) return;
+    var token = _cts.Token;
+    var recordId = Record.Id;
+    var version = ++_catalogVersion;
+    _catalogLoading = true;
+    _catalogError = null;
+    try
+    {
+      var catalog = await Catalog.ListAsync(token, activeOnly: true);
+      if (!IsCurrent(token, recordId) || version != _catalogVersion || !_formOpen) return;
+      _catalog = catalog.Where(x => x.IsActive).OrderBy(x => x.LoincCode, StringComparer.Ordinal).ToArray();
+      _selected.RemoveWhere(id => !_catalog.Any(x => x.Id == id));
+    }
+    catch (OperationCanceledException) when (!IsCurrent(token, recordId)) { }
+    catch (Exception ex) when (ex is ApiException or HttpRequestException or OperationCanceledException)
+    {
+      if (IsCurrent(token, recordId) && version == _catalogVersion)
+      {
+        _catalog = null;
+        _catalogError = ex is ApiException ? ex.Message : "Не удалось загрузить доступные исследования. Повторите загрузку.";
+      }
+    }
+    finally { if (IsCurrent(token, recordId) && version == _catalogVersion) _catalogLoading = false; }
+  }
+
+  private void ToggleSelection(Guid id, ChangeEventArgs args)
+  {
+    if (!CanAssign || IsBusy || _catalogLoading || _catalog?.Any(x => x.Id == id && x.IsActive) != true) return;
+    if (args.Value is true) _selected.Add(id);
+    else _selected.Remove(id);
+    _formError = _selected.Count > 100 ? "За один раз можно назначить не более 100 разных анализов." : null;
+  }
+
+  private async Task SubmitAsync()
+  {
+    if (!CanAssign || IsBusy || _disposed || _cts is null || !_formOpen || _catalogLoading) return;
+    if (_selected.Count is < 1 or > 100 || _catalog is null ||
+        _selected.Any(id => !_catalog.Any(x => x.Id == id && x.IsActive)))
+    { _formError = "Выберите от 1 до 100 активных анализов."; return; }
+    if (!IsCommentValid(_comment))
+    { _formError = "Комментарий должен содержать не более 2000 символов без нулевого символа."; return; }
+    var token = _cts.Token;
+    var recordId = Record.Id;
+    var ids = _catalog.Where(x => _selected.Contains(x.Id)).Select(x => x.Id).ToArray();
+    var comment = string.IsNullOrWhiteSpace(_comment) ? null : _comment.Trim();
+    _submitting = true;
+    _formError = _error = _notice = null;
+    try
+    {
+      await BusyChanged.InvokeAsync(true);
+      if (!IsCurrent(token, recordId)) return;
+      var created = await Records.CreateLaboratoryAnalysisRequestsAsync(recordId,
+        new CreateLaboratoryAnalysisRequestsRequest(ids, comment), token);
+      if (!IsCurrent(token, recordId)) return;
+      if (created.Any(x => x.MedicalRecordId != recordId || x.PatientId != Record.PatientId))
+        throw new ApiException("Ответ сервера относится к другой карте. Обновите карту и проверьте результат перед повторной отправкой.", System.Net.HttpStatusCode.BadGateway);
+      foreach (var item in created) _createdOverlay[item.Id] = item;
+      _formOpen = false;
+      _selected.Clear();
+      _comment = _search = "";
+      _notice = $"Назначение сохранено. Создано отдельных заказов: {created.Count}.";
+      try { await RequestsCreated.InvokeAsync(created); }
+      catch (Exception ex) when (ex is ApiException or HttpRequestException or OperationCanceledException)
+      { if (IsCurrent(token, recordId)) _notice += " Обновить карту не удалось; проверьте её явным обновлением."; }
+      if (IsCurrent(token, recordId)) await LoadRequesterNamesAsync();
+    }
+    catch (OperationCanceledException) when (!IsCurrent(token, recordId)) { }
+    catch (ApiException ex)
+    {
+      if (!IsCurrent(token, recordId)) return;
+      _formError = ex.Message;
+      if (ex.StatusCode is System.Net.HttpStatusCode.BadRequest or System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.Conflict)
+        await LoadCatalogAsync();
+      if (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+      {
+        _formOpen = false;
+        _error = "Недостаточно прав для назначения. Доступен только просмотр; при необходимости войдите в систему заново.";
+      }
+    }
+    catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+    {
+      if (IsCurrent(token, recordId))
+        _formError = "Не удалось подтвердить сохранение. Обновите карту и проверьте, появились ли заказы, перед повторной отправкой.";
+    }
+    finally
+    {
+      if (IsCurrent(token, recordId))
+      {
+        _submitting = false;
+        await BusyChanged.InvokeAsync(false);
+      }
+    }
+  }
+
+  private async Task RefreshAsync()
+  {
+    if (IsBusy || _disposed || _cts is null) return;
+    var token = _cts.Token;
+    var recordId = Record.Id;
+    _refreshing = true;
+    _error = null;
+    try
+    {
+      await BusyChanged.InvokeAsync(true);
+      await RefreshRequested.InvokeAsync();
+      if (IsCurrent(token, recordId)) await LoadRequesterNamesAsync();
+    }
+    catch (OperationCanceledException) when (!IsCurrent(token, recordId)) { }
+    catch (Exception ex) when (ex is ApiException or HttpRequestException or OperationCanceledException)
+    { if (IsCurrent(token, recordId)) _error = "Не удалось обновить анализы. Сохранённые данные остаются на экране; повторите обновление."; }
+    finally
+    {
+      if (IsCurrent(token, recordId))
+      {
+        _refreshing = false;
+        await BusyChanged.InvokeAsync(false);
+      }
+    }
+  }
+
+  private async Task LoadRequesterNamesAsync()
+  {
+    if (_cts is null || _disposed) return;
+    var token = _cts.Token;
+    var recordId = Record.Id;
+    var recordVersion = Record.Version;
+    var version = ++_historyVersion;
+    _loadedHistoryRecordVersion = recordVersion;
+    _historyError = null;
+    try
+    {
+      var history = await Records.GetHistoryAsync(recordId, token);
+      if (IsCurrent(token, recordId) && version == _historyVersion)
+        _requesterNames = LaboratoryAnalysisPresentation.RequesterNames(history);
+    }
+    catch (OperationCanceledException) when (!IsCurrent(token, recordId)) { }
+    catch (Exception ex) when (ex is ApiException or HttpRequestException or OperationCanceledException)
+    { if (IsCurrent(token, recordId) && version == _historyVersion) _historyError = "Не удалось загрузить имена назначивших врачей. Исследования показаны с идентификаторами авторов."; }
+  }
+
+  private static bool IsCommentValid(string comment) => !comment.Contains('\0') && comment.Trim().EnumerateRunes().Count() <= 2000;
+  private bool IsCurrent(CancellationToken token, Guid recordId) => !_disposed && !token.IsCancellationRequested && _contextRecordId == recordId;
+
+  public void Dispose()
+  {
+    if (_disposed) return;
+    _disposed = true;
+    _cts?.Cancel();
+    _cts?.Dispose();
+  }
+}

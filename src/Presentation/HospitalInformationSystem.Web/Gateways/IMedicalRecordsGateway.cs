@@ -13,6 +13,8 @@ public interface IMedicalRecordsGateway
     Task CancelPrescriptionAsync(Guid recordId, Guid prescriptionId, CancellationToken cancellationToken);
     Task ReplacePrescriptionAsync(Guid recordId, Guid prescriptionId, string text,
         CancellationToken cancellationToken);
+    Task<IReadOnlyList<LaboratoryAnalysisRequestDto>> CreateLaboratoryAnalysisRequestsAsync(Guid recordId,
+        CreateLaboratoryAnalysisRequestsRequest request, CancellationToken cancellationToken);
     Task<IReadOnlyList<MedicalRecordHistoryEventDto>> GetHistoryAsync(Guid recordId,
         CancellationToken cancellationToken);
     Task<MedicalRecordSnapshotDto> GetSnapshotAsync(Guid recordId, DateTimeOffset at,

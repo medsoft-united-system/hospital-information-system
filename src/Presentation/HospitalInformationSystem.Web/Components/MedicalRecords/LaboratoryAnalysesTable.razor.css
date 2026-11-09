@@ -1,0 +1,28 @@
+.laboratory-units { display: flex; align-items: center; gap: 9px; padding: 13px 20px; margin: 18px 28px; border-radius: 8px; background: #edf5e9; color: #425f4b; font-size: 12px; }
+.laboratory-historical { padding: 0 28px; color: #64756a; font-size: 12px; }
+.laboratory-results-table { min-width: 960px; }
+.laboratory-results-table th { font-size: 11px; }
+.laboratory-results-table td { font-size: 12px; vertical-align: top; }
+.laboratory-results-table time { white-space: nowrap; font-size: 11px; }
+.laboratory-test-name { min-width: 200px; max-width: 320px; overflow-wrap: anywhere; }
+.laboratory-test-name strong, .laboratory-test-name code, .laboratory-comment { display: block; }
+.laboratory-test-name strong { font-weight: 550; }
+.laboratory-test-name code { color: #426e52; margin-top: 5px; font-size: 11px; }
+.laboratory-comment { margin-top: 7px; color: #728073; white-space: pre-wrap; }
+.laboratory-state { display: inline-block; border-radius: 6px; padding: 5px 8px; font-size: 11px; white-space: nowrap; }
+.laboratory-state.active { background: #eef2f4; color: #5b6971; }
+.laboratory-state.completed { background: #e6f1e2; color: #2e6944; }
+.laboratory-value { font-weight: 550; min-width: 90px; max-width: 250px; overflow-wrap: anywhere; white-space: pre-wrap; }
+@media (max-width: 600px) {
+  .laboratory-units { margin: 16px 18px; padding: 12px; align-items: flex-start; line-height: 1.6; }
+  .laboratory-historical { padding: 0 18px; }
+  .laboratory-results-table { min-width: 0; }
+  .laboratory-results-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .laboratory-results-table tbody, .laboratory-results-table tr, .laboratory-results-table td { display: block; width: 100%; }
+  .laboratory-results-table tr { padding: 14px 18px; border-top: 1px solid #e5ebdf; }
+  .laboratory-results-table td { display: grid; grid-template-columns: 125px minmax(0, 1fr); gap: 10px; padding: 7px 0; border: 0; min-width: 0; max-width: none; }
+  .laboratory-results-table td::before { content: attr(data-label); color: #78857b; font-size: 11px; font-weight: 400; }
+  .laboratory-test-name strong, .laboratory-test-name code, .laboratory-comment { grid-column: 2; }
+  .laboratory-test-name code, .laboratory-comment { margin: 0; }
+  .laboratory-state { justify-self: start; }
+}
