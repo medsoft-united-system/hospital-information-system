@@ -41,6 +41,7 @@ public static class WebClientRegistration
 
         services.AddScoped<MedicalWorkersApiClient>();
         services.AddScoped<DiagnosesApiClient>();
+        services.AddScoped<LaboratoryTestsApiClient>();
         services.AddScoped<PatientsApiClient>();
         services.AddScoped<MedicalRecordsApiClient>();
         services.AddScoped<SessionApiClient>();
@@ -49,6 +50,7 @@ public static class WebClientRegistration
         services.AddScoped<IAccountManagementGateway, AccountManagementGateway>();
         services.AddScoped<IAuditGateway, AuditGateway>();
         services.AddScoped<IMedicalRecordsGateway, MedicalRecordsGateway>();
+        services.AddScoped<ILaboratoryTestsGateway, LaboratoryTestsGateway>();
         return services;
     }
 

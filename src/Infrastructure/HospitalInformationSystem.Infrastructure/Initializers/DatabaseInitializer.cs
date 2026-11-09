@@ -8,7 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HospitalInformationSystem.Infrastructure.Initializers;
 
-public sealed class DatabaseInitializer(HospitalDbContext db, TimeProvider timeProvider)
+public sealed class DatabaseInitializer(HospitalDbContext db, TimeProvider timeProvider,
+    LaboratoryTestCatalogInitializer laboratoryTests)
 {
     private static readonly (string Code, string Name)[] DemoDiagnoses =
     [
@@ -21,6 +22,7 @@ public sealed class DatabaseInitializer(HospitalDbContext db, TimeProvider timeP
     public async Task InitializeAsync(bool seed, CancellationToken cancellationToken)
     {
         await db.Database.MigrateAsync(cancellationToken);
+        await laboratoryTests.InitializeAsync(cancellationToken);
         if (!seed)
         {
             return;

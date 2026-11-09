@@ -14,6 +14,7 @@ public static partial class DependencyInjection
         AddIdentityPersistence(services);
         AddAuditPersistence(services);
         AddClinicalPersistence(services);
+        AddLaboratoryTestPersistence(services);
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<HospitalDbContext>());
         services.AddScoped<DatabaseInitializer>();
         return services;

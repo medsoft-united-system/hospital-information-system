@@ -1,0 +1,37 @@
+[
+  {
+    "code": "2345-7",
+    "displayName": "Глюкоза (массовая концентрация) в сыворотке или плазме",
+    "sourceUrl": "https://loinc.org/2345-7/"
+  },
+  {
+    "code": "718-7",
+    "displayName": "Гемоглобин (массовая концентрация) в крови",
+    "sourceUrl": "https://loinc.org/718-7/"
+  },
+  {
+    "code": "7918-6",
+    "displayName": "ВИЧ-1/2: антитела в сыворотке",
+    "sourceUrl": "https://loinc.org/7918-6/"
+  },
+  {
+    "code": "5196-1",
+    "displayName": "Гепатит B: HBsAg в сыворотке или плазме (иммуноанализ)",
+    "sourceUrl": "https://loinc.org/5196-1/"
+  },
+  {
+    "code": "13955-0",
+    "displayName": "Гепатит C: антитела в сыворотке или плазме (иммуноанализ)",
+    "sourceUrl": "https://loinc.org/13955-0/"
+  },
+  {
+    "code": "5393-4",
+    "displayName": "Сифилис: антитела к Treponema pallidum в сыворотке (иммунофлуоресценция)",
+    "sourceUrl": "https://loinc.org/5393-4/"
+  },
+  {
+    "code": "101363-0",
+    "displayName": "Чума: ДНК Yersinia pestis в крови (амплификация)",
+    "sourceUrl": "https://loinc.org/101363-0/"
+  }
+]

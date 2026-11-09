@@ -1,0 +1,23 @@
+.catalog-note { display: flex; gap: 12px; align-items: center; padding: 16px 20px; margin-bottom: 24px; color: #425f4b; background: #edf5e9; border-radius: 10px; }
+.catalog-note p { margin: 0; font-size: 13px; line-height: 1.6; }
+.catalog-note ::deep svg { flex-shrink: 0; }
+.laboratory-form { margin-bottom: 24px; }
+.laboratory-form ::deep form { padding: 24px 28px 0; }
+.laboratory-form label { display: block; margin-bottom: 8px; color: #4f6551; font-size: 13px; }
+.laboratory-form small { display: block; margin-top: 7px; color: #637261; line-height: 1.6; }
+.laboratory-toolbar { flex-wrap: wrap; }
+.laboratory-toolbar .search-field { flex: 1 1 260px; }
+.laboratory-toolbar .form-select { width: auto; min-width: 165px; }
+.laboratory-table code { color: #245b46; white-space: nowrap; }
+.laboratory-table time { font-size: 12px; white-space: nowrap; }
+.laboratory-name { min-width: 210px; overflow-wrap: anywhere; }
+.laboratory-status { display: inline-block; padding: 5px 9px; font-size: 12px; border-radius: 6px; white-space: nowrap; }
+.laboratory-status.active { color: #245b46; background: #edf5e9; }
+.laboratory-status.inactive { color: #626b72; background: #eef0f2; }
+.laboratory-status-action { padding: 7px 10px; font-size: 12px; }
+@media (max-width: 600px) {
+  .laboratory-form ::deep form { padding: 18px 18px 0; }
+  .laboratory-toolbar .search-field { flex: none; }
+  .laboratory-toolbar .form-select { width: 100%; }
+  .laboratory-name { min-width: 0; }
+}

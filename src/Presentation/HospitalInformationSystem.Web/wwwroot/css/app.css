@@ -37,7 +37,7 @@ h1:focus, main:focus { outline: none; }
 .mode-switch { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; padding: 4px; background: #f1f4ed; }
 .mode-switch a { color: #5b6f61; font-size: 11px; padding: 9px 13px; border-radius: 5px; text-align: center; }
 .mode-switch a.selected { color: var(--green-dark); background: #fff; box-shadow: 0 1px 4px #283f3212; font-weight: 600; }
-.main-nav { display: flex; align-items: center; gap: 8px; padding-bottom: 15px; }
+.main-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-bottom: 15px; }
 .main-nav a { display: inline-flex; align-items: center; gap: 9px; padding: 10px 17px; color: #64756a; font-size: 12px; border-radius: 7px; }
 .main-nav a:hover { color: var(--green); background: #edf2e9; }
 .main-nav a.active { background: var(--green); color: #fff; }
