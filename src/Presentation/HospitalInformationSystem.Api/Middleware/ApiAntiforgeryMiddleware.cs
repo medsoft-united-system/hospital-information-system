@@ -12,7 +12,7 @@ public sealed class ApiAntiforgeryMiddleware(RequestDelegate next)
     {
         if ((HttpMethods.IsPost(context.Request.Method) || HttpMethods.IsPut(context.Request.Method) ||
              HttpMethods.IsPatch(context.Request.Method) || HttpMethods.IsDelete(context.Request.Method)) &&
-            !await IsServiceObservationCreateAsync(context))
+            !ServiceAuthProtocol.IsCredentialRequest(context) && !await IsServiceObservationCreateAsync(context))
         {
             try
             {
