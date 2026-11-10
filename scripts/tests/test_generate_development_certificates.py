@@ -131,7 +131,8 @@ class DevelopmentCertificateTests(unittest.TestCase):
         result = self.run_generator("--output-dir", str(output), "--ca-directory", str(self.output / "ca"),
                                     "--data-protection-directory", str(self.output / "data-protection"),
                                     "--jwt-directory", str(self.output / "jwt"),
-                                    "--dns-name", "medsoft.local", "--ip-address", "192.0.2.10")
+                                    "--setup-token-file", self.manifest["setupTokenFile"],
+                                    "--dns-name", "his-api", "--dns-name", "medsoft.local", "--ip-address", "192.0.2.10")
         self.assertEqual(result.returncode, 0, result.stderr)
         manifest = json.loads((output / "development-security.json").read_text())
         self.assertEqual(manifest["caCertificatePath"], str(self.output / "ca/ca-cert.pem"))
@@ -143,9 +144,14 @@ class DevelopmentCertificateTests(unittest.TestCase):
         self.assertFalse((output / "data-protection").exists())
         self.assertEqual(protection_pfx.read_bytes(), protection_before)
         self.assertEqual(stored_key.read_text(), "persisted-keyring-test-placeholder")
+        self.assertEqual(Path(manifest["setupTokenFile"]).read_bytes(), Path(self.manifest["setupTokenFile"]).read_bytes())
+        self.assertNotEqual(manifest["setupTokenFile"], self.manifest["setupTokenFile"])
         verified = self.openssl_run("verify", "-CAfile", self.output / "ca/ca-cert.pem", "-purpose", "sslserver",
                                     "-verify_hostname", "medsoft.local", output / "server/server-cert.pem")
         self.assertEqual(verified.returncode, 0, verified.stderr)
+        alias = self.openssl_run("verify", "-CAfile", self.output / "ca/ca-cert.pem", "-purpose", "sslserver",
+                                 "-verify_hostname", "his-api", output / "server/server-cert.pem")
+        self.assertEqual(alias.returncode, 0, alias.stderr)
         self.assertNotEqual((output / "server/server-cert.pem").read_bytes(),
                             (self.output / "server/server-cert.pem").read_bytes())
 
@@ -164,6 +170,52 @@ class DevelopmentCertificateTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(destination.exists())
+
+    def test_lab3_preparation_preserves_source_and_reuses_verified_leaf(self):
+        output = self.root / "lab3-profile"
+        launcher = SCRIPT.with_name("prepare-lab3-integration.py")
+        arguments = [sys.executable, str(launcher), "--security-directory", str(self.output),
+                     "--output-directory", str(output), "--openssl", self.openssl,
+                     "--docker", str(self.root / "no-docker-needed")]
+        source_before = {path: path.read_bytes() for path in self.output.rglob("*") if path.is_file()}
+        first = subprocess.run(arguments, capture_output=True, text=True, timeout=120)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        manifest = json.loads((output / "development-security.json").read_text())
+        for field in ("caCertificatePath", "jwtPrivateKeyPath", "jwtPublicKeyPath", "dataProtectionPfxPath",
+                      "dataProtectionPfxPasswordFile", "dataProtectionKeyDirectory"):
+            self.assertEqual(manifest[field], self.manifest[field])
+        token = Path(self.manifest["setupTokenFile"])
+        self.assertEqual(Path(manifest["setupTokenFile"]).read_bytes(), source_before[token])
+        self.assertNotIn(token.read_text().strip(), first.stdout + first.stderr)
+        self.assertIn("https://his-api:5201", first.stdout)
+        exported_ca = output / "lis-ca-cert.pem"
+        self.assertIn(str(exported_ca), first.stdout)
+        self.assertEqual(exported_ca.read_bytes(), Path(manifest["caCertificatePath"]).read_bytes())
+        if os.name != "nt":
+            self.assertEqual(exported_ca.stat().st_mode & 0o777, 0o644)
+        prepared_before = {path: path.read_bytes() for path in output.rglob("*") if path.is_file()}
+        exported_ca.unlink()
+        second = subprocess.run(arguments, capture_output=True, text=True, timeout=120)
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertEqual({path: path.read_bytes() for path in output.rglob("*") if path.is_file()}, prepared_before)
+        self.assertEqual({path: path.read_bytes() for path in self.output.rglob("*") if path.is_file()}, source_before)
+        verify = self.openssl_run("verify", "-CAfile", exported_ca, "-purpose", "sslserver",
+                                  "-verify_hostname", "his-api", manifest["serverCertificatePath"])
+        self.assertEqual(verify.returncode, 0, verify.stderr)
+
+    def test_invalid_preserved_setup_token_is_rejected_before_creating_output(self):
+        for index, value in enumerate([b"short", b"a" * 32 + b"\nsecond", b"a" * 32 + b"\xc2\x85", b"\xff" * 32]):
+            with self.subTest(index=index):
+                token = self.root / ("invalid-owner-" + str(index))
+                token.write_bytes(value)
+                token.chmod(0o600)
+                destination = self.root / ("invalid-owner-output-" + str(index))
+                result = self.run_generator("--output-dir", str(destination), "--setup-token-file", str(token))
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(destination.exists())
+                decoded = value.decode("utf-8", errors="ignore")
+                if decoded:
+                    self.assertNotIn(decoded, result.stdout + result.stderr)
 
     def test_invalid_subject_san_or_lifetime_creates_no_files(self):
         for index, extra in enumerate([("--isu-id", "NNN"), ("--isu-id", "408944\nCN=attacker"),

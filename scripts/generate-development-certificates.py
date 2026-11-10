@@ -8,6 +8,7 @@ import secrets
 import shutil
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
 
 
@@ -41,6 +42,12 @@ def find_openssl(requested=None):
 def private_write(path, value):
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(descriptor, "w", encoding="utf-8") as output:
+        output.write(value)
+
+
+def private_write_bytes(path, value):
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, "wb") as output:
         output.write(value)
 
 
@@ -136,6 +143,19 @@ def issue_certificates(arguments):
     ca_key = ca_directory / "ca-key.pem"
     ca_password = ca_directory / "ca-key-password.txt"
     organizational_unit = "MedSoft 2026/27 " + arguments.isu_id
+    existing_setup_token = None
+    if getattr(arguments, "setup_token_file", None):
+        existing_setup_path = Path(arguments.setup_token_file).expanduser().absolute()
+        require_no_symlinks(existing_setup_path)
+        require_private_file(existing_setup_path)
+        existing_setup_token = existing_setup_path.read_bytes()
+        try:
+            token_value = existing_setup_token.decode("utf-8").rstrip("\r\n")
+        except UnicodeDecodeError:
+            raise ValueError("Файл первоначальной настройки должен содержать UTF-8 токен.") from None
+        if len(token_value) < 32 or len(token_value) > 256 or any(unicodedata.category(character) == "Cc"
+                                                                 for character in token_value):
+            raise ValueError("Файл первоначальной настройки должен содержать один токен длиной 32–256 символов.")
     existing_jwt = None
     if arguments.jwt_directory:
         existing_jwt = Path(arguments.jwt_directory).expanduser().absolute()
@@ -183,7 +203,10 @@ def issue_certificates(arguments):
         setup = destination / "setup"
         setup.mkdir(mode=0o700)
         setup_token = setup / "token.txt"
-        private_write(setup_token, secrets.token_urlsafe(32) + "\n")
+        if existing_setup_token is not None:
+            private_write_bytes(setup_token, existing_setup_token)
+        else:
+            private_write(setup_token, secrets.token_urlsafe(32) + "\n")
         work = destination / ".generation"
         work.mkdir(mode=0o700)
         if not arguments.data_protection_directory:
@@ -224,8 +247,9 @@ def issue_certificates(arguments):
                         "-in", request, "-CA", ca_certificate, "-CAkey", ca_key, "-passin",
                         "file:" + str(ca_password), "-set_serial", "0x" + secrets.token_hex(16),
                         "-extfile", server_config, "-extensions", "extensions", "-out", server_certificate)
-        openssl_command(executable, "verify", "-CAfile", ca_certificate, "-purpose", "sslserver",
-                        "-verify_hostname", "localhost", server_certificate)
+        for dns_name in dns_names:
+            openssl_command(executable, "verify", "-CAfile", ca_certificate, "-purpose", "sslserver",
+                            "-verify_hostname", dns_name, server_certificate)
         for address in addresses:
             openssl_command(executable, "verify", "-CAfile", ca_certificate, "-purpose", "sslserver",
                             "-verify_ip", address, server_certificate)
@@ -286,6 +310,7 @@ def main():
     jwt_options.add_argument("--skip-jwt", action="store_true", help="Не создавать JWT-ключ; такой каталог не подходит для launcher API без дополнительной настройки.")
     jwt_options.add_argument("--jwt-directory", help="Сохранить существующую пару JWT-ключей при перевыпуске TLS.")
     parser.add_argument("--data-protection-directory", help="Сохранить существующий каталог Data Protection с PFX и ключами при перевыпуске TLS.")
+    parser.add_argument("--setup-token-file", help="Скопировать прежний owner token в новый каталог без замены первоначальной настройки.")
     parser.add_argument("--openssl", help="Путь к OpenSSL >= 1.1.1.")
     manifest = issue_certificates(parser.parse_args())
     print("Сертификаты и ключи созданы. Доверие в ОС не изменялось.")

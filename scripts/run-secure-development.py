@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import re
 import secrets
 import signal
 import subprocess
@@ -59,7 +60,37 @@ def stop_process(process):
         pass
 
 
-def api_configuration(directory, host_environment, name, native=False):
+def validate_network(docker_network, network_alias=None):
+    if docker_network is not None and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,62}", docker_network):
+        raise ValueError("Некорректное имя Docker-сети.")
+    if network_alias is not None:
+        if docker_network in (None, "bridge", "host", "none") or len(network_alias) > 253 or not all(
+                re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", part) for part in network_alias.split(".")):
+            raise ValueError("DNS-псевдоним требует явную Docker-сеть и корректное имя.")
+
+
+def ensure_named_network(docker, network):
+    validate_network(network)
+    result = subprocess.run([docker, "network", "inspect", "--format", "{{.Driver}}", network],
+                            capture_output=True, text=True, timeout=15, check=False)
+    if result.returncode:
+        created = subprocess.run([docker, "network", "create", "--driver", "bridge", network],
+                                 capture_output=True, text=True, timeout=15, check=False)
+        if created.returncode:
+            result = subprocess.run([docker, "network", "inspect", "--format", "{{.Driver}}", network],
+                                    capture_output=True, text=True, timeout=15, check=False)
+            if result.returncode:
+                raise ValueError("Не удалось подготовить Docker-сеть интеграции.")
+        else:
+            return
+    if result.stdout.strip() != "bridge":
+        raise ValueError("Для интеграции нужна локальная Docker-сеть с драйвером bridge.")
+
+
+def api_configuration(directory, host_environment, name, native=False, *, docker_network=None, network_alias=None):
+    validate_network(docker_network, network_alias)
+    if native and docker_network is not None:
+        raise ValueError("Docker-сеть поддерживается только при контейнерном запуске API.")
     directory = Path(directory).expanduser().resolve()
     manifest = json.loads((directory / "development-security.json").read_text(encoding="utf-8"))
     if not native and not host_environment.get("ConnectionStrings__Postgres", "").strip():
@@ -74,6 +105,10 @@ def api_configuration(directory, host_environment, name, native=False):
         ("jwtPublicKeyPath", "/run/secrets/jwt-public.pem", "Authentication__Jwt__PublicKeyPath"),
         ("setupTokenFile", "/run/secrets/setup-token.txt", "Authentication__Setup__TokenFile")]
     options = ["run", "--rm", "--init", "--name", name, "--publish", "127.0.0.1:5201:5201"]
+    if docker_network is not None:
+        options += ["--network", docker_network]
+        if network_alias is not None:
+            options += ["--network-alias", network_alias]
     if os.name == "posix":
         options += ["--user", str(os.getuid()) + ":" + str(os.getgid())]
     for field, target, variable in bindings:
@@ -123,9 +158,9 @@ def api_configuration(directory, host_environment, name, native=False):
     environment["Security__DataProtection__KeyDirectory"] = str(protection) if native else "/var/lib/medsoft/data-protection"
     environment["Security__DataProtection__CertificatePath"] = str(protection_pfx) if native else "/run/secrets/data-protection.pfx"
     environment["Security__DataProtection__CertificatePassword"] = wrapping_password
-    prefixes = ("ConnectionStrings__", "Authentication__", "Security__", "Database__", "ASPNETCORE_Kestrel__")
+    prefixes = ("ConnectionStrings__", "Authentication__", "Security__", "Database__", "Fhir__", "ASPNETCORE_Kestrel__")
     keys = sorted(key for key in environment if key.startswith(prefixes)
-                  or key in ("ASPNETCORE_ENVIRONMENT", "ASPNETCORE_URLS"))
+                  or key in ("ASPNETCORE_ENVIRONMENT", "ASPNETCORE_URLS", "AllowedHosts"))
     for key in keys:
         options += ["--env", key]
     return [] if native else options + [CONTAINER_IMAGE], environment
@@ -135,11 +170,20 @@ def run(arguments, *, environment=None):
     environment = certificate_environment(arguments.security_directory, environment)
     selected = ["api"] if arguments.api_only else ["web"] if arguments.web_only else ["api", "web"]
     use_container = arguments.api_container and "api" in selected
+    docker_network = getattr(arguments, "docker_network", None)
+    network_alias = getattr(arguments, "network_alias", None)
+    validate_network(docker_network, network_alias)
+    if docker_network is not None and not use_container:
+        raise ValueError("Docker-сеть требует контейнерный запуск API.")
     if sys.platform == "darwin" and "api" in selected and not use_container:
         raise ValueError("API требует TLS 1.3 на сервере. На macOS используйте --api-container (Docker Desktop).")
     container_name = "medsoft-api-" + secrets.token_hex(5) if use_container else None
     container_arguments, api_environment = api_configuration(arguments.security_directory, environment,
-                                                            container_name, native=not use_container) if "api" in selected else ([], {})
+                                                            container_name, native=not use_container,
+                                                            docker_network=docker_network,
+                                                            network_alias=network_alias) if "api" in selected else ([], {})
+    if docker_network is not None:
+        ensure_named_network(arguments.docker, docker_network)
     if not arguments.no_build:
         builds = []
         if use_container:
@@ -187,10 +231,11 @@ def run(arguments, *, environment=None):
             stop_process(process)
 
 
-def run_application(directory, environment, *, no_build=False, docker="docker"):
+def run_application(directory, environment, *, no_build=False, docker="docker", docker_network=None, network_alias=None):
     return run(argparse.Namespace(
         security_directory=str(directory), api_container=True, api_only=False, web_only=False,
-        no_build=no_build, dotnet="dotnet", docker=docker), environment=environment)
+        no_build=no_build, dotnet="dotnet", docker=docker,
+        docker_network=docker_network, network_alias=network_alias), environment=environment)
 
 
 def main():
@@ -203,6 +248,8 @@ def main():
     parser.add_argument("--dotnet", default="dotnet", help="Путь к .NET SDK.")
     parser.add_argument("--api-container", action="store_true", help="Запускать API в Linux Docker для TLS 1.3 на macOS.")
     parser.add_argument("--docker", default="docker", help="Путь к Docker CLI.")
+    parser.add_argument("--docker-network", help="Явная bridge-сеть интеграции; обычный запуск не меняется.")
+    parser.add_argument("--network-alias", help="DNS-псевдоним API в указанной Docker-сети, например his-api.")
     return run(parser.parse_args())
 
 
