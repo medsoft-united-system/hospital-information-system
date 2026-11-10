@@ -46,11 +46,13 @@ public static class WebClientRegistration
         services.AddScoped<MedicalRecordsApiClient>();
         services.AddScoped<SessionApiClient>();
         services.AddScoped<AccountsApiClient>();
+        services.AddScoped<ServiceAccountsApiClient>();
         services.AddScoped<IAuthenticationGateway, AuthenticationGateway>();
         services.AddScoped<IAccountManagementGateway, AccountManagementGateway>();
         services.AddScoped<IAuditGateway, AuditGateway>();
         services.AddScoped<IMedicalRecordsGateway, MedicalRecordsGateway>();
         services.AddScoped<ILaboratoryTestsGateway, LaboratoryTestsGateway>();
+        services.AddScoped<IServiceAccountsGateway, ServiceAccountsGateway>();
         return services;
     }
 

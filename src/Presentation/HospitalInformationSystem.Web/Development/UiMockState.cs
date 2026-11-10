@@ -90,6 +90,7 @@ public sealed partial class UiMockState
             LaboratoryTests.Clear();
             Records.Clear();
             Accounts.Clear();
+            ServiceAccounts.Clear();
             Passwords.Clear();
             Audit.Clear();
             SetupRequired = false;
@@ -192,6 +193,7 @@ public sealed partial class UiMockState
         Records[MedicalRecordId] = record;
         AppendEvent(record, "MedicalRecordCreated", null, "{}", createdAt);
         SeedLaboratoryAnalyses(createdAt);
+        SeedServiceAccounts(createdAt);
         AddAudit("MedicalWorkerCreated", "Подготовлены синтетические медработники UiMock.", DoctorId);
         AddAudit("PatientCreated", "Подготовлен учебный пациент UiMock.", PatientWithRecordId);
         Audit.Add(new MockAuditEvent(Guid.NewGuid(), DateTimeOffset.UtcNow, "AdministratorSetup", null,

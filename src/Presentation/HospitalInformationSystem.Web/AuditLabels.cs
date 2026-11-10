@@ -7,6 +7,9 @@ public static class AuditLabels
 {
     public static string? RefreshRevocationSummary(IReadOnlyDictionary<string, JsonElement>? metadata)
     {
+        if (metadata is not null && metadata.TryGetValue("revokedServiceSessionCount", out var serviceValue) &&
+            serviceValue.ValueKind == JsonValueKind.Number && serviceValue.TryGetInt32(out var serviceCount) && serviceCount >= 0)
+            return $"Отозвано сервисных сессий: {serviceCount}.";
         if (metadata is null || !metadata.TryGetValue("revokedRefreshTokenCount", out var value) ||
             value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out var count) || count < 0)
             return null;

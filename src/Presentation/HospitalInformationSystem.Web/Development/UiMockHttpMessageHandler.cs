@@ -67,6 +67,7 @@ public sealed partial class UiMockHttpMessageHandler(UiMockState state) : HttpMe
                     "patients" => Patients(request, path, body),
                     "medical-records" => MedicalRecords(request, path, body),
                     "accounts" => Accounts(request, path, body),
+                    "service-accounts" => ServiceAccounts(request, path, body),
                     "audit" => Audit(request),
                     _ => Error(HttpStatusCode.NotImplemented, "Этот маршрут ещё не описан в UiMock.")
                 };

@@ -136,11 +136,14 @@ public sealed class AuditEventFactoryTests
         var unknownType = () => _factory.Create((AuditEventType)999, "Message", actor);
         var negativeCount = () => _factory.Create(AuditEventType.AccountChanged, "Message", actor,
             new AuditMetadata { RevokedRefreshTokenCount = -1 });
+        var negativeServiceCount = () => _factory.Create(AuditEventType.AccountChanged, "Message", actor,
+            new AuditMetadata { RevokedServiceSessionCount = -1 });
         var forgedLine = () => _factory.Create(AuditEventType.LoginFailed, "Message", actor,
             new AuditMetadata { AttemptedUserName = "attacker\nforged-entry" });
 
         unknownType.Should().Throw<DomainValidationException>();
         negativeCount.Should().Throw<DomainValidationException>();
+        negativeServiceCount.Should().Throw<DomainValidationException>();
         forgedLine.Should().Throw<DomainValidationException>();
     }
 
