@@ -392,6 +392,12 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<DateTimeOffset>("AuthoredAtFhirUtc")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("authored_at_fhir_utc")
+                        .HasComputedColumnSql("date_trunc('milliseconds', authored_at_utc AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'", true);
+
                     b.Property<DateTimeOffset>("AuthoredAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("authored_at_utc");
@@ -440,13 +446,16 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                     b.HasAlternateKey("Id", "PatientId")
                         .HasName("ak_lab_requests_id_patient");
 
+                    b.HasIndex("AuthoredAtFhirUtc", "Id")
+                        .HasDatabaseName("ix_lab_requests_fhir_order");
+
                     b.HasIndex("LaboratoryTestDefinitionId");
 
                     b.HasIndex("RequestedByMedicalWorkerId");
 
                     b.HasIndex("MedicalRecordId", "PatientId");
 
-                    b.HasIndex("Status", "AuthoredAtUtc", "Id")
+                    b.HasIndex("Status", "AuthoredAtFhirUtc", "Id")
                         .HasDatabaseName("ix_lab_requests_queue");
 
                     b.ToTable("laboratory_analysis_requests", null, t =>
