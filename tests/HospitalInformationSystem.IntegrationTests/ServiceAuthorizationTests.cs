@@ -166,7 +166,7 @@ public sealed class ServiceAuthorizationTests(ServiceAuthenticationApiFactory fa
             Sex = 0, CreatedAtUtc = now, UpdatedAtUtc = now
         };
         var definition = LaboratoryTestDefinitionFactory.Create(
-            BitConverter.ToUInt64(Guid.NewGuid().ToByteArray()).ToString(System.Globalization.CultureInfo.InvariantCulture) + "-0",
+            NewCode(),
             "Исследование реального JWT", now);
         db.MedicalWorkers.Add(new MedicalWorkerDbo
         {
@@ -196,6 +196,21 @@ public sealed class ServiceAuthorizationTests(ServiceAuthenticationApiFactory fa
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/fhir+json");
         response.Headers.CacheControl!.NoStore.Should().BeTrue();
         return new FhirJsonDeserializer(new DeserializerSettings().UsingMode(DeserializationMode.Strict)).Deserialize<T>(json);
+    }
+
+    private static string NewCode()
+    {
+        var number = BitConverter.ToUInt64(Guid.NewGuid().ToByteArray())
+            .ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var sum = 0;
+        for (var index = number.Length - 1; index >= 0; index--)
+        {
+            var digit = number[index] - '0';
+            if ((number.Length - index) % 2 == 1)
+                digit *= 2;
+            sum += digit / 10 + digit % 10;
+        }
+        return number + "-" + (10 - sum % 10) % 10;
     }
 
     private sealed record ClinicalScenario(Guid PatientId, Guid DoctorId, Guid RecordId, Guid RequestId,
