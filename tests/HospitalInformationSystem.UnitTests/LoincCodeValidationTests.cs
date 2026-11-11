@@ -10,6 +10,35 @@ namespace HospitalInformationSystem.UnitTests;
 public sealed class LoincCodeValidationTests
 {
     [Theory]
+    [InlineData("2345-8")]
+    [InlineData("1-1")]
+    [InlineData("9999999-9")]
+    public void LegacyNumericShape_ShouldRemainRecognizableWithoutPassingCatalogValidation(string code)
+    {
+        LaboratoryTestDefinitionRules.IsWellFormedCode(code).Should().BeTrue();
+        LaboratoryTestDefinitionRules.IsValidCode(code).Should().BeFalse();
+        LaboratoryTestCodeRules.IsValidCode(code).Should().BeFalse();
+        var create = () => LaboratoryTestDefinitionFactory.Create(code, "Новый анализ", DateTimeOffset.UtcNow);
+        create.Should().Throw<DomainValidationException>();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("1")]
+    [InlineData("-7")]
+    [InlineData("2345-77")]
+    [InlineData("2345--7")]
+    [InlineData("x-7")]
+    [InlineData("２３４５-7")]
+    [InlineData("2345-７")]
+    [InlineData("2345\0-7")]
+    public void LegacyNumericShape_ShouldStillRejectMalformedCodes(string? code)
+    {
+        LaboratoryTestDefinitionRules.IsWellFormedCode(code).Should().BeFalse();
+    }
+
+    [Theory]
     [InlineData("2345-7")]
     [InlineData("718-7")]
     [InlineData("7918-6")]

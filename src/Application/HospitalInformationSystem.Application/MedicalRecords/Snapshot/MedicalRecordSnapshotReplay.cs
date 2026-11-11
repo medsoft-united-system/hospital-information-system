@@ -116,7 +116,7 @@ public static class MedicalRecordSnapshotReplay
                     Require(payload.RequestedByMedicalWorkerId == humanAuthor &&
                             payload.LaboratoryTestDefinitionId != Guid.Empty,
                         "неверный автор или отсутствующий анализ справочника");
-                    Require(LaboratoryTestDefinitionRules.IsValidCode(payload.LoincCode) &&
+                    Require(LaboratoryTestDefinitionRules.IsWellFormedCode(payload.LoincCode) &&
                             payload.LoincCode.Trim() == payload.LoincCode &&
                             LaboratoryTestDefinitionRules.IsValidDisplayName(payload.DisplayName) &&
                             payload.DisplayName.Trim() == payload.DisplayName,

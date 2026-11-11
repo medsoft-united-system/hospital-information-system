@@ -304,6 +304,7 @@ public sealed class LaboratoryAnalysisUseCaseTests
         create.Validate(batch with { Comment = "Комментарий\0" }).IsValid.Should().BeFalse();
         var command = new RecordLaboratoryAnalysisResultCommand(Guid.NewGuid(), Guid.NewGuid(), "2345-7", unicode, Now);
         result.Validate(command).IsValid.Should().BeTrue();
+        result.Validate(command with { LoincCode = "2345-8" }).IsValid.Should().BeTrue();
         result.Validate(command with { Value = unicode + "а" }).IsValid.Should().BeFalse();
         result.Validate(command with { Value = " " }).IsValid.Should().BeFalse();
         result.Validate(command with { Value = "Результат\0" }).IsValid.Should().BeFalse();

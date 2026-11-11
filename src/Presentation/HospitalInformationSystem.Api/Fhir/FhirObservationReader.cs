@@ -170,7 +170,7 @@ public sealed partial class FhirObservationReader
             throw InvalidResource();
         if (RequiredString(coding[0], "system") != FhirResourceMapper.LoincSystem) throw InvalidResource();
         var value = RequiredString(coding[0], "code");
-        if (value != value.Trim() || !LaboratoryTestDefinitionRules.IsValidCode(value)) throw InvalidResource();
+        if (value != value.Trim() || !LaboratoryTestDefinitionRules.IsWellFormedCode(value)) throw InvalidResource();
         return value;
     }
 

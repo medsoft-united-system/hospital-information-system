@@ -7,18 +7,13 @@ internal static class LoincCodeValidation
 
     public static bool IsValidCode(string? code)
     {
-        var value = code?.Trim();
-        if (value is null || value.Length is < MinCodeLength or > MaxCodeLength || value[^2] != '-' ||
-            value[^1] is < '0' or > '9')
-            return false;
-
+        if (!IsWellFormedCode(code)) return false;
+        var value = code!.Trim();
         var sum = value[^1] - '0';
         var doubleDigit = true;
         for (var index = value.Length - 3; index >= 0; index--)
         {
-            var character = value[index];
-            if (character is < '0' or > '9') return false;
-            var digit = character - '0';
+            var digit = value[index] - '0';
             if (doubleDigit)
             {
                 digit *= 2;
@@ -29,6 +24,18 @@ internal static class LoincCodeValidation
         }
 
         return sum % 10 == 0 || IsHistoricalException(value);
+    }
+
+    public static bool IsWellFormedCode(string? code)
+    {
+        var value = code?.Trim();
+        if (value is null || value.Length is < MinCodeLength or > MaxCodeLength || value[^2] != '-' ||
+            value[^1] is < '0' or > '9')
+            return false;
+
+        for (var index = 0; index < value.Length - 2; index++)
+            if (value[index] is < '0' or > '9') return false;
+        return true;
     }
 
     private static bool IsHistoricalException(string code) => code is

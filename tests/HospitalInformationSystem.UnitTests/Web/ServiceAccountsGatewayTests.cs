@@ -25,6 +25,7 @@ public sealed class ServiceAccountsGatewayTests
         Func<Task>[] operations =
         [
             () => gateway.ListAsync(CancellationToken.None),
+            () => gateway.GetAsync(Guid.NewGuid(), CancellationToken.None),
             () => gateway.CreateAsync(new CreateServiceAccountRequest("lab"), CancellationToken.None),
             () => gateway.UpdateAsync(Guid.NewGuid(), new UpdateServiceAccountRequest("lab", 1), CancellationToken.None),
             () => gateway.SetActiveAsync(Guid.NewGuid(), new SetServiceAccountActiveRequest(false, 1), CancellationToken.None),
@@ -46,6 +47,7 @@ public sealed class ServiceAccountsGatewayTests
         var renamed = await gateway.UpdateAsync(created.Account.Id, new UpdateServiceAccountRequest("Основная лаборатория", created.Account.Version), CancellationToken.None);
         var disabled = await gateway.SetActiveAsync(renamed.Id, new SetServiceAccountActiveRequest(false, renamed.Version), CancellationToken.None);
         var rotated = await gateway.RotateKeyAsync(disabled.Account.Id, new RotateServiceAccountKeyRequest(disabled.Account.Version), CancellationToken.None);
+        (await gateway.GetAsync(rotated.Account.Id, CancellationToken.None)).Should().Be(rotated.Account);
         rotated.Account.Id.Should().Be(created.Account.Id);
         rotated.Account.IsActive.Should().BeFalse();
         rotated.Account.Name.Should().Be("Основная лаборатория");

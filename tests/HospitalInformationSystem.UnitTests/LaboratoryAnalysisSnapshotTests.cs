@@ -19,6 +19,36 @@ public sealed class LaboratoryAnalysisSnapshotTests
     private static readonly Guid ServiceId = Guid.NewGuid();
 
     [Fact]
+    public void Build_LegacyNumericCode_ShouldPreserveHistoryBeforeAndAfterOrderAndResult()
+    {
+        var (record, _) = Scenario();
+        const string legacyCode = "2345-8";
+        var history = record.HistoryEvents.Select(item =>
+        {
+            if (item.EventType is not (MedicalRecordEventType.LaboratoryAnalysisRequested or
+                MedicalRecordEventType.LaboratoryAnalysisResultRecorded)) return item;
+            var payload = JsonNode.Parse(item.PayloadJson)!.AsObject();
+            payload["loincCode"] = legacyCode;
+            return Copy(item, payload: payload.ToJsonString());
+        }).ToArray();
+        var payloads = history.Select(x => x.PayloadJson).ToArray();
+
+        var before = MedicalRecordSnapshotReplay.Build(record, history, RequestedAt.AddTicks(-1));
+        var ordered = MedicalRecordSnapshotReplay.Build(record, history, RequestedAt);
+        var completed = MedicalRecordSnapshotReplay.Build(record, history, ReceivedAt);
+
+        before.LaboratoryAnalysisRequests.Should().BeEmpty();
+        var pending = ordered.LaboratoryAnalysisRequests.Should().ContainSingle().Subject;
+        pending.LoincCode.Should().Be(legacyCode);
+        pending.Result.Should().BeNull();
+        var saved = completed.LaboratoryAnalysisRequests.Should().ContainSingle().Subject;
+        saved.LoincCode.Should().Be(legacyCode);
+        saved.Status.Should().Be(ContractStatus.Completed);
+        saved.Result!.Value.Should().Be("5.6");
+        history.Select(x => x.PayloadJson).Should().Equal(payloads);
+    }
+
+    [Fact]
     public void Build_BeforeOrderBetweenOrderAndResultAndAfterResult_ShouldReconstructOnlyHistoricalState()
     {
         var (record, request) = Scenario();

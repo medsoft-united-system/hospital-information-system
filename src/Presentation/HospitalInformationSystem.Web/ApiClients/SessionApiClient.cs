@@ -11,6 +11,7 @@ public sealed class SessionApiClient(HttpClient http, SessionState session, Anti
     public async Task LoginAsync(LoginRequest request, CancellationToken cancellationToken)
     {
         using var operation = await operations.EnterAsync(cancellationToken);
+        tokens.Reset();
         try
         {
             var current = await http.SendJsonAsync<AuthenticationTokensDto>(HttpMethod.Post, "api/auth/login", request, null,
@@ -30,6 +31,7 @@ public sealed class SessionApiClient(HttpClient http, SessionState session, Anti
         BeginAdministratorLoginRequest request, CancellationToken cancellationToken)
     {
         using var operation = await operations.EnterAsync(cancellationToken);
+        tokens.Reset();
         try
         {
             var challenge = await http.SendJsonAsync<AdministratorLoginChallengeDto>(HttpMethod.Post,
@@ -50,6 +52,7 @@ public sealed class SessionApiClient(HttpClient http, SessionState session, Anti
         CancellationToken cancellationToken)
     {
         using var operation = await operations.EnterAsync(cancellationToken);
+        tokens.Reset();
         var current = await http.SendJsonAsync<AuthenticationTokensDto>(HttpMethod.Post,
             "api/auth/admin/confirm", request, null, cancellationToken);
         tokens.Reset();
@@ -59,6 +62,7 @@ public sealed class SessionApiClient(HttpClient http, SessionState session, Anti
     public async Task LogoutAsync(CancellationToken cancellationToken)
     {
         using var operation = await operations.EnterAsync(cancellationToken);
+        tokens.Reset();
         await http.SendJsonAsync(HttpMethod.Post, "api/auth/logout", null, null, cancellationToken);
         tokens.Reset();
         session.SetSession(null);

@@ -3,6 +3,7 @@
 .catalog-note ::deep svg { flex-shrink: 0; }
 .laboratory-form { margin-bottom: 24px; }
 .laboratory-form ::deep form { padding: 24px 28px 0; }
+.laboratory-form ::deep .form-actions { flex-wrap: wrap; }
 .laboratory-form label { display: block; margin-bottom: 8px; color: #4f6551; font-size: 13px; }
 .laboratory-form small { display: block; margin-top: 7px; color: #637261; line-height: 1.6; }
 .laboratory-toolbar { flex-wrap: wrap; }
