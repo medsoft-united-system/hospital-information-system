@@ -65,16 +65,16 @@ public static class FhirResourceMapper
 
     public static FhirCapabilityStatement CapabilityStatement() => new()
     {
-        Id = "medsoft-fhir-r5", Name = "MedSoftFhirR5Read", Title = "MedSoft HIS FHIR R5",
-        Version = "lab3-l5", Status = PublicationStatus.Active,
+        Id = "medsoft-fhir-r5", Name = "MedSoftFhirR5", Title = "MedSoft HIS FHIR R5",
+        Version = "lab3-l6", Status = PublicationStatus.Active,
         Date = "2026-11-09T00:00:00Z", Kind = CapabilityStatementKind.Capability,
-        Software = new FhirCapabilityStatement.SoftwareComponent { Name = "MedSoft HIS", Version = "lab3-l5" },
+        Software = new FhirCapabilityStatement.SoftwareComponent { Name = "MedSoft HIS", Version = "lab3-l6" },
         FhirVersion = FHIRVersion.N5_0_0,
         Format = [FhirResponseWriter.ContentType],
         Rest = [new FhirCapabilityStatement.RestComponent
         {
             Mode = FhirCapabilityStatement.RestfulCapabilityMode.Server,
-            Documentation = "Medical resources require the dedicated LIS service identity. Only listed read/search operations are implemented.",
+            Documentation = "Medical resources require the dedicated LIS service identity. Observation create registers one immutable result per ServiceRequest.",
             Resource =
             [
                 ResourceCapability("Patient"),
@@ -82,7 +82,7 @@ public static class FhirResourceMapper
                 ResourceCapability("ServiceRequest", new FhirCapabilityStatement.SearchParamComponent
                     { Name = "status", Type = SearchParamType.Token, Documentation = "active or completed; omit to read both." }),
                 ResourceCapability("Observation", new FhirCapabilityStatement.SearchParamComponent
-                    { Name = "based-on", Type = SearchParamType.Reference, Documentation = "Required relative ServiceRequest/{uuid} reference." })
+                    { Name = "based-on", Type = SearchParamType.Reference, Documentation = "Required relative ServiceRequest/{uuid} reference." }, create: true)
             ]
         }]
     };
@@ -148,15 +148,20 @@ public static class FhirResourceMapper
     }
 
     private static FhirCapabilityStatement.ResourceComponent ResourceCapability(string type,
-        FhirCapabilityStatement.SearchParamComponent? search = null) => new()
+        FhirCapabilityStatement.SearchParamComponent? search = null, bool create = false)
     {
-        Type = type,
-        Interaction = search is null
-            ? [new FhirCapabilityStatement.ResourceInteractionComponent { Code = FhirCapabilityStatement.TypeRestfulInteraction.Read }]
-            : [new FhirCapabilityStatement.ResourceInteractionComponent { Code = FhirCapabilityStatement.TypeRestfulInteraction.Read },
-               new FhirCapabilityStatement.ResourceInteractionComponent { Code = FhirCapabilityStatement.TypeRestfulInteraction.SearchType }],
-        SearchParam = search is null ? [] : [search]
-    };
+        var interactions = new List<FhirCapabilityStatement.ResourceInteractionComponent>
+            { new() { Code = FhirCapabilityStatement.TypeRestfulInteraction.Read } };
+        if (search is not null)
+            interactions.Add(new() { Code = FhirCapabilityStatement.TypeRestfulInteraction.SearchType });
+        if (create) interactions.Add(new() { Code = FhirCapabilityStatement.TypeRestfulInteraction.Create });
+        return new FhirCapabilityStatement.ResourceComponent
+        {
+            Type = type, Interaction = interactions, SearchParam = search is null ? [] : [search],
+            UpdateCreate = create ? false : null,
+            ConditionalCreate = create ? false : null
+        };
+    }
 
     private static HumanName Name(string family, string first, string? middle = null) => new()
     {

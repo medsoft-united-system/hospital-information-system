@@ -8,4 +8,5 @@ public sealed record AuditActorDto(
     Guid? UserId,
     string DisplayName,
     string? RequestId,
-    string? Component);
+    string? Component,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? ServiceAccountId = null);

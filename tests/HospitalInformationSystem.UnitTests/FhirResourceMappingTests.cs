@@ -139,7 +139,7 @@ public sealed class FhirResourceMappingTests
     }
 
     [Fact]
-    public void Metadata_ShouldAdvertiseOnlyImplementedR5ReadAndSearchOperations()
+    public void Metadata_ShouldAdvertiseReadSearchAndOnlyObservationCreate()
     {
         var metadata = Json(FhirResourceMapper.CapabilityStatement());
 
@@ -154,7 +154,10 @@ public sealed class FhirResourceMappingTests
         foreach (var resource in resources)
         {
             var interactions = resource!["interaction"]!.AsArray().Select(x => x!["code"]!.GetValue<string>()).ToArray();
-            interactions.Should().Contain("read").And.NotContain(["create", "update", "patch", "delete", "vread"]);
+            interactions.Should().Contain("read").And.NotContain(["update", "patch", "delete", "vread"]);
+            if (resource["type"]!.GetValue<string>() == "Observation")
+                interactions.Should().Contain("create");
+            else interactions.Should().NotContain("create");
             if (resource["type"]!.GetValue<string>() is "ServiceRequest" or "Observation")
                 interactions.Should().Contain("search-type");
             else interactions.Should().Equal("read");

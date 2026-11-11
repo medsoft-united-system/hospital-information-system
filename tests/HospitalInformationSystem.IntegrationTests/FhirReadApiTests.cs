@@ -169,7 +169,7 @@ public sealed class FhirReadApiTests(FhirReadApiFactory factory) : IClassFixture
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task Metadata_ShouldDescribeOnlyImplementedReadOperationsAndRejectXml()
+    public async System.Threading.Tasks.Task Metadata_ShouldDescribeReadSearchAndObservationCreateAndRejectXml()
     {
         using var client = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
             { BaseAddress = new Uri("https://his-api:5201"), AllowAutoRedirect = false });
@@ -177,8 +177,9 @@ public sealed class FhirReadApiTests(FhirReadApiFactory factory) : IClassFixture
         var metadata = await ReadAsync<CapabilityStatement>(response);
         metadata.FhirVersion.Should().NotBeNull();
         metadata.Rest.Single().Resource.Should().HaveCount(4);
-        metadata.Rest.Single().Resource.SelectMany(x => x.Interaction).Select(x => x.Code)
-            .Should().NotContain(CapabilityStatement.TypeRestfulInteraction.Create);
+        metadata.Rest.Single().Resource.Where(resource => resource.Interaction.Any(interaction =>
+                interaction.Code == CapabilityStatement.TypeRestfulInteraction.Create)).Select(resource => resource.Type)
+            .Should().Equal("Observation");
         client.DefaultRequestHeaders.Accept.ParseAdd("application/fhir+xml");
         using var xml = await client.GetAsync("/fhir/metadata");
         await ReadAsync<OperationOutcome>(xml, HttpStatusCode.NotAcceptable);

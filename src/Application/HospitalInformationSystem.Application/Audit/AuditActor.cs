@@ -7,4 +7,5 @@ public sealed record AuditActor(
     Guid? UserId,
     string DisplayName,
     string? RequestId,
-    string? Component);
+    string? Component,
+    Guid? ServiceAccountId = null);

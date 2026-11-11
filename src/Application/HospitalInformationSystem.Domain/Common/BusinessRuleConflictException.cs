@@ -1,3 +1,3 @@
 namespace HospitalInformationSystem.Domain.Common;
 
-public sealed class BusinessRuleConflictException(string message) : Exception(message);
+public class BusinessRuleConflictException(string message) : Exception(message);

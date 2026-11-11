@@ -289,6 +289,10 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(16)")
                         .HasColumnName("actor_kind");
 
+                    b.Property<Guid?>("ActorServiceAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_service_account_id");
+
                     b.Property<Guid?>("ActorUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("actor_user_id");
@@ -326,13 +330,15 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
 
                     b.HasKey("EventId");
 
+                    b.HasIndex("ActorServiceAccountId");
+
                     b.HasIndex("EventTimeUtc", "EventId");
 
                     b.HasIndex("EventType", "EventTimeUtc", "EventId");
 
                     b.ToTable("security_audit_events", null, t =>
                         {
-                            t.HasCheckConstraint("ck_audit_actor", "actor_kind IN ('user', 'anonymous', 'system') AND ((actor_kind = 'user' AND actor_user_id IS NOT NULL) OR (actor_kind <> 'user' AND actor_user_id IS NULL))");
+                            t.HasCheckConstraint("ck_audit_actor", "(actor_kind = 'user' AND actor_user_id IS NOT NULL AND actor_service_account_id IS NULL)\nOR (actor_kind = 'service' AND actor_user_id IS NULL AND actor_service_account_id IS NOT NULL)\nOR (actor_kind IN ('anonymous', 'system') AND actor_user_id IS NULL AND actor_service_account_id IS NULL)");
                         });
                 });
 
@@ -1239,6 +1245,14 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.AuditEventDbo", b =>
+                {
+                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.ServiceAccountDbo", null)
+                        .WithMany()
+                        .HasForeignKey("ActorServiceAccountId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.LaboratoryAnalysisRequestDbo", b =>

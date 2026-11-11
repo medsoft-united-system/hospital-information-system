@@ -32,7 +32,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddApiSecurity(builder.Configuration, builder.Environment);
-builder.Services.AddFhirReadApi();
+builder.Services.AddFhirApi();
 
 var app = builder.Build();
 _ = app.Services.GetRequiredService<JwtKeyMaterial>();

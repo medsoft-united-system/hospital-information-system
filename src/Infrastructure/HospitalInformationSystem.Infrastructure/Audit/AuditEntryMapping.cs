@@ -17,6 +17,7 @@ internal static partial class AuditEntryMapping
 
     [MapProperty("Actor.Kind", nameof(AuditEventDbo.ActorKind))]
     [MapProperty("Actor.UserId", nameof(AuditEventDbo.ActorUserId))]
+    [MapProperty("Actor.ServiceAccountId", nameof(AuditEventDbo.ActorServiceAccountId))]
     [MapProperty("Actor.DisplayName", nameof(AuditEventDbo.ActorDisplayName))]
     [MapProperty("Actor.RequestId", nameof(AuditEventDbo.RequestId))]
     [MapProperty("Actor.Component", nameof(AuditEventDbo.Component))]
@@ -26,7 +27,7 @@ internal static partial class AuditEntryMapping
     public static AuditEventDto ToDto(AuditEventDbo entry) => new(entry.EventId, entry.EventTimeUtc,
         ParseEventType(entry.EventType),
         new AuditActorDto(ParseActorKind(entry.ActorKind), entry.ActorUserId, entry.ActorDisplayName,
-            entry.RequestId, entry.Component), entry.Message,
+            entry.RequestId, entry.Component, entry.ActorServiceAccountId), entry.Message,
         JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(entry.MetadataJson, MetadataOptions)
         ?? new Dictionary<string, JsonElement>());
 
@@ -37,6 +38,7 @@ internal static partial class AuditEntryMapping
         AuditActorKind.User => "user",
         AuditActorKind.Anonymous => "anonymous",
         AuditActorKind.System => "system",
+        AuditActorKind.ServiceAccount => "service",
         _ => throw new ArgumentOutOfRangeException(nameof(kind))
     };
 
@@ -49,6 +51,7 @@ internal static partial class AuditEntryMapping
         "user" => AuditActorKind.User,
         "anonymous" => AuditActorKind.Anonymous,
         "system" => AuditActorKind.System,
+        "service" => AuditActorKind.ServiceAccount,
         _ => throw new InvalidOperationException("В журнале сохранён неизвестный тип инициатора.")
     };
 }

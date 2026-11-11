@@ -19,6 +19,8 @@ internal sealed class FhirTestAuthenticationHandler(IOptionsMonitor<Authenticati
         {
             new Claim("sub", FhirReadApiFactory.ServiceId.ToString("D")),
             new Claim("account_kind", "service"),
+            new Claim("auth_ver", "1"),
+            new Claim("name", "lis.read-tests"),
             new Claim("role", token == "FhirTest lis" ? "LIS" : "Other")
         };
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, ServiceAuthenticationDefaults.Scheme));

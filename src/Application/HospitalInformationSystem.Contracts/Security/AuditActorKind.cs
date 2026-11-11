@@ -8,5 +8,6 @@ public enum AuditActorKind
 {
     User,
     Anonymous,
-    System
+    System,
+    ServiceAccount
 }

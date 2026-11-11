@@ -45,6 +45,7 @@ public static class AuditLabels
     public static string? ActorDetail(AuditActorDto actor) => actor.Kind switch
     {
         AuditActorKind.User => actor.UserId is { } id ? $"ID: {id}" : null,
+        AuditActorKind.ServiceAccount => actor.ServiceAccountId is { } id ? $"ID сервиса: {id}" : null,
         AuditActorKind.Anonymous => string.IsNullOrWhiteSpace(actor.RequestId) ? null : $"Запрос: {actor.RequestId}",
         _ => null
     };
@@ -54,6 +55,7 @@ public static class AuditLabels
         AuditActorKind.User => "Пользователь",
         AuditActorKind.Anonymous => "Аноним",
         AuditActorKind.System => "Система",
+        AuditActorKind.ServiceAccount => "Сервисный аккаунт",
         _ => ""
     };
 }

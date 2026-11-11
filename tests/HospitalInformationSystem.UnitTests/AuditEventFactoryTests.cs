@@ -71,6 +71,50 @@ public sealed class AuditEventFactoryTests
         second.EventId.Should().NotBe(first.EventId);
     }
 
+    [Fact]
+    public void Create_ServiceActor_ShouldKeepServiceIdentitySeparateFromHumanUser()
+    {
+        var serviceId = Guid.NewGuid();
+        var entry = _factory.Create(AuditEventType.MedicalRecordChanged, "Зарегистрирован результат анализа.",
+            new AuditActor(AuditActorKind.ServiceAccount, null, "lis.external", "service-request", null, serviceId),
+            new AuditMetadata { Action = "LaboratoryAnalysisResultRecorded", RecordEntryId = Guid.NewGuid() });
+
+        entry.ActorKind.Should().Be("service");
+        entry.ActorServiceAccountId.Should().Be(serviceId);
+        entry.ActorUserId.Should().BeNull();
+        entry.ActorDisplayName.Should().Be("lis.external");
+        using var metadata = JsonDocument.Parse(entry.MetadataJson);
+        metadata.RootElement.GetProperty("correlationId").GetString().Should().Be("service-request");
+        metadata.RootElement.TryGetProperty("content", out _).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(AuditActorKind.ServiceAccount, false, false)]
+    [InlineData(AuditActorKind.ServiceAccount, true, true)]
+    [InlineData(AuditActorKind.User, true, true)]
+    [InlineData(AuditActorKind.Anonymous, false, true)]
+    [InlineData(AuditActorKind.System, false, true)]
+    public void Create_MixedOrMissingServiceIdentity_ShouldRejectInvalidActorShape(AuditActorKind kind,
+        bool hasUser, bool hasService)
+    {
+        var actor = new AuditActor(kind, hasUser ? Guid.NewGuid() : null, "Actor", "request", "component",
+            hasService ? Guid.NewGuid() : null);
+
+        var create = () => _factory.Create(AuditEventType.MedicalRecordChanged, "Изменена ЭМК.", actor);
+
+        create.Should().Throw<DomainValidationException>();
+    }
+
+    [Fact]
+    public void Create_EmptyServiceId_ShouldRejectUnverifiableIdentity()
+    {
+        var actor = new AuditActor(AuditActorKind.ServiceAccount, null, "lis.external", "request", null, Guid.Empty);
+
+        var create = () => _factory.Create(AuditEventType.MedicalRecordChanged, "Изменена ЭМК.", actor);
+
+        create.Should().Throw<DomainValidationException>();
+    }
+
     [Theory]
     [InlineData(AuditActorKind.User, false, "request", null)]
     [InlineData(AuditActorKind.Anonymous, true, "request", null)]
