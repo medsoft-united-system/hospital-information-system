@@ -321,10 +321,13 @@ Go проверяет 201, resourceType, непустой UUID, Location, зак
 | Поиск | `service-requests-page-1.json`, `service-requests-page-2.json`, `service-requests-empty.json`, `observations-empty.json`, `observations-found.json` |
 | Ошибки FHIR | `operation-outcome-400.json`, `-401.json`, `-403.json`, `-404.json`, `-409.json`, `-500.json` |
 | Технический JSON | `service-token-request.json`, `service-token-response.json`, `service-refresh-request.json`, `test-connection.json`, `service-auth-error.json` |
+| Исходный справочник HIS | `laboratory-test-catalog.json` — семь LOINC-кодов с названиями и ссылками на источник; это данные справочника, не FHIR-ресурс и не HTTP-ответ LIS |
 
 Страницы содержат два разных заказа; active/completed файлы с одним ID — разные состояния одного заказа, не одновременные записи. HTTP-статусы/заголовки задаёт mock по таблицам этого документа: сами JSON-файлы содержат только тела. Для CapabilityStatement, 413/415/429, конфликтов и негативных тел реализации добавляют проверки по правилам C2; перечисленные примеры не являются полным FHIR SDK/валидатором или готовыми автотестами.
 
 На стороне HIS с 09.11.2026 примеры проверяются в [Lab3FhirContractTests](../tests/HospitalInformationSystem.UnitTests/Lab3FhirContractTests.cs) настоящим `Hl7.Fhir.R5` 6.7.0 в строгом режиме десериализации. Дополнительно проверяются связи и договорённости C2, а технические DTO — в [ServiceAuthContractTests](../tests/HospitalInformationSystem.UnitTests/ServiceAuthContractTests.cs). Это проверка модели и примеров, а не готовность HTTP API или полная терминологическая/profile-валидация. Статус согласования документа от появления этих тестов не меняется.
+
+`LaboratoryTestCatalogContractTests` отдельно сверяет исходный справочник с seed HIS. Коды взяты из официальных карточек LOINC; источник каждого элемента указан в JSON. Это не делает произвольное название из редактируемого справочника официальным переводом LOINC и не меняет правила хранения снимков кода/названия в заказах.
 
 ## 14. Приёмка контракта и стыковка
 

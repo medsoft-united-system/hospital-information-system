@@ -386,6 +386,58 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.LaboratoryTestDefinitionDbo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("display_name");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("LoincCode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("loinc_code");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LoincCode")
+                        .IsUnique()
+                        .HasDatabaseName("ux_laboratory_tests_loinc_code");
+
+                    b.ToTable("laboratory_test_definitions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_laboratory_tests_dates", "updated_at_utc >= created_at_utc");
+
+                            t.HasCheckConstraint("ck_laboratory_tests_display_name", "display_name = btrim(display_name) AND char_length(display_name) BETWEEN 3 AND 256");
+
+                            t.HasCheckConstraint("ck_laboratory_tests_loinc_code", "char_length(loinc_code) BETWEEN 3 AND 32 AND loinc_code ~ '^[0-9]+-[0-9]$'");
+                        });
+                });
+
             modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalRecordDbo", b =>
                 {
                     b.Property<Guid>("Id")
