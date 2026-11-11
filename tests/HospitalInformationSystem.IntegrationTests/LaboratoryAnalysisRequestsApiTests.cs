@@ -40,6 +40,7 @@ public sealed class LaboratoryAnalysisRequestsApiTests(MedicalRecordsApiFactory 
             x.Comment == "Натощак" && x.Status == LaboratoryAnalysisRequestStatus.Active && x.Result == null);
         requests.Select(x => x.Id).Should().OnlyHaveUniqueItems();
         requests.Should().OnlyContain(x => x.AuthoredAtUtc == T0.AddMinutes(1));
+        requests.Should().OnlyContain(x => x.RequestedByNameSnapshot == "Проверка Алексей");
         var current = (await _client.GetFromJsonAsync<MedicalRecordDto>($"/api/medical-records/{record.Id}"))!;
         current.Version.Should().Be(record.Version + 2);
         current.LaboratoryAnalysisRequests.Should().BeEquivalentTo(requests);
@@ -51,6 +52,7 @@ public sealed class LaboratoryAnalysisRequestsApiTests(MedicalRecordsApiFactory 
         var next = (await repeated.Content.ReadFromJsonAsync<LaboratoryAnalysisRequestDto[]>())!.Single();
         requests.Select(x => x.Id).Should().NotContain(next.Id);
         next.LoincCode.Should().Be(requests[0].LoincCode);
+        next.RequestedByNameSnapshot.Should().Be("Проверка Алексей");
 
         using var renamed = await _client.PutAsJsonAsync($"/api/laboratory-tests/{selected[0].Id}",
             new SaveLaboratoryTestRequest(selected[0].LoincCode, "Название после назначения", selected[0].Version));
@@ -61,10 +63,16 @@ public sealed class LaboratoryAnalysisRequestsApiTests(MedicalRecordsApiFactory 
         (await _client.PutAsJsonAsync($"/api/medical-workers/{worker}",
             new SaveMedicalWorkerRequest("Другое", "Имя", "Хирург", MedicalWorkerRole.Doctor))).EnsureSuccessStatusCode();
 
+        var afterRename = (await _client.GetFromJsonAsync<MedicalRecordDto>($"/api/medical-records/{record.Id}"))!;
+        afterRename.LaboratoryAnalysisRequests.Should().OnlyContain(x => x.RequestedByNameSnapshot == "Проверка Алексей");
+        var patientRecord = (await _client.GetFromJsonAsync<MedicalRecordDto>($"/api/patients/{record.PatientId}/medical-record"))!;
+        patientRecord.LaboratoryAnalysisRequests.Should().OnlyContain(x => x.RequestedByNameSnapshot == "Проверка Алексей");
+
         var before = await SnapshotAsync(record.Id, T0);
         before.LaboratoryAnalysisRequests.Should().BeEmpty();
         var after = await SnapshotAsync(record.Id, T0.AddMinutes(1));
         after.LaboratoryAnalysisRequests.Should().HaveCount(3);
+        after.LaboratoryAnalysisRequests.Should().OnlyContain(x => x.RequestedByNameSnapshot == "Проверка Алексей");
         after.LaboratoryAnalysisRequests.Should().OnlyContain(x => x.Result == null &&
             x.Status == LaboratoryAnalysisRequestStatus.Active);
         after.LaboratoryAnalysisRequests.Single(x => x.Id == requests[0].Id).DisplayName.Should()

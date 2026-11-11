@@ -7,8 +7,15 @@ namespace HospitalInformationSystem.Application.MedicalRecords.Mapping;
 [Mapper]
 public static partial class MedicalRecordMapping
 {
+    public static MedicalRecordDto ToDto(this MedicalRecord record) => MapRecord(record) with
+    {
+        LaboratoryAnalysisRequests = record.LaboratoryAnalysisRequests.ToDtos(record.HistoryEvents)
+    };
+
     [MapperIgnoreSource(nameof(MedicalRecord.HistoryEvents))]
-    public static partial MedicalRecordDto ToDto(this MedicalRecord record);
+    [MapperIgnoreSource(nameof(MedicalRecord.LaboratoryAnalysisRequests))]
+    [MapperIgnoreTarget(nameof(MedicalRecordDto.LaboratoryAnalysisRequests))]
+    private static partial MedicalRecordDto MapRecord(MedicalRecord record);
 
     [MapProperty(nameof(MedicalRecordDiagnosis.DiagnosisCodeSnapshot), nameof(MedicalRecordDiagnosisDto.Code))]
     [MapProperty(nameof(MedicalRecordDiagnosis.DiagnosisNameSnapshot), nameof(MedicalRecordDiagnosisDto.Name))]
@@ -25,7 +32,24 @@ public static partial class MedicalRecordMapping
 
     [MapProperty(nameof(LaboratoryAnalysisRequest.LoincCodeSnapshot), nameof(LaboratoryAnalysisRequestDto.LoincCode))]
     [MapProperty(nameof(LaboratoryAnalysisRequest.DisplayNameSnapshot), nameof(LaboratoryAnalysisRequestDto.DisplayName))]
+    [MapperIgnoreTarget(nameof(LaboratoryAnalysisRequestDto.RequestedByNameSnapshot))]
     public static partial LaboratoryAnalysisRequestDto ToDto(this LaboratoryAnalysisRequest request);
+
+    public static IReadOnlyList<LaboratoryAnalysisRequestDto> ToDtos(
+        this IReadOnlyCollection<LaboratoryAnalysisRequest> requests,
+        IReadOnlyCollection<MedicalRecordHistoryEvent> historyEvents)
+    {
+        var authors = historyEvents.Where(x => x.EventType == MedicalRecordEventType.LaboratoryAnalysisRequested &&
+                                              x.AuthorKind == Domain.MedicalRecords.MedicalRecordAuthorKind.MedicalWorker &&
+                                              x.EntityId.HasValue)
+            .GroupBy(x => x.EntityId!.Value).ToDictionary(x => x.Key, x => x.OrderBy(item => item.Version).First());
+        return requests.Select(request => request.ToDto() with
+        {
+            RequestedByNameSnapshot = authors.TryGetValue(request.Id, out var author) &&
+                                      author.PerformedByMedicalWorkerId == request.RequestedByMedicalWorkerId
+                ? author.PerformedByNameSnapshot : null
+        }).ToArray();
+    }
 
     public static partial LaboratoryAnalysisResultDto ToDto(this LaboratoryAnalysisResult result);
 

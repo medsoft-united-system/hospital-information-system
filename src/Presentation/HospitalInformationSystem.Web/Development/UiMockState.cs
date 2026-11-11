@@ -9,7 +9,7 @@ using HospitalInformationSystem.Web.Authentication;
 
 namespace HospitalInformationSystem.Web.Development;
 
-public sealed class UiMockState
+public sealed partial class UiMockState
 {
     public const string DemonstrationPassword = "UiMock-only-password!2026";
     public const string DemonstrationTotpCode = "012345";
@@ -87,6 +87,7 @@ public sealed class UiMockState
             WorkerRoles.Clear();
             Patients.Clear();
             Diagnoses.Clear();
+            LaboratoryTests.Clear();
             Records.Clear();
             Accounts.Clear();
             Passwords.Clear();
@@ -190,6 +191,7 @@ public sealed class UiMockState
             createdAt, 0, [], []));
         Records[MedicalRecordId] = record;
         AppendEvent(record, "MedicalRecordCreated", null, "{}", createdAt);
+        SeedLaboratoryAnalyses(createdAt);
         AddAudit("MedicalWorkerCreated", "Подготовлены синтетические медработники UiMock.", DoctorId);
         AddAudit("PatientCreated", "Подготовлен учебный пациент UiMock.", PatientWithRecordId);
         Audit.Add(new MockAuditEvent(Guid.NewGuid(), DateTimeOffset.UtcNow, "AdministratorSetup", null,

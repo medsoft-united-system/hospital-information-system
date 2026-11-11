@@ -38,6 +38,6 @@ public sealed class CreateLaboratoryAnalysisRequestsCommandHandler(MedicalRecord
         var created = MedicalRecordService.CreateLaboratoryAnalysisRequests(record, definitions,
             request.Comment, author, context.Now);
         await context.SaveChangesAsync(record, cancellationToken);
-        return created.Select(x => x.ToDto()).ToArray();
+        return created.ToDtos(record.HistoryEvents);
     }
 }

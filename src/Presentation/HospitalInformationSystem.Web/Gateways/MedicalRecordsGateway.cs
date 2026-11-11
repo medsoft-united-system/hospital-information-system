@@ -51,6 +51,13 @@ public sealed class MedicalRecordsGateway(MedicalRecordsApiClient client, Sessio
         return client.ReplacePrescriptionAsync(recordId, prescriptionId, text, cancellationToken);
     }
 
+    public Task<IReadOnlyList<LaboratoryAnalysisRequestDto>> CreateLaboratoryAnalysisRequestsAsync(Guid recordId,
+        CreateLaboratoryAnalysisRequestsRequest request, CancellationToken cancellationToken)
+    {
+        RequirePermission();
+        return client.CreateLaboratoryAnalysisRequestsAsync(recordId, request, cancellationToken);
+    }
+
     public Task<IReadOnlyList<MedicalRecordHistoryEventDto>> GetHistoryAsync(Guid recordId,
         CancellationToken cancellationToken) => client.GetHistoryAsync(recordId, cancellationToken);
 

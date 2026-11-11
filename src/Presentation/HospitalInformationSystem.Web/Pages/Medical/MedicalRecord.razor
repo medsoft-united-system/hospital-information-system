@@ -7,6 +7,7 @@
 @using HospitalInformationSystem.Contracts.Diagnoses
 @using HospitalInformationSystem.Contracts.MedicalRecords
 @using HospitalInformationSystem.Contracts.Security
+@using HospitalInformationSystem.Web.Components.MedicalRecords
 @implements IDisposable
 @inject PatientsApiClient PatientsApi
 @inject HospitalInformationSystem.Web.Gateways.IMedicalRecordsGateway Records
@@ -21,7 +22,7 @@
 <div class="page-heading">
   <div>
     <h1>@(_patient is null ? "Медицинская карта" : $"{_patient.LastName} {_patient.FirstName}")</h1>
-    <p>История диагнозов, назначений и изменений пациента.</p>
+    <p>Диагнозы, назначения, лабораторные анализы и история изменений.</p>
   </div>
   <span class="status status-admin role-badge"><span class="status-dot"></span>Ваша роль: @MedicalRoleLabels.Describe(Role)</span>
 </div>
@@ -89,11 +90,13 @@ else
   {
     <div class="mr-tabs" role="tablist" aria-label="Разделы карты">
       <button role="tab" class="@TabClass(Tab.Diagnoses)" aria-selected="@(_tab == Tab.Diagnoses)"
-              disabled="@_busy" @onclick="() => SelectTabAsync(Tab.Diagnoses)">Диагнозы</button>
+              disabled="@(_busy || _laboratoryBusy)" @onclick="() => SelectTabAsync(Tab.Diagnoses)">Диагнозы</button>
       <button role="tab" class="@TabClass(Tab.Prescriptions)" aria-selected="@(_tab == Tab.Prescriptions)"
-              disabled="@_busy" @onclick="() => SelectTabAsync(Tab.Prescriptions)">Назначения</button>
+              disabled="@(_busy || _laboratoryBusy)" @onclick="() => SelectTabAsync(Tab.Prescriptions)">Назначения</button>
+      <button role="tab" class="@TabClass(Tab.Analyses)" aria-selected="@(_tab == Tab.Analyses)"
+              disabled="@(_busy || _laboratoryBusy)" @onclick="() => SelectTabAsync(Tab.Analyses)">Анализы</button>
       <button role="tab" class="@TabClass(Tab.History)" aria-selected="@(_tab == Tab.History)"
-              disabled="@_busy" @onclick="() => SelectTabAsync(Tab.History)">История изменений</button>
+              disabled="@(_busy || _laboratoryBusy)" @onclick="() => SelectTabAsync(Tab.History)">История изменений</button>
     </div>
 
     @ActionFeedback
@@ -273,6 +276,13 @@ else
           <div class="empty-state">В карте пока нет действующих назначений.</div>
         }
       }
+      else if (_tab == Tab.Analyses)
+      {
+        <LaboratoryAnalysesPanel @key="_record.Id" Record="_record" CanAssign="CanEdit" ParentBusy="_busy"
+                                 BusyChanged="OnLaboratoryBusyChanged"
+                                 RequestsCreated="OnLaboratoryRequestsCreatedAsync"
+                                 RefreshRequested="RefreshLaboratoryRecordAsync"/>
+      }
       else
       {
         <div class="registry-heading">
@@ -389,6 +399,10 @@ else
                 }
               </div>
             </div>
+            <div class="mr-laboratory-snapshot">
+              <h3>Анализы на момент</h3>
+              <LaboratoryAnalysesTable Requests="_snapshot.LaboratoryAnalysisRequests" Historical="true"/>
+            </div>
           }
         </div>
       }
@@ -407,7 +421,7 @@ else
   private bool CanCreateRecord => SessionPermissions.CanCreateMedicalRecord(PermissionSession);
   private bool IsEditingRecord => _editing && CanEdit;
 
-  private enum Tab { Diagnoses, Prescriptions, History }
+  private enum Tab { Diagnoses, Prescriptions, Analyses, History }
 
   private PatientDto? _patient;
   private MedicalRecordDto? _record;
@@ -418,6 +432,7 @@ else
   private Tab _tab = Tab.Diagnoses;
   private bool _loading = true;
   private bool _busy;
+  private bool _laboratoryBusy;
   private bool _editing;
   private Guid? _selectedDiagnosisId;
   private string _prescriptionText = "";
@@ -467,6 +482,7 @@ else
     _loading = false;
     _loadError = null;
     _busy = false;
+    _laboratoryBusy = false;
     _snapshotBusy = false;
     ResetEditState();
     ClearActionMessages();
@@ -541,7 +557,7 @@ else
 
   private async Task SelectTabAsync(Tab tab)
   {
-    if (_busy)
+    if (_busy || _laboratoryBusy)
     {
       return;
     }
@@ -614,9 +630,58 @@ else
     _historyLoading = false;
   }
 
+  private void OnLaboratoryBusyChanged(bool busy)
+  {
+    if (_disposed) return;
+    _laboratoryBusy = busy;
+    if (busy) ClearActionMessages();
+  }
+
+  private async Task OnLaboratoryRequestsCreatedAsync(IReadOnlyList<LaboratoryAnalysisRequestDto> requests)
+  {
+    if (_disposed || _cts is null || _record is null || requests.Count == 0 ||
+        requests.Any(request => request.MedicalRecordId != _record.Id || request.PatientId != PatientId)) return;
+    var token = _cts.Token;
+    var existingIds = _record.LaboratoryAnalysisRequests.Select(request => request.Id).ToHashSet();
+    _record = _record with
+    {
+      LaboratoryAnalysisRequests = _record.LaboratoryAnalysisRequests
+        .Concat(requests.Where(request => !existingIds.Contains(request.Id))).ToArray()
+    };
+    InvalidateHistory();
+    await RefreshAfterSaveAsync(token);
+  }
+
+  private async Task RefreshLaboratoryRecordAsync()
+  {
+    if (_disposed || _cts is null || _record is null || _busy) return;
+    var token = _cts.Token;
+    _busy = true;
+    ClearActionMessages();
+    try
+    {
+      var record = await Records.FindForPatientAsync(PatientId, token);
+      if (!IsCurrent(token)) return;
+      if (record is null)
+      {
+        _actionError = "Не удалось найти медицинскую карту. Обновите страницу.";
+        return;
+      }
+      _record = record;
+      InvalidateHistory();
+    }
+    catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+    catch (ApiException exception) { if (IsCurrent(token)) _actionError = exception.Message; }
+    catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+    {
+      if (IsCurrent(token)) _actionError = "Не удалось обновить анализы. Повторите попытку.";
+    }
+    finally { if (IsCurrent(token)) _busy = false; }
+  }
+
   private async Task BeginEditAsync()
   {
-    if (_busy || !CanEdit)
+    if (_busy || _laboratoryBusy || !CanEdit)
     {
       return;
     }
@@ -813,7 +878,7 @@ else
 
   private async Task RunMutationAsync(Func<CancellationToken, Task> action, bool creating = false)
   {
-    if (_busy || _disposed || _cts is null || !(creating ? CanCreateRecord : CanEdit))
+    if (_busy || _laboratoryBusy || _disposed || _cts is null || !(creating ? CanCreateRecord : CanEdit))
     {
       return;
     }
@@ -988,7 +1053,7 @@ else
     }
     @if (_recordConflict || _actionNotice is not null)
     {
-      <button class="btn btn-outline-primary" disabled="@_busy" @onclick="ReloadAsync">Обновить карту</button>
+      <button class="btn btn-outline-primary" disabled="@(_busy || _laboratoryBusy)" @onclick="ReloadAsync">Обновить карту</button>
     }
   </text>;
 
@@ -1067,6 +1132,7 @@ else
 
   public void Dispose()
   {
+    if (_disposed) return;
     _disposed = true;
     _cts?.Cancel();
     _cts?.Dispose();

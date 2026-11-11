@@ -74,15 +74,19 @@ public sealed class LaboratoryAnalysisSnapshotTests
         var record = MedicalRecordFactory.Create(Guid.NewGuid(), doctor, T0);
         var request = MedicalRecordService.CreateLaboratoryAnalysisRequests(record, [definition], null,
             doctor, RequestedAt)[0];
+        var originalName = $"{doctor.LastName} {doctor.FirstName}";
         definition.LoincCode = "718-7";
         definition.DisplayName = "Изменённый справочник";
         definition.IsActive = false;
         doctor.IsDeleted = true;
+        doctor.FirstName = "Другое";
+        doctor.LastName = "Имя";
 
         var snapshot = MedicalRecordSnapshotReplay.Build(record, record.HistoryEvents, ReceivedAt);
 
         snapshot.LaboratoryAnalysisRequests.Should().ContainSingle(x => x.Id == request.Id &&
-            x.LoincCode == "2345-7" && x.DisplayName == "Глюкоза" && x.RequestedByMedicalWorkerId == doctor.Id);
+            x.LoincCode == "2345-7" && x.DisplayName == "Глюкоза" && x.RequestedByMedicalWorkerId == doctor.Id &&
+            x.RequestedByNameSnapshot == originalName);
     }
 
     [Fact]
