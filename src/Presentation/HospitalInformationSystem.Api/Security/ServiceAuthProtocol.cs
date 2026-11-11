@@ -4,7 +4,7 @@ namespace HospitalInformationSystem.Api.Security;
 
 public static class ServiceAuthProtocol
 {
-    public const int MaxBodyBytes = 4096;
+    public const int MaxBodyBytes = 64 * 1024;
     public const string RateLimitPolicy = "ServiceCredentials";
 
     public static bool IsTechnicalPath(PathString path) =>

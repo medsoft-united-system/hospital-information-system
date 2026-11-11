@@ -20,6 +20,7 @@ public static class AuditLabels
     {
         AuditEventType.AdministratorLogin => "Вход администратора",
         AuditEventType.UserLogin => "Вход сотрудника",
+        AuditEventType.ServiceLogin => "Вход сервисного аккаунта",
         AuditEventType.LoginFailed => "Неудачный вход",
         AuditEventType.MedicalWorkerCreated => "Создан медработник",
         AuditEventType.MedicalWorkerUpdated => "Изменён медработник",

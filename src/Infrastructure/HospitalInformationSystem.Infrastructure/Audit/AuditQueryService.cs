@@ -22,7 +22,13 @@ public sealed class AuditQueryService(HospitalDbContext db) : IAuditQueryService
         if (query.EventType is { } type)
         {
             var name = type.ToString();
-            events = events.Where(entry => entry.EventType == name);
+            events = type switch
+            {
+                AuditEventType.ServiceLogin => events.Where(entry => entry.EventType == name ||
+                    entry.EventType == nameof(AuditEventType.UserLogin) && entry.ActorKind == "service"),
+                AuditEventType.UserLogin => events.Where(entry => entry.EventType == name && entry.ActorKind != "service"),
+                _ => events.Where(entry => entry.EventType == name)
+            };
         }
         if (query.From is { } from)
         {

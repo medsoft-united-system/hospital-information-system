@@ -63,8 +63,9 @@ public sealed class ServiceAuthenticationApiTests(ServiceAuthenticationApiFactor
         stored.ConsumedAtUtc.Should().BeNull();
         stored.RevokedAtUtc.Should().BeNull();
         var audit = await db.AuditEvents.AsNoTracking().ToArrayAsync();
-        audit.Should().Contain(row => row.ActorKind == "service" && row.ActorServiceAccountId == created.Account.Id
+        audit.Should().Contain(row => row.EventType == "ServiceLogin" && row.ActorKind == "service" && row.ActorServiceAccountId == created.Account.Id
             && row.ActorUserId == null);
+        audit.Should().NotContain(row => row.EventType == "UserLogin" && row.ActorServiceAccountId == created.Account.Id);
         foreach (var row in audit)
             (row.Message + row.MetadataJson).Should().NotContain(created.ApiKey)
                 .And.NotContain(tokens.AccessToken).And.NotContain(tokens.RefreshToken);
@@ -112,8 +113,30 @@ public sealed class ServiceAuthenticationApiTests(ServiceAuthenticationApiFactor
     {
         using var machine = factory.CreateMachineClient();
         using var response = await machine.PostAsync(route, Json(JsonSerializer.Serialize(
-            new Dictionary<string, string> { [property] = new('x', 5000) })));
+            new Dictionary<string, string> { [property] = new('x', 64 * 1024 + 1) })));
         await ErrorAsync(response, HttpStatusCode.RequestEntityTooLarge, ServiceAuthErrorCodes.RequestTooLarge);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task CredentialBody_AtPublished64KiBLimit_ShouldAcceptValidJson(bool refresh, bool unknownLength)
+    {
+        var account = await factory.CreateAccountAsync();
+        var credential = refresh ? (await factory.IssueAsync(account.ApiKey)).RefreshToken : account.ApiKey;
+        var property = refresh ? "refreshToken" : "apiKey";
+        var route = refresh ? "/api/service-auth/refresh" : "/api/service-auth/token";
+        var json = JsonSerializer.Serialize(new Dictionary<string, string> { [property] = credential });
+        var bytes = Encoding.UTF8.GetBytes(json.PadRight(64 * 1024));
+        bytes.Length.Should().Be(64 * 1024);
+        using HttpContent content = unknownLength ? new UnknownLengthJsonContent(bytes) : Json(Encoding.UTF8.GetString(bytes));
+        using var machine = factory.CreateMachineClient();
+
+        using var response = await machine.PostAsync(route, content);
+
+        await PairAsync(response);
     }
 
     [Theory]
@@ -123,7 +146,7 @@ public sealed class ServiceAuthenticationApiTests(ServiceAuthenticationApiFactor
     {
         using var machine = factory.CreateMachineClient();
         using var body = new UnknownLengthJsonContent(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(
-            new Dictionary<string, string> { [property] = new('x', 5000) })));
+            new Dictionary<string, string> { [property] = new('x', 64 * 1024 + 1) })));
         using var response = await machine.PostAsync(route, body);
         await ErrorAsync(response, HttpStatusCode.RequestEntityTooLarge, ServiceAuthErrorCodes.RequestTooLarge);
     }

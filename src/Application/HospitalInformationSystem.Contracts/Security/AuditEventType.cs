@@ -21,5 +21,6 @@ public enum AuditEventType
     AccountChanged,
     AdministratorSetup,
     UserLogout,
-    SessionRefreshed
+    SessionRefreshed,
+    ServiceLogin
 }

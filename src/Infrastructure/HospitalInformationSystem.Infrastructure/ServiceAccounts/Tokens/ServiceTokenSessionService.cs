@@ -31,7 +31,7 @@ public sealed partial class ServiceTokenSessionService(HospitalDbContext db, Jwt
         var now = Timestamp(timeProvider.GetUtcNow());
         var expires = DateTimeOffset.FromUnixTimeSeconds(now.ToUnixTimeSeconds()).AddDays(options.Value.RefreshTokenDays);
         var result = AddSession(account, Guid.NewGuid(), now, expires, out _);
-        audit.Append(AuditEventType.UserLogin, "Сервисный аккаунт LIS получил сессию.",
+        audit.Append(AuditEventType.ServiceLogin, "Сервисный аккаунт LIS получил сессию.",
             Metadata(account.Id, "service-token-issued", "success"), VerifiedActor(account));
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
