@@ -4,7 +4,7 @@ using HospitalInformationSystem.Domain.MedicalWorkers;
 
 namespace HospitalInformationSystem.Domain.MedicalRecords.Services;
 
-public static class MedicalRecordService
+public static partial class MedicalRecordService
 {
     public static MedicalRecordDiagnosis AddDiagnosis(
         MedicalRecord record, Guid diagnosisDefinitionId, string code, string name, MedicalWorker author,

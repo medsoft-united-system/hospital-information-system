@@ -386,6 +386,137 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.LaboratoryAnalysisRequestDbo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("AuthoredAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("authored_at_utc");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("comment");
+
+                    b.Property<string>("DisplayNameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("display_name_snapshot");
+
+                    b.Property<Guid>("LaboratoryTestDefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("laboratory_test_definition_id");
+
+                    b.Property<string>("LoincCodeSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("loinc_code_snapshot");
+
+                    b.Property<Guid>("MedicalRecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("medical_record_id");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("patient_id");
+
+                    b.Property<Guid>("RequestedByMedicalWorkerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by_medical_worker_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Id", "PatientId")
+                        .HasName("ak_lab_requests_id_patient");
+
+                    b.HasIndex("LaboratoryTestDefinitionId");
+
+                    b.HasIndex("RequestedByMedicalWorkerId");
+
+                    b.HasIndex("MedicalRecordId", "PatientId");
+
+                    b.HasIndex("Status", "AuthoredAtUtc", "Id")
+                        .HasDatabaseName("ix_lab_requests_queue");
+
+                    b.ToTable("laboratory_analysis_requests", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_lab_requests_comment", "comment IS NULL OR (comment = btrim(comment) AND char_length(comment) BETWEEN 1 AND 2000)");
+
+                            t.HasCheckConstraint("ck_lab_requests_display_name", "display_name_snapshot = btrim(display_name_snapshot) AND char_length(display_name_snapshot) BETWEEN 3 AND 256");
+
+                            t.HasCheckConstraint("ck_lab_requests_loinc_code", "char_length(loinc_code_snapshot) BETWEEN 3 AND 32 AND loinc_code_snapshot ~ '^[0-9]+-[0-9]$'");
+
+                            t.HasCheckConstraint("ck_lab_requests_status", "status IN ('active', 'completed')");
+                        });
+                });
+
+            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.LaboratoryAnalysisResultDbo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CreatedByServiceAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_service_account_id");
+
+                    b.Property<DateTimeOffset>("IssuedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("issued_at_utc");
+
+                    b.Property<Guid>("LaboratoryAnalysisRequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("laboratory_analysis_request_id");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("patient_id");
+
+                    b.Property<DateTimeOffset>("ReceivedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("received_at_utc");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByServiceAccountId");
+
+                    b.HasIndex("LaboratoryAnalysisRequestId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_lab_results_request_id");
+
+                    b.HasIndex("IssuedAtUtc", "Id")
+                        .HasDatabaseName("ix_lab_results_issued_id");
+
+                    b.HasIndex("LaboratoryAnalysisRequestId", "PatientId")
+                        .IsUnique();
+
+                    b.ToTable("laboratory_analysis_results", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_lab_results_distinct_id", "id <> laboratory_analysis_request_id");
+
+                            t.HasCheckConstraint("ck_lab_results_issued_precision", "issued_at_utc = date_trunc('milliseconds', issued_at_utc)");
+
+                            t.HasCheckConstraint("ck_lab_results_value", "value = btrim(value) AND char_length(value) BETWEEN 1 AND 2000");
+                        });
+                });
+
             modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.LaboratoryTestDefinitionDbo", b =>
                 {
                     b.Property<Guid>("Id")
@@ -458,6 +589,9 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         .HasColumnName("version");
 
                     b.HasKey("Id");
+
+                    b.HasAlternateKey("Id", "PatientId")
+                        .HasName("ak_medical_records_id_patient");
 
                     b.HasIndex("PatientId")
                         .IsUnique()
@@ -537,6 +671,14 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AuthorKind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("MedicalWorker")
+                        .HasColumnName("author_kind");
+
                     b.Property<Guid?>("EntityId")
                         .HasColumnType("uuid")
                         .HasColumnName("entity_id");
@@ -560,14 +702,14 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("payload_json");
 
-                    b.Property<Guid>("PerformedByMedicalWorkerId")
+                    b.Property<Guid?>("PerformedByMedicalWorkerId")
                         .HasColumnType("uuid")
                         .HasColumnName("performed_by_medical_worker_id");
 
                     b.Property<string>("PerformedByNameSnapshot")
                         .IsRequired()
-                        .HasMaxLength(49)
-                        .HasColumnType("character varying(49)")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
                         .HasColumnName("performed_by_name_snapshot");
 
                     b.Property<string>("PerformedByPositionSnapshot")
@@ -575,6 +717,10 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         .HasMaxLength(24)
                         .HasColumnType("character varying(24)")
                         .HasColumnName("performed_by_position_snapshot");
+
+                    b.Property<Guid?>("PerformedByServiceAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("performed_by_service_account_id");
 
                     b.Property<long>("Version")
                         .HasColumnType("bigint")
@@ -584,13 +730,17 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("PerformedByMedicalWorkerId");
 
+                    b.HasIndex("PerformedByServiceAccountId");
+
                     b.HasIndex("MedicalRecordId", "Version")
                         .IsUnique()
                         .HasDatabaseName("ux_record_history_version");
 
                     b.ToTable("medical_record_history_events", null, t =>
                         {
-                            t.HasCheckConstraint("ck_record_history_type", "event_type IN ('MedicalRecordCreated', 'DiagnosisAdded', 'DiagnosisRemoved', 'PrescriptionAdded', 'PrescriptionCancelled')");
+                            t.HasCheckConstraint("ck_record_history_author", "(author_kind = 'MedicalWorker' AND performed_by_medical_worker_id IS NOT NULL AND performed_by_service_account_id IS NULL AND event_type <> 'LaboratoryAnalysisResultRecorded') OR (author_kind = 'ServiceAccount' AND performed_by_medical_worker_id IS NULL AND performed_by_service_account_id IS NOT NULL AND event_type = 'LaboratoryAnalysisResultRecorded')");
+
+                            t.HasCheckConstraint("ck_record_history_type", "event_type IN ('MedicalRecordCreated', 'DiagnosisAdded', 'DiagnosisRemoved', 'PrescriptionAdded', 'PrescriptionCancelled', 'LaboratoryAnalysisRequested', 'LaboratoryAnalysisResultRecorded')");
 
                             t.HasCheckConstraint("ck_record_history_version", "version > 0");
                         });
@@ -1082,6 +1232,44 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.LaboratoryAnalysisRequestDbo", b =>
+                {
+                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.LaboratoryTestDefinitionDbo", null)
+                        .WithMany()
+                        .HasForeignKey("LaboratoryTestDefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalWorkerDbo", null)
+                        .WithMany()
+                        .HasForeignKey("RequestedByMedicalWorkerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalRecordDbo", null)
+                        .WithMany("LaboratoryAnalysisRequests")
+                        .HasForeignKey("MedicalRecordId", "PatientId")
+                        .HasPrincipalKey("Id", "PatientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.LaboratoryAnalysisResultDbo", b =>
+                {
+                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.ServiceAccountDbo", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByServiceAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.LaboratoryAnalysisRequestDbo", null)
+                        .WithOne("Result")
+                        .HasForeignKey("HospitalInformationSystem.Infrastructure.Persistence.Models.LaboratoryAnalysisResultDbo", "LaboratoryAnalysisRequestId", "PatientId")
+                        .HasPrincipalKey("HospitalInformationSystem.Infrastructure.Persistence.Models.LaboratoryAnalysisRequestDbo", "Id", "PatientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalRecordDbo", b =>
                 {
                     b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.PatientDbo", null)
@@ -1127,8 +1315,12 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                     b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalWorkerDbo", null)
                         .WithMany()
                         .HasForeignKey("PerformedByMedicalWorkerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.ServiceAccountDbo", null)
+                        .WithMany()
+                        .HasForeignKey("PerformedByServiceAccountId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.PrescriptionDbo", b =>
@@ -1221,11 +1413,18 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.LaboratoryAnalysisRequestDbo", b =>
+                {
+                    b.Navigation("Result");
+                });
+
             modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalRecordDbo", b =>
                 {
                     b.Navigation("Diagnoses");
 
                     b.Navigation("HistoryEvents");
+
+                    b.Navigation("LaboratoryAnalysisRequests");
 
                     b.Navigation("Prescriptions");
                 });

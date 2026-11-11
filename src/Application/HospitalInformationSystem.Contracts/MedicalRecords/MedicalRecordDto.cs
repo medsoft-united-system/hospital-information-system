@@ -6,4 +6,7 @@ public sealed record MedicalRecordDto(
     DateTimeOffset CreatedAtUtc,
     long Version,
     IReadOnlyCollection<MedicalRecordDiagnosisDto> Diagnoses,
-    IReadOnlyCollection<PrescriptionDto> Prescriptions);
+    IReadOnlyCollection<PrescriptionDto> Prescriptions)
+{
+    public IReadOnlyCollection<LaboratoryAnalysisRequestDto> LaboratoryAnalysisRequests { get; init; } = [];
+}
