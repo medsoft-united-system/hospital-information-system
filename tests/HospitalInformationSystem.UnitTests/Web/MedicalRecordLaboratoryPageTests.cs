@@ -76,7 +76,7 @@ public sealed class MedicalRecordLaboratoryPageTests
     public async Task Refresh_ShouldShowNewResultAndKeepSelectedHistoricalSnapshotUnchanged()
     {
         var empty = Record();
-        var active = Request(empty);
+        var active = Request(empty) with { RequestedByNameSnapshot = "Имя при назначении" };
         var record = empty with { LaboratoryAnalysisRequests = [active] };
         var completed = active with
         {
@@ -98,6 +98,7 @@ public sealed class MedicalRecordLaboratoryPageTests
         Get<MedicalRecordDto>(page, "_record").LaboratoryAnalysisRequests.Single().Result!.Value.Should().Be("142");
         Get<MedicalRecordSnapshotDto>(page, "_snapshot").Should().BeSameAs(snapshot);
         snapshot.LaboratoryAnalysisRequests.Single().Result.Should().BeNull();
+        snapshot.LaboratoryAnalysisRequests.Single().RequestedByNameSnapshot.Should().Be("Имя при назначении");
     }
 
     [Fact]
@@ -160,29 +161,6 @@ public sealed class MedicalRecordLaboratoryPageTests
         }), false);
 
         writes.Should().Be(0);
-    }
-
-    [Fact]
-    public void HistoricalRequesterNames_ShouldComeOnlyFromMatchingHumanRequestEvents()
-    {
-        var record = Record();
-        var id = Guid.NewGuid();
-        using var page = Page(record, new Mock<IMedicalRecordsGateway>().Object);
-        Set(page, "_history", new[]
-        {
-            new MedicalRecordHistoryEventDto(2, record.CreatedAtUtc, Guid.NewGuid(), "Имя при назначении", "Врач",
-                "LaboratoryAnalysisRequested", id, "{}"),
-            new MedicalRecordHistoryEventDto(3, record.CreatedAtUtc, null, "lis", "LIS",
-                "LaboratoryAnalysisResultRecorded", Guid.NewGuid(), "{}")
-                { AuthorKind = MedicalRecordAuthorKind.ServiceAccount, PerformedByServiceAccountId = Guid.NewGuid() },
-            new MedicalRecordHistoryEventDto(4, record.CreatedAtUtc, Guid.NewGuid(), "Другой автор", "Врач",
-                "DiagnosisAdded", id, "{}")
-        });
-
-        var names = (IReadOnlyDictionary<Guid, string>)page.GetType()
-            .GetProperty("SnapshotRequesterNames", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
-
-        names.Should().ContainSingle().Which.Should().Be(new KeyValuePair<Guid, string>(id, "Имя при назначении"));
     }
 
     private static MedicalRecord Page(MedicalRecordDto record, IMedicalRecordsGateway gateway)
