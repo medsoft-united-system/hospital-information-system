@@ -15,7 +15,7 @@ public sealed partial class MedicalRecordsController
         Guid id, CreateLaboratoryAnalysisRequestsRequest request, CancellationToken cancellationToken)
     {
         var result = await sender.Send(new CreateLaboratoryAnalysisRequestsCommand(id,
-            request.LaboratoryTestDefinitionIds, request.Comment), cancellationToken);
+            request.LaboratoryTestDefinitionIds, request.Comment, request.ExpectedVersions), cancellationToken);
         return CreatedAtAction("Get", new { id }, result);
     }
 }

@@ -29,13 +29,13 @@ public sealed class LaboratoryTestsAuthorizationApiTests(SecureHospitalApiFactor
         var definition = definitions.First(x => x.LoincCode == "2345-7");
         (await client.GetAsync($"/api/laboratory-tests/{definition.Id}")).StatusCode.Should().Be(HttpStatusCode.OK);
         (await client.PostAsJsonAsync("/api/laboratory-tests",
-            new SaveLaboratoryTestRequest("987654321-0", "Запрещённое создание"))).StatusCode.Should()
+            new SaveLaboratoryTestRequest("987654321-7", "Запрещённое создание"))).StatusCode.Should()
             .Be(HttpStatusCode.Forbidden);
         (await client.PutAsJsonAsync($"/api/laboratory-tests/{definition.Id}",
-            new SaveLaboratoryTestRequest(definition.LoincCode, "Запрещённое изменение"))).StatusCode.Should()
+            new SaveLaboratoryTestRequest(definition.LoincCode, "Запрещённое изменение", definition.Version))).StatusCode.Should()
             .Be(HttpStatusCode.Forbidden);
         (await client.PutAsJsonAsync($"/api/laboratory-tests/{definition.Id}/active",
-            new SetLaboratoryTestActiveRequest(false))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            new SetLaboratoryTestActiveRequest(false, definition.Version))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await client.GetFromJsonAsync<LaboratoryTestDefinitionDto>($"/api/laboratory-tests/{definition.Id}"))
             .Should().BeEquivalentTo(definition);
     }
@@ -49,13 +49,13 @@ public sealed class LaboratoryTestsAuthorizationApiTests(SecureHospitalApiFactor
         (await client.GetAsync("/api/laboratory-tests")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await client.GetAsync($"/api/laboratory-tests/{missing}")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await client.PostAsJsonAsync("/api/laboratory-tests",
-            new SaveLaboratoryTestRequest("987654322-0", "Недоступная запись"))).StatusCode.Should()
+            new SaveLaboratoryTestRequest("987654322-5", "Недоступная запись"))).StatusCode.Should()
             .Be(HttpStatusCode.Unauthorized);
         (await client.PutAsJsonAsync($"/api/laboratory-tests/{missing}",
-            new SaveLaboratoryTestRequest("987654322-0", "Недоступная запись"))).StatusCode.Should()
+            new SaveLaboratoryTestRequest("987654322-5", "Недоступная запись", 1))).StatusCode.Should()
             .Be(HttpStatusCode.Unauthorized);
         (await client.PutAsJsonAsync($"/api/laboratory-tests/{missing}/active",
-            new SetLaboratoryTestActiveRequest(false))).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+            new SetLaboratoryTestActiveRequest(false, 1))).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
@@ -65,7 +65,7 @@ public sealed class LaboratoryTestsAuthorizationApiTests(SecureHospitalApiFactor
         await SetCsrfAsync(client);
         (await client.PostAsJsonAsync("/api/auth/login", factory.AdministratorLogin())).EnsureSuccessStatusCode();
         await SetCsrfAsync(client);
-        const string code = "987654323-0";
+        const string code = "987654323-3";
         client.DefaultRequestHeaders.Remove("X-CSRF-TOKEN");
         (await client.PostAsJsonAsync("/api/laboratory-tests",
             new SaveLaboratoryTestRequest(code, "Проверка CSRF"))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -77,17 +77,19 @@ public sealed class LaboratoryTestsAuthorizationApiTests(SecureHospitalApiFactor
 
         client.DefaultRequestHeaders.Remove("X-CSRF-TOKEN");
         (await client.PutAsJsonAsync($"/api/laboratory-tests/{definition.Id}",
-            new SaveLaboratoryTestRequest(code, "Изменение без CSRF"))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            new SaveLaboratoryTestRequest(code, "Изменение без CSRF", definition.Version))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await client.PutAsJsonAsync($"/api/laboratory-tests/{definition.Id}/active",
-            new SetLaboratoryTestActiveRequest(false))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            new SetLaboratoryTestActiveRequest(false, definition.Version))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await client.GetFromJsonAsync<LaboratoryTestDefinitionDto>($"/api/laboratory-tests/{definition.Id}"))!
             .DisplayName.Should().Be("Проверка CSRF");
 
         await SetCsrfAsync(client);
-        (await client.PutAsJsonAsync($"/api/laboratory-tests/{definition.Id}",
-            new SaveLaboratoryTestRequest(code, "Обновлённый анализ"))).StatusCode.Should().Be(HttpStatusCode.OK);
+        using var updated = await client.PutAsJsonAsync($"/api/laboratory-tests/{definition.Id}",
+            new SaveLaboratoryTestRequest(code, "Обновлённый анализ", definition.Version));
+        updated.StatusCode.Should().Be(HttpStatusCode.OK);
+        var current = (await updated.Content.ReadFromJsonAsync<LaboratoryTestDefinitionDto>())!;
         (await client.PutAsJsonAsync($"/api/laboratory-tests/{definition.Id}/active",
-            new SetLaboratoryTestActiveRequest(false))).StatusCode.Should().Be(HttpStatusCode.OK);
+            new SetLaboratoryTestActiveRequest(false, current.Version))).StatusCode.Should().Be(HttpStatusCode.OK);
         (await client.GetFromJsonAsync<LaboratoryTestDefinitionDto[]>("/api/laboratory-tests?activeOnly=false"))!
             .Should().Contain(x => x.Id == definition.Id && !x.IsActive && x.DisplayName == "Обновлённый анализ");
         (await client.GetFromJsonAsync<LaboratoryTestDefinitionDto[]>("/api/laboratory-tests"))!

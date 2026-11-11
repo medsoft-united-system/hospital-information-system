@@ -7,6 +7,23 @@ namespace HospitalInformationSystem.UnitTests;
 public sealed class LaboratoryAnalysisContractTests
 {
     [Fact]
+    public void CreateRequest_ShouldRoundTripExpectedVersionsByDefinitionId()
+    {
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        var request = new CreateLaboratoryAnalysisRequestsRequest([first, second], "Комментарий",
+            new Dictionary<Guid, uint> { [first] = 17, [second] = 29 });
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
+        var json = JsonSerializer.Serialize(request, options);
+        var restored = JsonSerializer.Deserialize<CreateLaboratoryAnalysisRequestsRequest>(json, options);
+
+        restored.Should().BeEquivalentTo(request);
+        json.Should().Contain("\"expectedVersions\"");
+        new CreateLaboratoryAnalysisRequestsRequest([first], null).ExpectedVersions.Should().BeNull();
+    }
+
+    [Fact]
     public void OldMedicalRecordAndSnapshotJson_ShouldProvideEmptyLaboratoryCollections()
     {
         const string json = """

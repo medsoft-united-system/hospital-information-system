@@ -67,10 +67,12 @@ public sealed class ClinicalPermissionsApiTests(SecureHospitalApiFactory factory
         (await client.PostAsync($"/api/patients/{missing}/medical-record", null)).StatusCode.Should()
             .Be(canManagePatients ? HttpStatusCode.NotFound : HttpStatusCode.Forbidden);
 
+        var laboratoryTestId = Guid.NewGuid();
         var operations = new (HttpMethod Method, string Url, object? Body)[]
         {
             (HttpMethod.Post, $"/api/medical-records/{missing}/laboratory-analysis-requests",
-                new { LaboratoryTestDefinitionIds = new[] { Guid.NewGuid() }, Comment = (string?)null }),
+                new { LaboratoryTestDefinitionIds = new[] { laboratoryTestId }, Comment = (string?)null,
+                    ExpectedVersions = new Dictionary<Guid, uint> { [laboratoryTestId] = 1 } }),
             (HttpMethod.Post, $"/api/medical-records/{missing}/diagnoses", new { DiagnosisId = Guid.NewGuid() }),
             (HttpMethod.Delete, $"/api/medical-records/{missing}/diagnoses/{Guid.NewGuid()}", null),
             (HttpMethod.Post, $"/api/medical-records/{missing}/prescriptions", new { Text = "Проверка доступа" }),

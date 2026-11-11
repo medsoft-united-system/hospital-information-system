@@ -18,10 +18,11 @@ public sealed class LaboratoryAnalysisRequestsClientTests
     private static readonly Guid WorkerId = Guid.NewGuid();
 
     [Fact]
-    public async Task Create_ShouldSendOnlySelectionAndCommentAndReadTheEntireCreatedBatch()
+    public async Task Create_ShouldSendSelectionCommentAndReadVersionsAndReadTheEntireCreatedBatch()
     {
         var recordId = Guid.NewGuid();
         var definitions = new[] { Guid.NewGuid(), Guid.NewGuid() };
+        var versions = new Dictionary<Guid, uint> { [definitions[0]] = 17, [definitions[1]] = 29 };
         var created = definitions.Select(id => Definition(recordId, id)).Reverse().ToArray();
         var sends = 0;
         using var http = Client(async (message, cancellationToken) =>
@@ -32,15 +33,17 @@ public sealed class LaboratoryAnalysisRequestsClientTests
             message.Headers.Contains("X-Medical-Worker-Id").Should().BeFalse();
             using var body = JsonDocument.Parse(await message.Content!.ReadAsStringAsync(cancellationToken));
             body.RootElement.EnumerateObject().Select(x => x.Name).Should()
-                .BeEquivalentTo(["laboratoryTestDefinitionIds", "comment"]);
+                .BeEquivalentTo(["laboratoryTestDefinitionIds", "comment", "expectedVersions"]);
             body.RootElement.GetProperty("laboratoryTestDefinitionIds").EnumerateArray()
                 .Select(x => x.GetGuid()).Should().Equal(definitions);
             body.RootElement.GetProperty("comment").GetString().Should().Be("Контрольный анализ");
+            body.RootElement.GetProperty("expectedVersions").EnumerateObject()
+                .ToDictionary(x => Guid.Parse(x.Name), x => x.Value.GetUInt32()).Should().BeEquivalentTo(versions);
             return Created(created);
         });
 
         var response = await new MedicalRecordsApiClient(http).CreateLaboratoryAnalysisRequestsAsync(recordId,
-            new CreateLaboratoryAnalysisRequestsRequest(definitions, "Контрольный анализ"), CancellationToken.None);
+            new CreateLaboratoryAnalysisRequestsRequest(definitions, "Контрольный анализ", versions), CancellationToken.None);
 
         response.Should().Equal(created);
         sends.Should().Be(1);
@@ -221,7 +224,8 @@ public sealed class LaboratoryAnalysisRequestsClientTests
 
     private static LaboratoryAnalysisRequestDto Definition(Guid recordId, Guid definitionId) => new(
         Guid.NewGuid(), recordId, PatientId, WorkerId, definitionId, "2345-7", "Глюкоза", null,
-        new DateTimeOffset(2026, 11, 9, 10, 15, 25, TimeSpan.Zero), LaboratoryAnalysisRequestStatus.Active, null);
+        new DateTimeOffset(2026, 11, 9, 10, 15, 25, TimeSpan.Zero), LaboratoryAnalysisRequestStatus.Active, null,
+        "Врач при назначении");
 
     private static SessionState Session(string? accountRole, MedicalWorkerRole? medicalRole)
     {

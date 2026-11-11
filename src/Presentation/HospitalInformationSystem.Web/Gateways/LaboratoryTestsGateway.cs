@@ -31,11 +31,11 @@ public sealed class LaboratoryTestsGateway(LaboratoryTestsApiClient client, Sess
             : client.CreateAsync(request, cancellationToken);
     }
 
-    public Task<LaboratoryTestDefinitionDto> SetActiveAsync(Guid id, bool isActive,
+    public Task<LaboratoryTestDefinitionDto> SetActiveAsync(Guid id, bool isActive, uint version,
         CancellationToken cancellationToken)
     {
         RequireAccess(administratorOnly: true);
-        return client.SetActiveAsync(id, isActive, cancellationToken);
+        return client.SetActiveAsync(id, isActive, version, cancellationToken);
     }
 
     private void RequireAccess(bool administratorOnly = false)

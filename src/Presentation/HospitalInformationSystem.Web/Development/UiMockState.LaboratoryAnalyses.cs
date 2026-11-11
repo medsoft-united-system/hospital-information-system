@@ -32,7 +32,7 @@ public sealed partial class UiMockState
         {
             var id = Guid.Parse($"80000000-0000-4000-8000-{index + 1:D12}");
             LaboratoryTests[id] = new LaboratoryTestDefinitionDto(id, definitions[index].Code,
-                definitions[index].Name, true, createdAt, createdAt);
+                definitions[index].Name, true, createdAt, createdAt, 1);
         }
 
         Patients[LaboratoryPatientId] = new PatientDto(LaboratoryPatientId, "Андрей", "Лабораторный", "Учебный",
@@ -74,7 +74,7 @@ public sealed partial class UiMockState
         LaboratoryAnalysisRequestDto NewLaboratoryRequest(Guid id, LaboratoryTestDefinitionDto definition,
             DateTimeOffset at) => new(id, LaboratoryMedicalRecordId, LaboratoryPatientId, DoctorId, definition.Id,
             definition.LoincCode, definition.DisplayName, "Демонстрационный анализ", at,
-            LaboratoryAnalysisRequestStatus.Active, null);
+            LaboratoryAnalysisRequestStatus.Active, null, $"{Workers[DoctorId].LastName} {Workers[DoctorId].FirstName}");
 
         void AddSeedRequest(LaboratoryAnalysisRequestDto request)
         {

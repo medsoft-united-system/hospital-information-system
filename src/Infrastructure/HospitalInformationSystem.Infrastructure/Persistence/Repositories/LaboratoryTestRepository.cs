@@ -14,16 +14,20 @@ public sealed class LaboratoryTestRepository(HospitalDbContext db) : ILaboratory
     {
         var rows = await db.LaboratoryTestDefinitions.AsNoTracking()
             .Where(x => !activeOnly || x.IsActive)
-            .OrderBy(x => x.LoincCode).ThenBy(x => x.Id).ToListAsync(cancellationToken);
-        return rows.Select(x => x.ToDomain()).ToArray();
+            .OrderBy(x => x.LoincCode).ThenBy(x => x.Id)
+            .Select(x => new { Definition = x, Version = EF.Property<uint>(x, "xmin") })
+            .ToListAsync(cancellationToken);
+        return rows.Select(x => x.Definition.ToDomain(x.Version)).ToArray();
     }
 
     public async Task<LaboratoryTestDefinition?> FindAsync(Guid id, bool tracking,
         CancellationToken cancellationToken)
     {
         var query = tracking ? db.LaboratoryTestDefinitions.AsTracking() : db.LaboratoryTestDefinitions.AsNoTracking();
-        var row = await query.SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
-        return row?.ToDomain();
+        var row = await query.Where(x => x.Id == id)
+            .Select(x => new { Definition = x, Version = EF.Property<uint>(x, "xmin") })
+            .SingleOrDefaultAsync(cancellationToken);
+        return row?.Definition.ToDomain(row.Version);
     }
 
     public Task<bool> ExistsCodeAsync(string code, Guid? excludingId, CancellationToken cancellationToken) =>
@@ -37,6 +41,10 @@ public sealed class LaboratoryTestRepository(HospitalDbContext db) : ILaboratory
     {
         var row = await db.LaboratoryTestDefinitions.FindAsync([entity.Id], cancellationToken)
                   ?? throw new EntityNotFoundException("Лабораторный анализ не найден.");
+        var version = db.Entry(row).Property<uint>("xmin");
+        if (version.CurrentValue != entity.Version)
+            throw new BusinessConflictException("Анализ уже изменён. Обновите справочник и повторите действие.");
+        version.OriginalValue = entity.Version;
         entity.UpdateDbo(row);
     }
 }

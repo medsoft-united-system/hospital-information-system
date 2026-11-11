@@ -25,6 +25,7 @@ public sealed class LaboratoryTestsPageTests
             {
                 request.LoincCode.Should().Be(saved.LoincCode);
                 request.DisplayName.Should().Be(saved.DisplayName);
+                request.Version.Should().BeNull();
                 return Task.FromResult(saved);
             },
             List = (_, activeOnly) =>
@@ -49,13 +50,14 @@ public sealed class LaboratoryTestsPageTests
     public async Task Successful_deactivation_is_preserved_if_refresh_fails()
     {
         var active = Definition();
-        var inactive = active with { IsActive = false, UpdatedAtUtc = active.UpdatedAtUtc.AddSeconds(1) };
+        var inactive = active with { IsActive = false, UpdatedAtUtc = active.UpdatedAtUtc.AddSeconds(1), Version = active.Version + 1 };
         var gateway = new StubGateway
         {
-            ChangeActive = (id, isActive, _) =>
+            ChangeActive = (id, isActive, version, _) =>
             {
                 id.Should().Be(active.Id);
                 isActive.Should().BeFalse();
+                version.Should().Be(active.Version);
                 return Task.FromResult(inactive);
             },
             List = (_, _) => throw new HttpRequestException()
@@ -133,7 +135,7 @@ public sealed class LaboratoryTestsPageTests
         using var page = Page(new StubGateway
         {
             List = (_, _) => ++requests == 1 ? stale.Task : Task.FromResult<IReadOnlyList<LaboratoryTestDefinitionDto>>([saved]),
-            ChangeActive = (_, _, _) => Task.FromResult(saved)
+            ChangeActive = (_, _, _, _) => Task.FromResult(saved)
         });
         Set(page, "_tests", new[] { old });
         var initial = InvokeAsync(page, "LoadAsync");
@@ -203,6 +205,158 @@ public sealed class LaboratoryTestsPageTests
         Visible(page).Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Editing_sends_the_original_version_even_after_the_list_is_refreshed()
+    {
+        var original = Definition();
+        var latest = original with { DisplayName = "Изменено другим администратором", Version = original.Version + 1 };
+        using var page = Page(new StubGateway
+        {
+            List = (_, _) => Task.FromResult<IReadOnlyList<LaboratoryTestDefinitionDto>>([latest]),
+            Save = (id, request, _) =>
+            {
+                id.Should().Be(original.Id);
+                request.Version.Should().Be(original.Version);
+                request.DisplayName.Should().Be("Моё название");
+                throw new ApiException("Анализ уже изменён.", HttpStatusCode.Conflict);
+            }
+        });
+        Invoke(page, "BeginEdit", original);
+        Get<LaboratoryTestForm>(page, "_form").DisplayName = "Моё название";
+
+        await InvokeAsync(page, "LoadAsync");
+        await InvokeAsync(page, "SaveAsync");
+
+        Get<bool>(page, "_formStale").Should().BeTrue();
+        Get<LaboratoryTestForm>(page, "_form").Version.Should().Be(original.Version);
+    }
+
+    [Fact]
+    public async Task Edit_conflict_preserves_input_and_blocks_retry_until_explicit_reload()
+    {
+        var original = Definition();
+        var latest = original with { DisplayName = "Актуальное серверное название", Version = original.Version + 1 };
+        var requests = 0;
+        var reads = 0;
+        using var page = Page(new StubGateway
+        {
+            List = (_, _) => Task.FromResult<IReadOnlyList<LaboratoryTestDefinitionDto>>([latest]),
+            Get = (id, _) => { id.Should().Be(original.Id); reads++; return Task.FromResult(latest); },
+            Save = (_, request, _) =>
+            {
+                requests++;
+                if (requests == 1) throw new ApiException("Анализ уже изменён.", HttpStatusCode.Conflict);
+                request.Version.Should().Be(latest.Version);
+                request.DisplayName.Should().Be("Повторно внесённое название");
+                return Task.FromResult(latest with { DisplayName = request.DisplayName, Version = latest.Version + 1 });
+            }
+        });
+        Invoke(page, "BeginEdit", original);
+        var entered = Get<LaboratoryTestForm>(page, "_form");
+        entered.DisplayName = "Моё несохранённое название";
+
+        await InvokeAsync(page, "SaveAsync");
+        await InvokeAsync(page, "LoadAsync");
+        await InvokeAsync(page, "SaveAsync");
+
+        requests.Should().Be(1);
+        reads.Should().Be(0);
+        Get<bool>(page, "_formOpen").Should().BeTrue();
+        Get<bool>(page, "_formStale").Should().BeTrue();
+        Get<LaboratoryTestForm>(page, "_form").Should().BeSameAs(entered);
+        entered.DisplayName.Should().Be("Моё несохранённое название");
+        entered.Version.Should().Be(original.Version);
+
+        await InvokeAsync(page, "ReloadEditingAsync");
+
+        reads.Should().Be(1);
+        Get<bool>(page, "_formStale").Should().BeFalse();
+        var reloaded = Get<LaboratoryTestForm>(page, "_form");
+        reloaded.DisplayName.Should().Be(latest.DisplayName);
+        reloaded.Version.Should().Be(latest.Version);
+        reloaded.DisplayName = "Повторно внесённое название";
+        await InvokeAsync(page, "SaveAsync");
+        requests.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Failed_conflict_reload_preserves_the_entered_form_and_keeps_save_blocked()
+    {
+        var original = Definition();
+        var writes = 0;
+        using var page = Page(new StubGateway
+        {
+            Save = (_, _, _) => { writes++; throw new ApiException("Анализ уже изменён.", HttpStatusCode.Conflict); },
+            Get = (_, _) => throw new HttpRequestException()
+        });
+        Invoke(page, "BeginEdit", original);
+        var entered = Get<LaboratoryTestForm>(page, "_form");
+        entered.DisplayName = "Несохранённая правка";
+        await InvokeAsync(page, "SaveAsync");
+
+        await InvokeAsync(page, "ReloadEditingAsync");
+        await InvokeAsync(page, "SaveAsync");
+
+        Get<LaboratoryTestForm>(page, "_form").Should().BeSameAs(entered);
+        entered.DisplayName.Should().Be("Несохранённая правка");
+        entered.Version.Should().Be(original.Version);
+        Get<bool>(page, "_formStale").Should().BeTrue();
+        Get<bool>(page, "_reloadingRecord").Should().BeFalse();
+        writes.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Status_conflict_requires_a_fresh_read_and_explicit_reconfirmation(bool alreadyChanged)
+    {
+        var original = Definition();
+        var latest = original with { IsActive = !alreadyChanged, Version = original.Version + 1 };
+        var writes = 0;
+        using var page = Page(new StubGateway
+        {
+            Get = (_, _) => Task.FromResult(latest),
+            List = (_, _) => Task.FromResult<IReadOnlyList<LaboratoryTestDefinitionDto>>([latest]),
+            ChangeActive = (id, active, version, _) =>
+            {
+                id.Should().Be(original.Id);
+                active.Should().BeFalse();
+                writes++;
+                if (writes == 1)
+                {
+                    version.Should().Be(original.Version);
+                    throw new ApiException("Анализ уже изменён.", HttpStatusCode.Conflict);
+                }
+                version.Should().Be(latest.Version);
+                return Task.FromResult(latest with { IsActive = false, Version = latest.Version + 1 });
+            }
+        });
+        Invoke(page, "AskStatus", original);
+
+        await InvokeAsync(page, "SetActiveAsync");
+        await InvokeAsync(page, "SetActiveAsync");
+
+        writes.Should().Be(1);
+        Get<bool>(page, "_statusStale").Should().BeTrue();
+        Get<LaboratoryTestDefinitionDto>(page, "_pendingStatus").Should().Be(original);
+
+        await InvokeAsync(page, "ReloadPendingStatusAsync");
+
+        writes.Should().Be(1);
+        Get<bool>(page, "_statusStale").Should().BeFalse();
+        Get<IReadOnlyList<LaboratoryTestDefinitionDto>>(page, "_tests").Should().Equal(latest);
+        if (alreadyChanged)
+        {
+            Get<LaboratoryTestDefinitionDto?>(page, "_pendingStatus").Should().BeNull();
+        }
+        else
+        {
+            Get<LaboratoryTestDefinitionDto>(page, "_pendingStatus").Should().Be(latest);
+            await InvokeAsync(page, "SetActiveAsync");
+            writes.Should().Be(2);
+        }
+    }
+
     private static LaboratoryTests Page(ILaboratoryTestsGateway gateway)
     {
         var page = new LaboratoryTests();
@@ -212,7 +366,7 @@ public sealed class LaboratoryTestsPageTests
     }
 
     private static LaboratoryTestDefinitionDto Definition() => new(Guid.NewGuid(), "2345-7", "Глюкоза в крови", true,
-        new DateTimeOffset(2026, 11, 9, 9, 17, 43, TimeSpan.Zero), new DateTimeOffset(2026, 11, 9, 10, 18, 57, TimeSpan.Zero));
+        new DateTimeOffset(2026, 11, 9, 9, 17, 43, TimeSpan.Zero), new DateTimeOffset(2026, 11, 9, 10, 18, 57, TimeSpan.Zero), 17);
     private static IEnumerable<LaboratoryTestDefinitionDto> Visible(LaboratoryTests page) =>
         (IEnumerable<LaboratoryTestDefinitionDto>)page.GetType().GetProperty("VisibleTests", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
     private static void Set(object page, string name, object? value) =>
@@ -226,11 +380,12 @@ public sealed class LaboratoryTestsPageTests
     private sealed class StubGateway : ILaboratoryTestsGateway
     {
         public Func<CancellationToken, bool, Task<IReadOnlyList<LaboratoryTestDefinitionDto>>>? List { get; init; }
+        public Func<Guid, CancellationToken, Task<LaboratoryTestDefinitionDto>>? Get { get; init; }
         public Func<Guid?, SaveLaboratoryTestRequest, CancellationToken, Task<LaboratoryTestDefinitionDto>>? Save { get; init; }
-        public Func<Guid, bool, CancellationToken, Task<LaboratoryTestDefinitionDto>>? ChangeActive { get; init; }
+        public Func<Guid, bool, uint, CancellationToken, Task<LaboratoryTestDefinitionDto>>? ChangeActive { get; init; }
         public Task<IReadOnlyList<LaboratoryTestDefinitionDto>> ListAsync(CancellationToken cancellationToken, bool activeOnly = true) => List!(cancellationToken, activeOnly);
-        public Task<LaboratoryTestDefinitionDto> GetAsync(Guid id, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public Task<LaboratoryTestDefinitionDto> GetAsync(Guid id, CancellationToken cancellationToken) => Get!(id, cancellationToken);
         public Task<LaboratoryTestDefinitionDto> SaveAsync(Guid? id, SaveLaboratoryTestRequest request, CancellationToken cancellationToken) => Save!(id, request, cancellationToken);
-        public Task<LaboratoryTestDefinitionDto> SetActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken) => ChangeActive!(id, isActive, cancellationToken);
+        public Task<LaboratoryTestDefinitionDto> SetActiveAsync(Guid id, bool isActive, uint version, CancellationToken cancellationToken) => ChangeActive!(id, isActive, version, cancellationToken);
     }
 }

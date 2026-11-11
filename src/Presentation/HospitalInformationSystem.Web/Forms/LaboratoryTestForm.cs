@@ -5,6 +5,8 @@ namespace HospitalInformationSystem.Web.Forms;
 
 public sealed class LaboratoryTestForm
 {
+    public uint? Version { get; set; }
+
     [Required(ErrorMessage = "Укажите код LOINC.")]
     [LaboratoryTestCode]
     public string LoincCode { get; set; } = "";
