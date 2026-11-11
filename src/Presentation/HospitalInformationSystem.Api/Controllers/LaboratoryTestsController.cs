@@ -41,12 +41,12 @@ public sealed class LaboratoryTestsController(ISender sender) : ControllerBase
     [Authorize(Policy = ApiSecurityPolicies.Administrator)]
     public async Task<ActionResult<LaboratoryTestDefinitionDto>> UpdateAsync(Guid id,
         SaveLaboratoryTestRequest request, CancellationToken cancellationToken) =>
-        Ok(await sender.Send(new UpdateLaboratoryTestCommand(id, request.LoincCode, request.DisplayName),
+        Ok(await sender.Send(new UpdateLaboratoryTestCommand(id, request.LoincCode, request.DisplayName, request.Version ?? 0),
             cancellationToken));
 
     [HttpPut("{id:guid}/active")]
     [Authorize(Policy = ApiSecurityPolicies.Administrator)]
     public async Task<ActionResult<LaboratoryTestDefinitionDto>> SetActiveAsync(Guid id,
         SetLaboratoryTestActiveRequest request, CancellationToken cancellationToken) =>
-        Ok(await sender.Send(new SetLaboratoryTestActiveCommand(id, request.IsActive), cancellationToken));
+        Ok(await sender.Send(new SetLaboratoryTestActiveCommand(id, request.IsActive, request.Version), cancellationToken));
 }

@@ -20,6 +20,8 @@ public sealed class CreateLaboratoryTestCommandHandler(ILaboratoryTestRepository
             throw new BusinessConflictException("Анализ с таким кодом LOINC уже существует.");
         repository.Add(definition);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return definition.ToDto();
+        var saved = await repository.FindAsync(definition.Id, tracking: false, cancellationToken)
+                    ?? throw new EntityNotFoundException("Анализ не найден после сохранения.");
+        return saved.ToDto();
     }
 }

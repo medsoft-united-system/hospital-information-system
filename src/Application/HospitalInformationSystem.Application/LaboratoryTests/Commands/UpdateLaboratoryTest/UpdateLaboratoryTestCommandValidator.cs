@@ -8,6 +8,7 @@ public sealed class UpdateLaboratoryTestCommandValidator : AbstractValidator<Upd
     public UpdateLaboratoryTestCommandValidator()
     {
         RuleFor(x => x.Id).NotEmpty();
+        RuleFor(x => x.Version).GreaterThan(0u).WithMessage("Укажите текущую версию анализа.");
         RuleFor(x => x.LoincCode).Must(LaboratoryTestDefinitionRules.IsValidCode)
             .WithMessage("Код LOINC: от 3 до 32 символов, цифры и контрольная цифра через дефис.");
         RuleFor(x => x.DisplayName).Must(LaboratoryTestDefinitionRules.IsValidDisplayName)
