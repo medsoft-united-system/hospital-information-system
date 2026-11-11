@@ -91,7 +91,7 @@ public sealed class LaboratoryAnalysisDomainTests
         var record = MedicalRecordFactory.Create(Guid.NewGuid(), author, T0);
         var same = Definition();
         IReadOnlyList<LaboratoryTestDefinition> definitions = count == 2 ? [same, same] :
-            Enumerable.Range(0, count).Select(i => Definition($"{i + 100}-0")).ToArray();
+            Enumerable.Range(0, count).Select(_ => Definition()).ToArray();
 
         var create = () => MedicalRecordService.CreateLaboratoryAnalysisRequests(record, definitions, null, author, T0);
 

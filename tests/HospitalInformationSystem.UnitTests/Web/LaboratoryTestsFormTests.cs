@@ -7,21 +7,23 @@ namespace HospitalInformationSystem.UnitTests.Web;
 public sealed class LaboratoryTestsFormTests
 {
     [Theory]
-    [InlineData("1-2", true)]
+    [InlineData("1-8", true)]
     [InlineData(" 2345-7 ", true)]
+    [InlineData("11491-6", true)]
+    [InlineData("2345-8", false)]
     [InlineData("2345-77", false)]
     [InlineData("۲۳۴۵-۷", false)]
     [InlineData("2345‐7", false)]
     [InlineData("2345-7\0", false)]
     [InlineData("", false)]
-    public void Codes_use_ascii_digits_and_a_single_trailing_digit(string code, bool valid) =>
+    public void Codes_use_ascii_digits_and_a_valid_loinc_check_digit(string code, bool valid) =>
         IsValid(new LaboratoryTestForm { LoincCode = code, DisplayName = "Глюкоза" }).Should().Be(valid);
 
     [Theory]
     [InlineData(30, true)]
     [InlineData(31, false)]
     public void Code_length_includes_hyphen_and_final_digit(int prefixLength, bool valid) =>
-        IsValid(new LaboratoryTestForm { LoincCode = new string('1', prefixLength) + "-7", DisplayName = "Глюкоза" })
+        IsValid(new LaboratoryTestForm { LoincCode = new string('1', prefixLength) + "-5", DisplayName = "Глюкоза" })
             .Should().Be(valid);
 
     [Theory]
