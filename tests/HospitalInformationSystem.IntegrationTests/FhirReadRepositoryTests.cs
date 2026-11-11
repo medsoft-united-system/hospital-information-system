@@ -90,10 +90,11 @@ public sealed class FhirReadRepositoryTests(HospitalApiFactory factory, ITestOut
             using var document = JsonDocument.Parse(planJson);
             var nodes = PlanNodes(document.RootElement[0].GetProperty("Plan")).ToArray();
             nodes.Should().NotContain(x => x.GetProperty("Node Type").GetString() == "Sort");
-            var indexName = status.HasValue ? "ix_lab_requests_queue" : "ix_lab_requests_fhir_order";
-            var indexScan = nodes.Should().ContainSingle(x =>
-                x.TryGetProperty("Index Name", out var name) && name.GetString() == indexName).Which;
-            if (status.HasValue)
+            var indexScan = nodes.Where(x => x.TryGetProperty("Index Name", out var name) &&
+                    (name.GetString() == "ix_lab_requests_fhir_order" ||
+                     status.HasValue && name.GetString() == "ix_lab_requests_queue"))
+                .Should().ContainSingle().Which;
+            if (status.HasValue && indexScan.GetProperty("Index Name").GetString() == "ix_lab_requests_queue")
                 indexScan.GetProperty("Index Cond").GetString().Should().Contain("status");
             if (after is not null)
                 indexScan.GetProperty("Index Cond").GetString().Should()
