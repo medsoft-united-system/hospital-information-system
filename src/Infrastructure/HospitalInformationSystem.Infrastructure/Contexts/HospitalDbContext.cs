@@ -11,7 +11,7 @@ using Npgsql;
 
 namespace HospitalInformationSystem.Infrastructure.Contexts;
 
-public sealed class HospitalDbContext(DbContextOptions<HospitalDbContext> options, TimeProvider? timeProvider = null,
+public sealed partial class HospitalDbContext(DbContextOptions<HospitalDbContext> options, TimeProvider? timeProvider = null,
     IAuditActorAccessor? auditActorAccessor = null)
     : IdentityDbContext<HospitalUser, IdentityRole<Guid>, Guid>(options), IUnitOfWork
 {

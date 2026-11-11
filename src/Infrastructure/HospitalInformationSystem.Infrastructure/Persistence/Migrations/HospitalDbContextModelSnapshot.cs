@@ -802,6 +802,79 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.ServiceAccountDbo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<byte[]>("ApiKeyHash")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("api_key_hash");
+
+                    b.Property<long>("AuthenticationVersion")
+                        .HasColumnType("bigint")
+                        .HasColumnName("authentication_version");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("normalized_name");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("role");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedName")
+                        .IsUnique()
+                        .HasDatabaseName("ux_service_accounts_normalized_name");
+
+                    b.ToTable("service_accounts", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_service_accounts_api_key_hash", "octet_length(api_key_hash) = 32");
+
+                            t.HasCheckConstraint("ck_service_accounts_authentication_version", "authentication_version > 0");
+
+                            t.HasCheckConstraint("ck_service_accounts_dates", "updated_at_utc >= created_at_utc");
+
+                            t.HasCheckConstraint("ck_service_accounts_name", "name = btrim(name) AND char_length(name) BETWEEN 3 AND 64");
+
+                            t.HasCheckConstraint("ck_service_accounts_normalized_name", "normalized_name = btrim(normalized_name) AND char_length(normalized_name) BETWEEN 3 AND 128");
+
+                            t.HasCheckConstraint("ck_service_accounts_role", "role = 'LIS'");
+                        });
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
                 {
                     b.Property<Guid>("Id")
