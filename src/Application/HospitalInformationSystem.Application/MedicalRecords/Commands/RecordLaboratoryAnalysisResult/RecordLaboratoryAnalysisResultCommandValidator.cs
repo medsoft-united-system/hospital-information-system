@@ -11,7 +11,7 @@ public sealed class RecordLaboratoryAnalysisResultCommandValidator
     {
         RuleFor(x => x.RequestId).NotEmpty();
         RuleFor(x => x.PatientId).NotEmpty();
-        RuleFor(x => x.LoincCode).Must(LaboratoryTestDefinitionRules.IsValidCode)
+        RuleFor(x => x.LoincCode).Must(LaboratoryTestDefinitionRules.IsWellFormedCode)
             .WithMessage("Укажите код LOINC назначенного анализа.");
         RuleFor(x => x.Value).Must(LaboratoryAnalysisRules.IsValidValue)
             .WithMessage("Результат должен содержать от 1 до 2000 символов без нулевого символа.");

@@ -141,6 +141,227 @@ public sealed class ServiceAccountsPageTests
     }
 
     [Fact]
+    public async Task RenameConflict_PreservesDraftUntilExplicitReloadAndHandlesAnotherConflict()
+    {
+        var original = ServiceAccountsApiClientTests.Account();
+        var current = original with { Name = "Имя другого администратора", Version = original.Version + 1 };
+        var writes = 0;
+        var reads = 0;
+        using var page = Page(new StubGateway
+        {
+            List = _ => Task.FromResult<IReadOnlyList<ServiceAccountDto>>([current]),
+            Get = (id, _) => { id.Should().Be(original.Id); reads++; return Task.FromResult(current); },
+            Update = (id, input, _) =>
+            {
+                id.Should().Be(original.Id);
+                writes++;
+                if (writes == 1)
+                {
+                    input.Version.Should().Be(original.Version);
+                    throw new ApiException("remote-secret", HttpStatusCode.Conflict);
+                }
+                input.Version.Should().Be(current.Version);
+                if (writes == 2)
+                {
+                    current = current with { Name = "Ещё одно параллельное изменение", Version = current.Version + 1 };
+                    throw new ApiException("remote-secret", HttpStatusCode.Conflict);
+                }
+                current = current with { Name = input.Name, Version = current.Version + 1 };
+                return Task.FromResult(current);
+            }
+        });
+        Invoke(page, "BeginEdit", original);
+        var draft = Get<ServiceAccountForm>(page, "_form");
+        draft.Name = "Моё новое имя";
+
+        await InvokeAsync(page, "SaveAsync");
+        await InvokeAsync(page, "LoadAsync");
+        await InvokeAsync(page, "SaveAsync");
+
+        writes.Should().Be(1);
+        reads.Should().Be(0);
+        Get<bool>(page, "_formStale").Should().BeTrue();
+        Get<ServiceAccountDto>(page, "_editing").Should().Be(original);
+        Get<ServiceAccountForm>(page, "_form").Should().BeSameAs(draft);
+        draft.Name.Should().Be("Моё новое имя");
+        Get<string>(page, "_formError").Should().NotContain("remote-secret");
+
+        await InvokeAsync(page, "ReloadEditingAsync");
+
+        writes.Should().Be(1);
+        reads.Should().Be(1);
+        Get<ServiceAccountForm>(page, "_form").Name.Should().Be(current.Name);
+        Get<ServiceAccountDto>(page, "_editing").Version.Should().Be(current.Version);
+        Get<bool>(page, "_formStale").Should().BeFalse();
+        Get<ServiceAccountForm>(page, "_form").Name = "Правка после загрузки";
+        await InvokeAsync(page, "SaveAsync");
+        Get<bool>(page, "_formStale").Should().BeTrue();
+        Get<ServiceAccountForm>(page, "_form").Name.Should().Be("Правка после загрузки");
+        await InvokeAsync(page, "SaveAsync");
+        writes.Should().Be(2);
+
+        await InvokeAsync(page, "ReloadEditingAsync");
+        Get<ServiceAccountForm>(page, "_form").Name = "Подтверждённое имя";
+        await InvokeAsync(page, "SaveAsync");
+
+        writes.Should().Be(3);
+        reads.Should().Be(2);
+        Get<bool>(page, "_formOpen").Should().BeFalse();
+        Get<IReadOnlyList<ServiceAccountDto>>(page, "_accounts").Single().Name.Should().Be("Подтверждённое имя");
+    }
+
+    [Theory]
+    [InlineData(false, true, false)]
+    [InlineData(false, false, false)]
+    [InlineData(false, true, true)]
+    [InlineData(false, false, true)]
+    [InlineData(true, true, false)]
+    [InlineData(true, false, false)]
+    public async Task ConfirmationConflict_RequiresFreshReadAndExplicitConfirmationWithoutReversingActivity(
+        bool rotate, bool originallyActive, bool alreadyApplied)
+    {
+        var original = ServiceAccountsApiClientTests.Account() with { IsActive = originallyActive };
+        var current = original with
+        {
+            Name = "Актуальная карточка", Version = original.Version + 1,
+            IsActive = alreadyApplied ? !originallyActive : originallyActive,
+            UpdatedAtUtc = original.UpdatedAtUtc.AddSeconds(1)
+        };
+        var writes = 0;
+        var reads = 0;
+        var gateway = new StubGateway
+        {
+            List = _ => Task.FromResult<IReadOnlyList<ServiceAccountDto>>([current]),
+            Get = (id, _) => { id.Should().Be(original.Id); reads++; return Task.FromResult(current); },
+            Rotate = (id, input, _) =>
+            {
+                id.Should().Be(original.Id);
+                writes++;
+                if (writes == 1)
+                {
+                    input.Version.Should().Be(original.Version);
+                    throw new ApiException("remote-secret", HttpStatusCode.Conflict);
+                }
+                input.Version.Should().Be(current.Version);
+                if (writes == 2)
+                {
+                    current = current with { Name = "Карточка снова изменена", Version = current.Version + 1 };
+                    throw new ApiException("remote-secret", HttpStatusCode.Conflict);
+                }
+                current = current with { Version = current.Version + 1 };
+                return Task.FromResult(new ServiceAccountKeyResultDto(current, ServiceAccountsApiClientTests.Key(current), 0));
+            },
+            Active = (id, input, _) =>
+            {
+                id.Should().Be(original.Id);
+                input.IsActive.Should().Be(!originallyActive);
+                writes++;
+                if (writes == 1)
+                {
+                    input.Version.Should().Be(original.Version);
+                    throw new ApiException("remote-secret", HttpStatusCode.Conflict);
+                }
+                input.Version.Should().Be(current.Version);
+                if (writes == 2)
+                {
+                    current = current with { Name = "Карточка снова изменена", Version = current.Version + 1 };
+                    throw new ApiException("remote-secret", HttpStatusCode.Conflict);
+                }
+                current = current with { Version = current.Version + 1, IsActive = input.IsActive };
+                return Task.FromResult(new ServiceAccountActivityResultDto(current, 0));
+            }
+        };
+        using var page = Page(gateway);
+        Invoke(page, "AskConfirmation", original, rotate);
+
+        await InvokeAsync(page, "ConfirmAsync");
+        await InvokeAsync(page, "LoadAsync");
+        await InvokeAsync(page, "ConfirmAsync");
+
+        writes.Should().Be(1);
+        reads.Should().Be(0);
+        Get<ServiceAccountDto>(page, "_pending").Should().Be(original);
+        Get<bool>(page, "_pendingStale").Should().BeTrue();
+        Get<string>(page, "_operationError").Should().NotContain("remote-secret");
+        Get<string?>(page, "_apiKey").Should().BeNull();
+
+        await InvokeAsync(page, "ReloadPendingAsync");
+
+        reads.Should().Be(1);
+        writes.Should().Be(1);
+        Get<bool>(page, "_pendingStale").Should().BeFalse();
+        if (alreadyApplied)
+        {
+            Get<ServiceAccountDto?>(page, "_pending").Should().BeNull();
+            await InvokeAsync(page, "ConfirmAsync");
+            writes.Should().Be(1);
+        }
+        else
+        {
+            Get<ServiceAccountDto>(page, "_pending").Should().Be(current);
+            await InvokeAsync(page, "ConfirmAsync");
+            writes.Should().Be(2);
+            Get<bool>(page, "_pendingStale").Should().BeTrue();
+            await InvokeAsync(page, "ConfirmAsync");
+            writes.Should().Be(2);
+            await InvokeAsync(page, "ReloadPendingAsync");
+            Get<ServiceAccountDto>(page, "_pending").Should().Be(current);
+            writes.Should().Be(2);
+            reads.Should().Be(2);
+            await InvokeAsync(page, "ConfirmAsync");
+            writes.Should().Be(3);
+            Get<ServiceAccountDto?>(page, "_pending").Should().BeNull();
+            Get<string?>(page, "_apiKey").Should().Be(rotate ? ServiceAccountsApiClientTests.Key(current) : null);
+        }
+    }
+
+    [Theory]
+    [InlineData("rename")]
+    [InlineData("rotate")]
+    [InlineData("active")]
+    public async Task FailedReload_KeepsOriginalDraftOrConfirmationAndBlocksNewMutation(string operation)
+    {
+        var original = ServiceAccountsApiClientTests.Account();
+        var writes = 0;
+        using var page = Page(new StubGateway
+        {
+            Update = (_, _, _) => { writes++; throw new ApiException("remote-secret", HttpStatusCode.Conflict); },
+            Rotate = (_, _, _) => { writes++; throw new ApiException("remote-secret", HttpStatusCode.Conflict); },
+            Active = (_, _, _) => { writes++; throw new ApiException("remote-secret", HttpStatusCode.Conflict); },
+            Get = (_, _) => throw new HttpRequestException("remote-secret")
+        });
+        if (operation == "rename")
+        {
+            Invoke(page, "BeginEdit", original);
+            var draft = Get<ServiceAccountForm>(page, "_form");
+            draft.Name = "Несохранённый ввод";
+            await InvokeAsync(page, "SaveAsync");
+            await InvokeAsync(page, "ReloadEditingAsync");
+            await InvokeAsync(page, "SaveAsync");
+
+            Get<ServiceAccountForm>(page, "_form").Should().BeSameAs(draft);
+            draft.Name.Should().Be("Несохранённый ввод");
+            Get<ServiceAccountDto>(page, "_editing").Should().Be(original);
+            Get<bool>(page, "_formStale").Should().BeTrue();
+            Get<string>(page, "_formError").Should().Contain("Повторите загрузку").And.NotContain("remote-secret");
+        }
+        else
+        {
+            Invoke(page, "AskConfirmation", original, operation == "rotate");
+            await InvokeAsync(page, "ConfirmAsync");
+            await InvokeAsync(page, "ReloadPendingAsync");
+            await InvokeAsync(page, "ConfirmAsync");
+
+            Get<ServiceAccountDto>(page, "_pending").Should().Be(original);
+            Get<bool>(page, "_pendingStale").Should().BeTrue();
+            Get<string>(page, "_operationError").Should().Contain("Повторите загрузку").And.NotContain("remote-secret");
+        }
+        writes.Should().Be(1);
+        Get<bool>(page, "_reloading").Should().BeFalse();
+        Get<string?>(page, "_apiKey").Should().BeNull();
+    }
+
+    [Fact]
     public async Task RenderedPage_UsesSeparateAccountsAndSecondPrecisionWithoutSecretOrDelete()
     {
         var account = ServiceAccountsApiClientTests.Account();
@@ -196,11 +417,13 @@ public sealed class ServiceAccountsPageTests
     private sealed class StubGateway : IServiceAccountsGateway
     {
         public Func<CancellationToken, Task<IReadOnlyList<ServiceAccountDto>>>? List { get; init; }
+        public Func<Guid, CancellationToken, Task<ServiceAccountDto>>? Get { get; init; }
         public Func<CreateServiceAccountRequest, CancellationToken, Task<ServiceAccountKeyResultDto>>? Create { get; init; }
         public Func<Guid, UpdateServiceAccountRequest, CancellationToken, Task<ServiceAccountDto>>? Update { get; init; }
         public Func<Guid, SetServiceAccountActiveRequest, CancellationToken, Task<ServiceAccountActivityResultDto>>? Active { get; init; }
         public Func<Guid, RotateServiceAccountKeyRequest, CancellationToken, Task<ServiceAccountKeyResultDto>>? Rotate { get; init; }
         public Task<IReadOnlyList<ServiceAccountDto>> ListAsync(CancellationToken token) => List!(token);
+        public Task<ServiceAccountDto> GetAsync(Guid id, CancellationToken token) => Get!(id, token);
         public Task<ServiceAccountKeyResultDto> CreateAsync(CreateServiceAccountRequest request, CancellationToken token) => Create!(request, token);
         public Task<ServiceAccountDto> UpdateAsync(Guid id, UpdateServiceAccountRequest request, CancellationToken token) => Update!(id, request, token);
         public Task<ServiceAccountActivityResultDto> SetActiveAsync(Guid id, SetServiceAccountActiveRequest request, CancellationToken token) => Active!(id, request, token);

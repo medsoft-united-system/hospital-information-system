@@ -10,6 +10,8 @@ public sealed class ServiceAccountsGateway(ServiceAccountsApiClient client, Sess
 {
     public Task<IReadOnlyList<ServiceAccountDto>> ListAsync(CancellationToken cancellationToken)
     { RequireAdministrator(); return client.ListAsync(cancellationToken); }
+    public Task<ServiceAccountDto> GetAsync(Guid id, CancellationToken cancellationToken)
+    { RequireAdministrator(); return client.GetAsync(id, cancellationToken); }
     public Task<ServiceAccountKeyResultDto> CreateAsync(CreateServiceAccountRequest request, CancellationToken cancellationToken)
     { RequireAdministrator(); return client.CreateAsync(request, cancellationToken); }
     public Task<ServiceAccountDto> UpdateAsync(Guid id, UpdateServiceAccountRequest request, CancellationToken cancellationToken)

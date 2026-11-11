@@ -9,6 +9,8 @@ public static class LaboratoryTestDefinitionRules
 
     public static bool IsValidCode(string? code) => LoincCodeValidation.IsValidCode(code);
 
+    public static bool IsWellFormedCode(string? code) => LoincCodeValidation.IsWellFormedCode(code);
+
     public static bool IsValidDisplayName(string? name)
     {
         var value = name?.Trim();

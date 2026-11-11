@@ -34,6 +34,61 @@ public sealed class FhirObservationCreateApiTests(FhirObservationCreateApiFactor
     : IClassFixture<FhirObservationCreateApiFactory>
 {
     [Fact]
+    public async Task Create_LegacyOrderCode_ShouldRequireExactSnapshotAndPreserveImmutableHistory()
+    {
+        const string legacyCode = "2345-8";
+        var state = (await factory.CreateScenarioAsync()) with { LoincCode = legacyCode };
+        string[] originalPayloads;
+        await using (var setup = factory.Services.CreateAsyncScope())
+        {
+            var db = setup.ServiceProvider.GetRequiredService<HospitalDbContext>();
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                UPDATE laboratory_test_definitions SET loinc_code = {legacyCode} WHERE id = {state.DefinitionId};
+                UPDATE laboratory_analysis_requests SET loinc_code_snapshot = {legacyCode} WHERE id = {state.RequestId};
+                UPDATE medical_record_history_events
+                SET payload_json = jsonb_set(payload_json, ARRAY['loincCode'], to_jsonb({legacyCode}::text))
+                WHERE medical_record_id = {state.RecordId} AND event_type = 'LaboratoryAnalysisRequested';
+                """);
+            originalPayloads = await db.MedicalRecordHistoryEvents.AsNoTracking()
+                .Where(x => x.MedicalRecordId == state.RecordId).OrderBy(x => x.Version)
+                .Select(x => x.PayloadJson).ToArrayAsync();
+        }
+        using var client = factory.CreateServiceClient();
+        using var orderResponse = await client.GetAsync($"/fhir/ServiceRequest/{state.RequestId:D}");
+        (await ReadAsync<ServiceRequest>(orderResponse)).Code!.Concept!.Coding.Single().Code.Should().Be(legacyCode);
+        foreach (var wrongCode in new[] { "2345-7", "2345-9" })
+        {
+            var wrong = Body(state);
+            wrong["code"]!["coding"]![0]!["code"] = wrongCode;
+            using var rejected = await PostAsync(client, wrong);
+            await ReadAsync<OperationOutcome>(rejected, HttpStatusCode.BadRequest);
+            await AssertUnchangedAsync(state);
+        }
+
+        using var response = await PostAsync(client, Body(state));
+
+        var result = await ReadAsync<Observation>(response, HttpStatusCode.Created);
+        result.Code!.Coding.Single().Code.Should().Be(legacyCode);
+        await AssertSingleResultAsync(state, Guid.Parse(result.Id!));
+        await using var verification = factory.Services.CreateAsyncScope();
+        var saved = (await verification.ServiceProvider.GetRequiredService<IMedicalRecordRepository>()
+            .FindAsync(state.RecordId, false, CancellationToken.None))!;
+        saved.HistoryEvents.Where(x => x.Version <= state.InitialVersion).OrderBy(x => x.Version)
+            .Select(x => x.PayloadJson).Should().Equal(originalPayloads);
+        var before = MedicalRecordSnapshotReplay.Build(saved, saved.HistoryEvents,
+            FhirObservationCreateApiFactory.CreatedAt);
+        var ordered = MedicalRecordSnapshotReplay.Build(saved, saved.HistoryEvents,
+            FhirObservationCreateApiFactory.CreatedAt.AddMinutes(1));
+        var completed = MedicalRecordSnapshotReplay.Build(saved, saved.HistoryEvents,
+            FhirObservationCreateApiFactory.ReceivedAt);
+        before.LaboratoryAnalysisRequests.Should().BeEmpty();
+        ordered.LaboratoryAnalysisRequests.Single().LoincCode.Should().Be(legacyCode);
+        ordered.LaboratoryAnalysisRequests.Single().Result.Should().BeNull();
+        completed.LaboratoryAnalysisRequests.Single().LoincCode.Should().Be(legacyCode);
+        completed.LaboratoryAnalysisRequests.Single().Result!.Id.Should().Be(Guid.Parse(result.Id!));
+    }
+
+    [Fact]
     public async Task Create_ShouldUseServerIdAndSnapshotsAndCommitResultHistoryAndServiceAudit()
     {
         var state = await factory.CreateScenarioAsync();

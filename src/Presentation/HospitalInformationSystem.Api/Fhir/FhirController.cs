@@ -86,7 +86,8 @@ public sealed class FhirController(ISender sender, FhirResponseWriter writer, Fh
             cancellationToken);
         var next = page.Next is null ? null : endpoint.SearchUrl(search, cursors.Protect(search, page.Next));
         var bundle = FhirResourceMapper.SearchBundle(search.ResourceType,
-            page.Items.Select(FhirResourceMapper.ToServiceRequest), endpoint.SearchUrl(search, search.Cursor), next);
+            page.Items.Select(FhirResourceMapper.ToServiceRequest), endpoint.SearchUrl(search, search.Cursor), next,
+            isFirstPage: search.Cursor is null);
         await writer.WriteAsync(HttpContext, bundle, 200, cancellationToken);
         return new EmptyResult();
     }
@@ -99,7 +100,8 @@ public sealed class FhirController(ISender sender, FhirResponseWriter writer, Fh
             cancellationToken);
         var next = page.Next is null ? null : endpoint.SearchUrl(search, cursors.Protect(search, page.Next));
         var bundle = FhirResourceMapper.SearchBundle(search.ResourceType,
-            page.Items.Select(FhirResourceMapper.ToObservation), endpoint.SearchUrl(search, search.Cursor), next);
+            page.Items.Select(FhirResourceMapper.ToObservation), endpoint.SearchUrl(search, search.Cursor), next,
+            isFirstPage: search.Cursor is null);
         await writer.WriteAsync(HttpContext, bundle, 200, cancellationToken);
         return new EmptyResult();
     }

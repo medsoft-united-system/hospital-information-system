@@ -195,6 +195,19 @@ public sealed class FhirResourceMappingTests
     }
 
     [Theory]
+    [InlineData("ServiceRequest")]
+    [InlineData("Observation")]
+    public void EmptyContinuationBundle_ShouldOmitWholeSearchTotal(string resourceType)
+    {
+        var json = Json(FhirResourceMapper.SearchBundle(resourceType, [],
+            $"https://his-api:5201/fhir/{resourceType}?_cursor=opaque-token", null, isFirstPage: false));
+
+        json.AsObject().Should().NotContainKey("total").And.NotContainKey("entry");
+        json["link"]!.AsArray().Should().ContainSingle();
+        Parse(json).Should().BeOfType<Bundle>();
+    }
+
+    [Theory]
     [InlineData("https://elsewhere.test/fhir/ServiceRequest?_cursor=x")]
     [InlineData("http://his-api:5201/fhir/ServiceRequest?_cursor=x")]
     [InlineData("https://his-api:5201/fhir/Observation?_cursor=x")]

@@ -81,6 +81,21 @@ public sealed class LaboratoryAnalysisDomainTests
         Unchanged(record);
     }
 
+    [Fact]
+    public void CreateBatch_LegacyCodeWithWrongChecksum_ShouldRejectNewOrdersBeforeMutation()
+    {
+        var author = Doctor();
+        var record = MedicalRecordFactory.Create(Guid.NewGuid(), author, T0);
+        var definition = Definition();
+        definition.LoincCode = "2345-8";
+
+        var create = () => MedicalRecordService.CreateLaboratoryAnalysisRequests(record,
+            [definition], null, author, T0);
+
+        create.Should().Throw<DomainValidationException>();
+        Unchanged(record);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(101)]

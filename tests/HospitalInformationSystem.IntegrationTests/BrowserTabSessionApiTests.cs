@@ -1,12 +1,17 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using FluentAssertions;
 using HospitalInformationSystem.Api.Middleware;
 using HospitalInformationSystem.Contracts.Auth;
 using HospitalInformationSystem.Contracts.MedicalWorkers;
+using HospitalInformationSystem.Contracts.Patients;
 using HospitalInformationSystem.Contracts.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
+using HospitalInformationSystem.Web.ApiClients;
+using HospitalInformationSystem.Web.Authentication;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +22,88 @@ namespace HospitalInformationSystem.IntegrationTests;
 
 public sealed class BrowserTabSessionApiTests(SecureHospitalApiFactory factory) : IClassFixture<SecureHospitalApiFactory>
 {
+    [Theory]
+    [InlineData("logout")]
+    [InlineData("login")]
+    [InlineData("admin-login")]
+    public async Task AuthenticationTransition_ExpiredAccessWithCachedCsrf_ShouldRenewCsrfAndPreserveOtherTab(string transition)
+    {
+        var account = await AccountAsync();
+        var cookies = new CookieContainer();
+        var firstId = Guid.NewGuid().ToString("N");
+        var secondId = Guid.NewGuid().ToString("N");
+        var firstState = new SessionState();
+        var firstCsrf = new AntiforgeryTokenStore();
+        var firstOperations = new AuthenticationOperationCoordinator();
+        var secondState = new SessionState();
+        var secondCsrf = new AntiforgeryTokenStore();
+        var secondOperations = new AuthenticationOperationCoordinator();
+        using var first = BrowserClient(cookies, firstId, firstState, firstCsrf, firstOperations);
+        using var second = BrowserClient(cookies, secondId, secondState, secondCsrf, secondOperations);
+        var firstApi = new SessionApiClient(first, firstState, firstCsrf, firstOperations);
+        var secondApi = new SessionApiClient(second, secondState, secondCsrf, secondOperations);
+        var login = new LoginRequest(account.Account.UserName, account.GeneratedPassword);
+        await firstApi.LoginAsync(login, CancellationToken.None);
+        await secondApi.LoginAsync(login, CancellationToken.None);
+        using var patient = await first.PostAsJsonAsync("/api/patients",
+            new SavePatientRequest("Проверка", "Сессии", null, new DateOnly(1990, 1, 1), AdministrativeSex.Male, null));
+        patient.EnsureSuccessStatusCode();
+        firstCsrf.RequestToken.Should().NotBeNull();
+        var firstRefresh = cookies.GetCookies(new Uri("https://localhost"))["MedSoft.Refresh." + firstId]!.Value;
+        var secondRefresh = cookies.GetCookies(new Uri("https://localhost"))["MedSoft.Refresh." + secondId]!.Value;
+        factory.AdvanceTime(TimeSpan.FromMinutes(16));
+
+        using (var stale = TabClient(cookies, firstId))
+        {
+            stale.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", firstState.AccessToken);
+            stale.DefaultRequestHeaders.Add("X-CSRF-TOKEN", firstCsrf.RequestToken);
+            using var rejected = transition switch
+            {
+                "logout" => await stale.PostAsync("/api/auth/logout", null),
+                "login" => await stale.PostAsJsonAsync("/api/auth/login", login),
+                _ => await stale.PostAsJsonAsync("/api/auth/admin/login", new BeginAdministratorLoginRequest(
+                    SecureHospitalApiFactory.AdminUserName, SecureHospitalApiFactory.AdminPassword))
+            };
+            rejected.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        }
+
+        switch (transition)
+        {
+            case "logout":
+                await firstApi.LogoutAsync(CancellationToken.None);
+                firstState.Current.Should().BeNull();
+                firstState.AccessToken.Should().BeNull();
+                cookies.GetCookies(new Uri("https://localhost"))["MedSoft.Refresh." + firstId].Should().BeNull();
+                break;
+            case "login":
+                await firstApi.LoginAsync(login, CancellationToken.None);
+                firstState.Current!.Id.Should().Be(account.Account.Id);
+                using (var current = await first.GetAsync("/api/patients")) current.EnsureSuccessStatusCode();
+                break;
+            default:
+                await firstApi.BeginAdministratorLoginAsync(new BeginAdministratorLoginRequest(
+                    SecureHospitalApiFactory.AdminUserName, SecureHospitalApiFactory.AdminPassword), CancellationToken.None);
+                firstState.Current.Should().BeNull();
+                await firstApi.ConfirmAdministratorLoginAsync(new ConfirmAdministratorLoginRequest(
+                    factory.AdministratorLogin().TotpCode!), CancellationToken.None);
+                firstState.Current!.Role.Should().Be(ApplicationRoles.Administrator);
+                using (var current = await first.GetAsync("/api/accounts")) current.EnsureSuccessStatusCode();
+                break;
+        }
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
+            var firstHash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(firstRefresh)));
+            var secondHash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(secondRefresh)));
+            (await db.RefreshSessions.SingleAsync(row => row.TokenHash == firstHash)).RevokedAtUtc.Should().NotBeNull();
+            (await db.RefreshSessions.SingleAsync(row => row.TokenHash == secondHash)).RevokedAtUtc.Should().BeNull();
+        }
+        using var otherTab = await second.GetAsync("/api/patients");
+        otherTab.EnsureSuccessStatusCode();
+        secondState.Current!.Id.Should().Be(account.Account.Id);
+    }
+
     [Fact]
     public async Task DifferentAccounts_SharedCookieJar_ShouldKeepLoginRefreshAndLogoutIndependent()
     {
@@ -200,6 +287,15 @@ public sealed class BrowserTabSessionApiTests(SecureHospitalApiFactory factory) 
         return client;
     }
 
+    private HttpClient BrowserClient(CookieContainer cookies, string tabId, SessionState session,
+        AntiforgeryTokenStore csrf, AuthenticationOperationCoordinator operations)
+    {
+        var origin = new Uri("https://localhost");
+        return factory.CreateDefaultClient(origin,
+            new BrowserSessionHandler(session, csrf, operations, origin, new TabSession(tabId)),
+            new SharedCookiesHandler(cookies));
+    }
+
     private static async Task<AuthenticationTokensDto> LoginAsync(HttpClient client, LoginRequest request)
     {
         await CsrfAsync(client);
@@ -254,6 +350,15 @@ public sealed class BrowserTabSessionApiTests(SecureHospitalApiFactory factory) 
             if (response.Headers.TryGetValues("Set-Cookie", out var values))
                 foreach (var value in values) cookies.SetCookies(uri, value);
             return response;
+        }
+    }
+
+    private sealed class TabSession(string id) : IBrowserTabSession
+    {
+        public Task<string> GetIdAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(id);
         }
     }
 }

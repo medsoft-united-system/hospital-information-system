@@ -88,7 +88,7 @@ public static class FhirResourceMapper
     };
 
     public static Bundle SearchBundle(string resourceType, IEnumerable<Resource> resources,
-        string selfUrl, string? nextUrl)
+        string selfUrl, string? nextUrl, bool isFirstPage = true)
     {
         var self = Endpoint(selfUrl, resourceType);
         if (nextUrl is not null)
@@ -114,7 +114,7 @@ public static class FhirResourceMapper
             }).ToList()
         };
         if (nextUrl is not null) bundle.Link.Add(new Bundle.LinkComponent { Relation = "next", Url = nextUrl });
-        if (items.Length == 0) bundle.Total = 0;
+        if (items.Length == 0 && isFirstPage) bundle.Total = 0;
         return bundle;
     }
 

@@ -11,5 +11,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Presentation/HospitalInformationSystem.Api/HospitalInformationSystem.Api.csproj" />
+    <ProjectReference Include="../../src/Presentation/HospitalInformationSystem.Web/HospitalInformationSystem.Web.csproj" />
   </ItemGroup>
 </Project>
