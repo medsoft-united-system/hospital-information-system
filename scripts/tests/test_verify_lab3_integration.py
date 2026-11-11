@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 import urllib.error
 
 
@@ -18,6 +18,29 @@ spec.loader.exec_module(smoke)
 
 
 class Lab3IsolationTests(unittest.TestCase):
+    def test_lis_allowed_host_matches_the_published_loopback_authority(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            ca = workspace / "ca.pem"
+            ca.write_text("public test CA")
+            docker = Mock(prefix="medsoft-test")
+            docker.postgres.return_value = "temporary-password"
+            docker.port.return_value = 54321
+            client = MagicMock()
+            client.open.return_value.__enter__.return_value.status = 200
+            with patch.object(smoke.socket, "socket") as socket, \
+                    patch.object(smoke.urllib.request, "build_opener", return_value=client):
+                socket.return_value.__enter__.return_value.getsockname.return_value = ("127.0.0.1", 54321)
+
+                origin = smoke.start_lis(docker, workspace / "lis", workspace, ca)
+
+            self.assertEqual(origin, "http://127.0.0.1:54321")
+            args, kwargs = docker.start.call_args
+            self.assertEqual(args[args.index("--publish") + 1], "127.0.0.1:54321:8080")
+            self.assertEqual(kwargs["environment"]["LIS_ALLOWED_HOSTS"], "127.0.0.1:54321")
+            self.assertIn("LIS_ALLOWED_HOSTS", args)
+            client.open.assert_called_once_with(origin + "/health/ready", timeout=3)
+
     def test_python_runtime_rejects_old_python_before_docker_or_stand_creation(self):
         with tempfile.TemporaryDirectory() as directory:
             args = argparse.Namespace(isu_id="408944", report=Path(directory) / "report.json", docker="docker",

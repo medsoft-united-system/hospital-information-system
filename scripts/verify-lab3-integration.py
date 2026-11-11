@@ -462,16 +462,22 @@ def start_lis(docker, binary, workspace, ca):
     (private / "master.key").write_bytes(secrets.token_bytes(32))
     (private / "master.key").chmod(0o600)
     shutil.copyfile(ca, private / "ca.pem")
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+        listener.bind(("127.0.0.1", 0))
+        port = listener.getsockname()[1]
+    authority = "127.0.0.1:" + str(port)
     environment = clean_environment()
     environment.update(LIS_HTTP_ADDR="0.0.0.0:8080", LIS_DB_DSN="postgresql://postgres:" + password + "@lis-db:5432/lis?sslmode=disable",
-        LIS_MASTER_KEY_FILE="/run/lis/master.key", LIS_HIS_CA_FILE="/run/lis/ca.pem")
+        LIS_MASTER_KEY_FILE="/run/lis/master.key", LIS_HIS_CA_FILE="/run/lis/ca.pem", LIS_ALLOWED_HOSTS=authority)
     name = docker.prefix + "-lis"
-    docker.start(name, *container_user(), "--publish", "127.0.0.1::8080",
+    docker.start(name, *container_user(), "--publish", authority + ":8080",
         "--mount", "type=bind,src=" + str(binary) + ",dst=/usr/local/bin/lis,readonly",
         "--mount", "type=bind,src=" + str(private) + ",dst=/run/lis,readonly",
-        "--env", "LIS_HTTP_ADDR", "--env", "LIS_DB_DSN", "--env", "LIS_MASTER_KEY_FILE", "--env", "LIS_HIS_CA_FILE",
+        "--env", "LIS_HTTP_ADDR", "--env", "LIS_DB_DSN", "--env", "LIS_MASTER_KEY_FILE", "--env", "LIS_HIS_CA_FILE", "--env", "LIS_ALLOWED_HOSTS",
         "--entrypoint", "/usr/local/bin/lis", GO_IMAGE, environment=environment)
-    origin = "http://127.0.0.1:" + str(docker.port(name, 8080))
+    if docker.port(name, 8080) != port:
+        raise SmokeCheckError("Docker published an unexpected LIS port.")
+    origin = "http://" + authority
     client = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
     deadline = time.monotonic() + 60
     while time.monotonic() < deadline:
