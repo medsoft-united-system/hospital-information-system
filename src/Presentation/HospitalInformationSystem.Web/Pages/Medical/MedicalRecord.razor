@@ -401,8 +401,7 @@ else
             </div>
             <div class="mr-laboratory-snapshot">
               <h3>Анализы на момент</h3>
-              <LaboratoryAnalysesTable Requests="_snapshot.LaboratoryAnalysisRequests"
-                                       RequesterNames="SnapshotRequesterNames" Historical="true"/>
+              <LaboratoryAnalysesTable Requests="_snapshot.LaboratoryAnalysisRequests" Historical="true"/>
             </div>
           }
         </div>
@@ -630,9 +629,6 @@ else
     _historyError = null;
     _historyLoading = false;
   }
-
-  private IReadOnlyDictionary<Guid, string> SnapshotRequesterNames =>
-    LaboratoryAnalysisPresentation.RequesterNames(_history ?? []);
 
   private void OnLaboratoryBusyChanged(bool busy)
   {

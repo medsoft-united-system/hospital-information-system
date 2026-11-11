@@ -117,6 +117,9 @@ public sealed class LaboratoryTestPersistenceTests(HospitalApiFactory factory) :
         saved.Should().NotBeNull();
         saved!.LoincCode.Should().Be(inactive.LoincCode);
         saved.IsActive.Should().BeFalse();
+        saved.Version.Should().BeGreaterThan(0);
+        (await repository.ListAsync(false, CancellationToken.None)).Single(x => x.Id == inactive.Id)
+            .Version.Should().Be(saved.Version);
     }
 
     [Fact]
@@ -136,6 +139,9 @@ public sealed class LaboratoryTestPersistenceTests(HospitalApiFactory factory) :
         loaded!.LoincCode.Should().Be(definition.LoincCode);
         loaded.DisplayName.Should().Be(definition.DisplayName);
         loaded.IsActive.Should().BeTrue();
+        loaded.Version.Should().BeGreaterThan(0);
+        loaded.Version.Should().Be(db.Entry(db.LaboratoryTestDefinitions.Local.Single(x => x.Id == loaded.Id))
+            .Property<uint>("xmin").CurrentValue);
         loaded.CreatedAtUtc.Should().BeCloseTo(now, TimeSpan.FromMicroseconds(1));
         var updatedAt = now.AddMinutes(1);
         var updatedCode = NewDefinition().LoincCode;
@@ -153,6 +159,8 @@ public sealed class LaboratoryTestPersistenceTests(HospitalApiFactory factory) :
         saved.IsActive.Should().BeFalse();
         saved.CreatedAtUtc.Should().BeCloseTo(now, TimeSpan.FromMicroseconds(1));
         saved.UpdatedAtUtc.Should().BeCloseTo(updatedAt, TimeSpan.FromMicroseconds(1));
+        (await repository.FindAsync(definition.Id, false, CancellationToken.None))!.Version
+            .Should().BeGreaterThan(0).And.NotBe(loaded.Version);
     }
 
     [Fact]
@@ -216,17 +224,70 @@ public sealed class LaboratoryTestPersistenceTests(HospitalApiFactory factory) :
         await save.Should().ThrowAsync<BusinessConflictException>();
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Repository_UpdateAfterConcurrentCommit_ShouldPreserveNewerDefinition(bool tracking)
+    {
+        await using var firstScope = factory.Services.CreateAsyncScope();
+        await using var secondScope = factory.Services.CreateAsyncScope();
+        var firstDb = firstScope.ServiceProvider.GetRequiredService<HospitalDbContext>();
+        var secondDb = secondScope.ServiceProvider.GetRequiredService<HospitalDbContext>();
+        var definition = NewDefinition();
+        firstDb.LaboratoryTestDefinitions.Add(definition);
+        await firstDb.SaveChangesAsync();
+        var repository = secondScope.ServiceProvider.GetRequiredService<ILaboratoryTestRepository>();
+        var stale = (await repository.FindAsync(definition.Id, tracking, CancellationToken.None))!;
+        stale.Version.Should().BeGreaterThan(0);
+        var newCode = NewDefinition().LoincCode;
+        definition.LoincCode = newCode;
+        definition.DisplayName = "Актуальная запись из другого запроса";
+        definition.IsActive = false;
+        definition.UpdatedAtUtc = DateTimeOffset.UtcNow;
+        await firstDb.SaveChangesAsync();
+        LaboratoryTestDefinitionService.Update(stale, stale.LoincCode, "Устаревшая запись", DateTimeOffset.UtcNow);
+
+        Func<Task> save = async () =>
+        {
+            await repository.UpdateAsync(stale, CancellationToken.None);
+            await secondDb.SaveChangesAsync();
+        };
+
+        await save.Should().ThrowAsync<BusinessConflictException>();
+        firstDb.ChangeTracker.Clear();
+        var current = await firstDb.LaboratoryTestDefinitions.AsNoTracking().SingleAsync(x => x.Id == definition.Id);
+        current.LoincCode.Should().Be(newCode);
+        current.DisplayName.Should().Be("Актуальная запись из другого запроса");
+        current.IsActive.Should().BeFalse();
+        current.UpdatedAtUtc.Should().BeCloseTo(definition.UpdatedAtUtc, TimeSpan.FromMicroseconds(1));
+    }
+
     private static LaboratoryTestDefinitionDbo NewDefinition(string? code = null)
     {
         var now = DateTimeOffset.UtcNow;
         return new LaboratoryTestDefinitionDbo
         {
             Id = Guid.NewGuid(),
-            LoincCode = code ?? BitConverter.ToUInt64(Guid.NewGuid().ToByteArray()).ToString(System.Globalization.CultureInfo.InvariantCulture) + "-0",
+            LoincCode = code ?? NewCode(),
             DisplayName = "Синтетический анализ для проверки хранения",
             IsActive = true,
             CreatedAtUtc = now,
             UpdatedAtUtc = now
         };
+    }
+
+    private static string NewCode()
+    {
+        var number = BitConverter.ToUInt64(Guid.NewGuid().ToByteArray())
+            .ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var sum = 0;
+        for (var index = number.Length - 1; index >= 0; index--)
+        {
+            var digit = number[index] - '0';
+            if ((number.Length - index) % 2 == 1)
+                digit *= 2;
+            sum += digit / 10 + digit % 10;
+        }
+        return number + "-" + (10 - sum % 10) % 10;
     }
 }

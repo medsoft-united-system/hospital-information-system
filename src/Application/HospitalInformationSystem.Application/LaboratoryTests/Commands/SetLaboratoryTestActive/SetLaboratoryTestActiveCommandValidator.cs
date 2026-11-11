@@ -4,5 +4,9 @@ namespace HospitalInformationSystem.Application.LaboratoryTests.Commands.SetLabo
 
 public sealed class SetLaboratoryTestActiveCommandValidator : AbstractValidator<SetLaboratoryTestActiveCommand>
 {
-    public SetLaboratoryTestActiveCommandValidator() => RuleFor(x => x.Id).NotEmpty();
+    public SetLaboratoryTestActiveCommandValidator()
+    {
+        RuleFor(x => x.Id).NotEmpty();
+        RuleFor(x => x.Version).GreaterThan(0u).WithMessage("Укажите текущую версию анализа.");
+    }
 }

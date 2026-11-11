@@ -39,9 +39,9 @@
         {
           <p class="laboratory-form-message" role="status">Загрузка доступных исследований…</p>
         }
-        else if (_catalog is null)
+        else if (_catalog is null || _catalogStale)
         {
-          <button type="button" class="btn btn-outline-primary" @onclick="LoadCatalogAsync">Повторить загрузку справочника</button>
+          <button type="button" class="btn btn-outline-primary" @onclick="LoadCatalogAsync">@(_catalogStale ? "Обновить справочник и выбрать заново" : "Повторить загрузку справочника")</button>
         }
         else if (_catalog.Count == 0)
         {
@@ -75,18 +75,14 @@
         <ErrorAlert Message="@_formError"/>
         <div class="laboratory-submit-row">
           <span aria-live="polite">Выбрано: <strong>@_selected.Count</strong> · Будет создано отдельных заказов: <strong>@_selected.Count</strong></span>
-          <button type="submit" class="btn btn-primary" disabled="@(_catalogLoading || _catalog is null || _selected.Count is < 1 or > 100 || !IsCommentValid(_comment))">
+          <button type="submit" class="btn btn-primary" disabled="@(_catalogLoading || _catalogStale || _catalog is null || _selected.Count is < 1 or > 100 || !IsCommentValid(_comment))">
             <Icon Name="check"/> @(_submitting ? "Назначение…" : "Подтвердить назначение")
           </button>
         </div>
       </fieldset>
     </form>
   }
-  @if (_historyError is not null)
-  {
-    <p class="laboratory-author-warning">@_historyError</p>
-  }
-  <LaboratoryAnalysesTable Requests="VisibleRequests" RequesterNames="_requesterNames"/>
+  <LaboratoryAnalysesTable Requests="VisibleRequests"/>
 </div>
 
 @code {
@@ -102,14 +98,12 @@
   private bool _disposed;
   private bool _formOpen;
   private bool _catalogLoading;
+  private bool _catalogStale;
   private bool _submitting;
   private bool _refreshing;
   private int _catalogVersion;
-  private int _historyVersion;
-  private long _loadedHistoryRecordVersion = -1;
   private IReadOnlyList<LaboratoryTestDefinitionDto>? _catalog;
   private readonly HashSet<Guid> _selected = [];
-  private IReadOnlyDictionary<Guid, string> _requesterNames = new Dictionary<Guid, string>();
   private readonly Dictionary<Guid, LaboratoryAnalysisRequestDto> _createdOverlay = [];
   private string _search = "";
   private string _comment = "";
@@ -117,7 +111,6 @@
   private string? _notice;
   private string? _formError;
   private string? _catalogError;
-  private string? _historyError;
   private bool IsBusy => ParentBusy || _submitting || _refreshing;
   private string CommentInputId => $"laboratory-comment-{Record.Id:N}";
   private IEnumerable<LaboratoryTestDefinitionDto> VisibleCatalog => (_catalog ?? [])
@@ -126,9 +119,9 @@
     .Concat(_createdOverlay.Values.Where(x => !Record.LaboratoryAnalysisRequests.Any(existing => existing.Id == x.Id)))
     .ToArray();
 
-  protected override async Task OnParametersSetAsync()
+  protected override Task OnParametersSetAsync()
   {
-    if (_disposed) return;
+    if (_disposed) return Task.CompletedTask;
     if (_contextRecordId != Record.Id)
     {
       _cts?.Cancel();
@@ -136,25 +129,23 @@
       _cts = new CancellationTokenSource();
       _contextRecordId = Record.Id;
       _catalogVersion++;
-      _historyVersion++;
-      _loadedHistoryRecordVersion = -1;
       _catalog = null;
-      _requesterNames = new Dictionary<Guid, string>();
       _createdOverlay.Clear();
       _selected.Clear();
-      _formOpen = _submitting = _refreshing = _catalogLoading = false;
+      _formOpen = _submitting = _refreshing = _catalogLoading = _catalogStale = false;
       _search = _comment = "";
-      _error = _notice = _formError = _catalogError = _historyError = null;
+      _error = _notice = _formError = _catalogError = null;
     }
     if (!CanAssign) { _formOpen = false; _selected.Clear(); }
     foreach (var id in Record.LaboratoryAnalysisRequests.Select(x => x.Id)) _createdOverlay.Remove(id);
-    if (_loadedHistoryRecordVersion != Record.Version) await LoadRequesterNamesAsync();
+    return Task.CompletedTask;
   }
 
   private async Task OpenFormAsync()
   {
     if (!CanAssign || IsBusy || _disposed || _cts is null) return;
     _formOpen = true;
+    _catalogStale = false;
     _selected.Clear();
     _search = _comment = "";
     _formError = _error = _notice = null;
@@ -179,12 +170,14 @@
     var version = ++_catalogVersion;
     _catalogLoading = true;
     _catalogError = null;
+    _selected.Clear();
     try
     {
       var catalog = await Catalog.ListAsync(token, activeOnly: true);
       if (!IsCurrent(token, recordId) || version != _catalogVersion || !_formOpen) return;
       _catalog = catalog.Where(x => x.IsActive).OrderBy(x => x.LoincCode, StringComparer.Ordinal).ToArray();
-      _selected.RemoveWhere(id => !_catalog.Any(x => x.Id == id));
+      _catalogStale = false;
+      _formError = null;
     }
     catch (OperationCanceledException) when (!IsCurrent(token, recordId)) { }
     catch (Exception ex) when (ex is ApiException or HttpRequestException or OperationCanceledException)
@@ -200,7 +193,7 @@
 
   private void ToggleSelection(Guid id, ChangeEventArgs args)
   {
-    if (!CanAssign || IsBusy || _catalogLoading || _catalog?.Any(x => x.Id == id && x.IsActive) != true) return;
+    if (!CanAssign || IsBusy || _catalogLoading || _catalogStale || _catalog?.Any(x => x.Id == id && x.IsActive) != true) return;
     if (args.Value is true) _selected.Add(id);
     else _selected.Remove(id);
     _formError = _selected.Count > 100 ? "За один раз можно назначить не более 100 разных анализов." : null;
@@ -208,7 +201,7 @@
 
   private async Task SubmitAsync()
   {
-    if (!CanAssign || IsBusy || _disposed || _cts is null || !_formOpen || _catalogLoading) return;
+    if (!CanAssign || IsBusy || _disposed || _cts is null || !_formOpen || _catalogLoading || _catalogStale) return;
     if (_selected.Count is < 1 or > 100 || _catalog is null ||
         _selected.Any(id => !_catalog.Any(x => x.Id == id && x.IsActive)))
     { _formError = "Выберите от 1 до 100 активных анализов."; return; }
@@ -217,6 +210,7 @@
     var token = _cts.Token;
     var recordId = Record.Id;
     var ids = _catalog.Where(x => _selected.Contains(x.Id)).Select(x => x.Id).ToArray();
+    var expectedVersions = _catalog.Where(x => _selected.Contains(x.Id)).ToDictionary(x => x.Id, x => x.Version);
     var comment = string.IsNullOrWhiteSpace(_comment) ? null : _comment.Trim();
     _submitting = true;
     _formError = _error = _notice = null;
@@ -225,7 +219,7 @@
       await BusyChanged.InvokeAsync(true);
       if (!IsCurrent(token, recordId)) return;
       var created = await Records.CreateLaboratoryAnalysisRequestsAsync(recordId,
-        new CreateLaboratoryAnalysisRequestsRequest(ids, comment), token);
+        new CreateLaboratoryAnalysisRequestsRequest(ids, comment, expectedVersions), token);
       if (!IsCurrent(token, recordId)) return;
       if (created.Any(x => x.MedicalRecordId != recordId || x.PatientId != Record.PatientId))
         throw new ApiException("Ответ сервера относится к другой карте. Обновите карту и проверьте результат перед повторной отправкой.", System.Net.HttpStatusCode.BadGateway);
@@ -237,7 +231,6 @@
       try { await RequestsCreated.InvokeAsync(created); }
       catch (Exception ex) when (ex is ApiException or HttpRequestException or OperationCanceledException)
       { if (IsCurrent(token, recordId)) _notice += " Обновить карту не удалось; проверьте её явным обновлением."; }
-      if (IsCurrent(token, recordId)) await LoadRequesterNamesAsync();
     }
     catch (OperationCanceledException) when (!IsCurrent(token, recordId)) { }
     catch (ApiException ex)
@@ -245,7 +238,10 @@
       if (!IsCurrent(token, recordId)) return;
       _formError = ex.Message;
       if (ex.StatusCode is System.Net.HttpStatusCode.BadRequest or System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.Conflict)
-        await LoadCatalogAsync();
+      {
+        _catalogStale = true;
+        _formError += " Обновите справочник и выберите исследования заново.";
+      }
       if (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
       {
         _formOpen = false;
@@ -278,7 +274,6 @@
     {
       await BusyChanged.InvokeAsync(true);
       await RefreshRequested.InvokeAsync();
-      if (IsCurrent(token, recordId)) await LoadRequesterNamesAsync();
     }
     catch (OperationCanceledException) when (!IsCurrent(token, recordId)) { }
     catch (Exception ex) when (ex is ApiException or HttpRequestException or OperationCanceledException)
@@ -291,26 +286,6 @@
         await BusyChanged.InvokeAsync(false);
       }
     }
-  }
-
-  private async Task LoadRequesterNamesAsync()
-  {
-    if (_cts is null || _disposed) return;
-    var token = _cts.Token;
-    var recordId = Record.Id;
-    var recordVersion = Record.Version;
-    var version = ++_historyVersion;
-    _loadedHistoryRecordVersion = recordVersion;
-    _historyError = null;
-    try
-    {
-      var history = await Records.GetHistoryAsync(recordId, token);
-      if (IsCurrent(token, recordId) && version == _historyVersion)
-        _requesterNames = LaboratoryAnalysisPresentation.RequesterNames(history);
-    }
-    catch (OperationCanceledException) when (!IsCurrent(token, recordId)) { }
-    catch (Exception ex) when (ex is ApiException or HttpRequestException or OperationCanceledException)
-    { if (IsCurrent(token, recordId) && version == _historyVersion) _historyError = "Не удалось загрузить имена назначивших врачей. Исследования показаны с идентификаторами авторов."; }
   }
 
   private static bool IsCommentValid(string comment) => !comment.Contains('\0') && comment.Trim().EnumerateRunes().Count() <= 2000;

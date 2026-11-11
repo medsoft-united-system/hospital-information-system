@@ -20,12 +20,12 @@ public sealed class LaboratoryAnalysesTableTests
         request = request with
         {
             Status = LaboratoryAnalysisRequestStatus.Completed,
+            RequestedByNameSnapshot = "Врач в момент назначения",
             Result = new LaboratoryAnalysisResultDto(Guid.NewGuid(), request.Id, request.PatientId, "0",
                 At.AddMinutes(1), At.AddMinutes(2), Guid.NewGuid())
         };
 
-        var html = WebUtility.HtmlDecode(await RenderAsync([request], new Dictionary<Guid, string>
-        { [request.Id] = "Врач в момент назначения" }));
+        var html = WebUtility.HtmlDecode(await RenderAsync([request]));
 
         html.Should().Contain("Врач в момент назначения").And.Contain("Глюкоза").And.Contain("LOINC 2345-7")
             .And.Contain("Выполнен").And.Contain("Учебный режим: единицы измерения не используются")
@@ -52,34 +52,34 @@ public sealed class LaboratoryAnalysesTableTests
     [Fact]
     public async Task Table_ShouldEscapeMedicalTextAndShowEmptyHistoricalState()
     {
-        var request = Request() with { DisplayName = "<script>alert(1)</script>", Comment = "<b>Комментарий</b>" };
+        var request = Request() with
+        {
+            DisplayName = "<script>alert(1)</script>", Comment = "<b>Комментарий</b>",
+            RequestedByNameSnapshot = "<b>Имя врача</b>"
+        };
         var html = await RenderAsync([request]);
 
         html.Should().NotContain("<script>").And.NotContain("<b>Комментарий</b>")
-            .And.Contain("&lt;script&gt;");
+            .And.NotContain("<b>Имя врача</b>").And.Contain("&lt;script&gt;").And.Contain("&lt;b&gt;");
         WebUtility.HtmlDecode(await RenderAsync([], historical: true)).Should()
             .Contain("На выбранный момент анализы не были назначены.");
     }
 
     [Fact]
-    public void RequesterNames_ShouldUseHumanRequestSnapshotsAndIgnoreResultActors()
+    public async Task MissingRequesterSnapshot_ShouldShowIdentifierWithoutRequestingHistory()
     {
         var request = Request();
-        var human = new MedicalRecordHistoryEventDto(1, At, request.RequestedByMedicalWorkerId,
-            "Прежнее имя врача", "Врач", "LaboratoryAnalysisRequested", request.Id, "{}");
-        var service = human with { Version = 2, PerformedByName = "lab-service", EventType = "LaboratoryAnalysisResultRecorded",
-            AuthorKind = MedicalRecordAuthorKind.ServiceAccount, PerformedByMedicalWorkerId = null,
-            PerformedByServiceAccountId = Guid.NewGuid() };
 
-        LaboratoryAnalysisPresentation.RequesterNames([human, service]).Should().ContainSingle()
-            .Which.Should().Be(new KeyValuePair<Guid, string>(request.Id, "Прежнее имя врача"));
+        var html = WebUtility.HtmlDecode(await RenderAsync([request]));
+
+        html.Should().Contain("Медработник · " + request.RequestedByMedicalWorkerId.ToString("N")[..8]);
     }
 
     private static LaboratoryAnalysisRequestDto Request() => new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
         Guid.NewGuid(), Guid.NewGuid(), "2345-7", "Глюкоза", null, At, LaboratoryAnalysisRequestStatus.Active, null);
 
     private static async Task<string> RenderAsync(IReadOnlyCollection<LaboratoryAnalysisRequestDto> requests,
-        IReadOnlyDictionary<Guid, string>? names = null, bool historical = false)
+        bool historical = false)
     {
         await using var provider = new ServiceCollection().AddLogging().BuildServiceProvider();
         await using var renderer = new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>());
@@ -88,7 +88,6 @@ public sealed class LaboratoryAnalysesTableTests
                 new Dictionary<string, object?>
                 {
                     [nameof(LaboratoryAnalysesTable.Requests)] = requests,
-                    [nameof(LaboratoryAnalysesTable.RequesterNames)] = names ?? new Dictionary<Guid, string>(),
                     [nameof(LaboratoryAnalysesTable.Historical)] = historical
                 }))).ToHtmlString());
     }

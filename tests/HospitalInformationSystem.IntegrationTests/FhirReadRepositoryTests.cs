@@ -1,4 +1,6 @@
+using System.Data.Common;
 using System.Security.Cryptography;
+using System.Text.Json;
 using FluentAssertions;
 using HospitalInformationSystem.Application.Abstractions;
 using HospitalInformationSystem.Application.Fhir;
@@ -7,21 +9,30 @@ using HospitalInformationSystem.Domain.MedicalWorkers;
 using HospitalInformationSystem.Domain.Patients;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
+using Xunit.Abstractions;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
-public sealed class FhirReadRepositoryTests(HospitalApiFactory factory) : IClassFixture<HospitalApiFactory>
+public sealed class FhirReadRepositoryTests(HospitalApiFactory factory, ITestOutputHelper output) : IClassFixture<HospitalApiFactory>
 {
     private static readonly DateTimeOffset At = new(2026, 11, 9, 12, 0, 0, TimeSpan.Zero);
 
-    [Fact]
-    public async Task ServiceRequestPages_ShouldTraverseAllRowsInWireTimestampAndUuidOrder()
+    [Theory]
+    [InlineData("UTC")]
+    [InlineData("Asia/Kathmandu")]
+    [InlineData("America/St_Johns")]
+    public async Task ServiceRequestPages_ShouldTraverseAllRowsInWireTimestampAndUuidOrder(string timeZone)
     {
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
         await using var transaction = await db.Database.BeginTransactionAsync();
+        await db.Database.ExecuteSqlInterpolatedAsync($"SELECT set_config('TimeZone', {timeZone}, true)");
         var state = await SeedAsync(db, 45);
         var repository = scope.ServiceProvider.GetRequiredService<IFhirReadRepository>();
         var ids = new List<Guid>();
@@ -46,6 +57,49 @@ public sealed class FhirReadRepositoryTests(HospitalApiFactory factory) : IClass
             .ThenBy(x => x.Id).Select(x => x.Id));
         after.Should().BeNull();
         db.ChangeTracker.Entries().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ServiceRequestPages_ShouldSeekThroughMatchingIndexesWithoutSorting()
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        var state = await SeedAsync(db, 6000);
+        await db.Database.ExecuteSqlRawAsync("ANALYZE laboratory_analysis_requests");
+        var probe = new SearchCommandProbe();
+        var options = new DbContextOptionsBuilder<HospitalDbContext>()
+            .UseNpgsql(db.Database.GetDbConnection()).AddInterceptors(probe).Options;
+        await using var searchDb = new HospitalDbContext(options);
+        await searchDb.Database.UseTransactionAsync(transaction.GetDbTransaction());
+        var repository = new FhirReadRepository(searchDb);
+        var middle = state.Requests[3000];
+        var position = new FhirPagePosition(Milliseconds(middle.AuthoredAtUtc), middle.Id);
+
+        foreach (var status in new LaboratoryAnalysisRequestStatus?[]
+                 { null, LaboratoryAnalysisRequestStatus.Active, LaboratoryAnalysisRequestStatus.Completed })
+        foreach (var after in new FhirPagePosition?[] { null, position })
+        {
+            await repository.SearchServiceRequestsAsync(status, 20, after, CancellationToken.None);
+            await using var explain = new NpgsqlCommand("EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) " + probe.CommandText,
+                (NpgsqlConnection)db.Database.GetDbConnection(), (NpgsqlTransaction)transaction.GetDbTransaction());
+            foreach (var parameter in probe.Parameters)
+                explain.Parameters.Add(parameter.Clone());
+            var planJson = (string)(await explain.ExecuteScalarAsync())!;
+            output.WriteLine($"status={status?.ToString() ?? "all"}, continuation={after is not null}\n{planJson}");
+            using var document = JsonDocument.Parse(planJson);
+            var nodes = PlanNodes(document.RootElement[0].GetProperty("Plan")).ToArray();
+            nodes.Should().NotContain(x => x.GetProperty("Node Type").GetString() == "Sort");
+            var indexScan = nodes.Where(x => x.TryGetProperty("Index Name", out var name) &&
+                    (name.GetString() == "ix_lab_requests_fhir_order" ||
+                     status.HasValue && name.GetString() == "ix_lab_requests_queue"))
+                .Should().ContainSingle().Which;
+            if (status.HasValue && indexScan.GetProperty("Index Name").GetString() == "ix_lab_requests_queue")
+                indexScan.GetProperty("Index Cond").GetString().Should().Contain("status");
+            if (after is not null)
+                indexScan.GetProperty("Index Cond").GetString().Should()
+                    .Contain("authored_at_fhir_utc").And.Contain("id").And.Contain(">");
+        }
     }
 
     [Theory]
@@ -243,6 +297,30 @@ public sealed class FhirReadRepositoryTests(HospitalApiFactory factory) : IClass
 
     private static DateTimeOffset Milliseconds(DateTimeOffset at) =>
         at.AddTicks(-(at.UtcTicks % TimeSpan.TicksPerMillisecond));
+
+    private static IEnumerable<JsonElement> PlanNodes(JsonElement node)
+    {
+        yield return node;
+        if (!node.TryGetProperty("Plans", out var children)) yield break;
+        foreach (var child in children.EnumerateArray())
+        foreach (var descendant in PlanNodes(child))
+            yield return descendant;
+    }
+
+    private sealed class SearchCommandProbe : DbCommandInterceptor
+    {
+        public string CommandText { get; private set; } = string.Empty;
+        public NpgsqlParameter[] Parameters { get; private set; } = [];
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command,
+            CommandEventData eventData, InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            CommandText = command.CommandText;
+            Parameters = command.Parameters.Cast<NpgsqlParameter>().Select(x => x.Clone()).ToArray();
+            return ValueTask.FromResult(result);
+        }
+    }
 
     private sealed record State(PatientDbo Patient, MedicalWorkerDbo Worker, LaboratoryTestDefinitionDbo Definition,
         IReadOnlyList<LaboratoryAnalysisRequestDbo> Requests, IReadOnlyList<LaboratoryAnalysisResultDbo> Results);

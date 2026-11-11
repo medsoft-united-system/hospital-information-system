@@ -28,7 +28,7 @@ public sealed class LaboratoryTestsGatewayTests
 
         Func<Task> create = () => gateway.SaveAsync(null, new SaveLaboratoryTestRequest("2345-7", "Глюкоза"), CancellationToken.None);
         Func<Task> update = () => gateway.SaveAsync(Guid.NewGuid(), new SaveLaboratoryTestRequest("2345-7", "Глюкоза"), CancellationToken.None);
-        Func<Task> activate = () => gateway.SetActiveAsync(Guid.NewGuid(), true, CancellationToken.None);
+        Func<Task> activate = () => gateway.SetActiveAsync(Guid.NewGuid(), true, 17, CancellationToken.None);
 
         (await create.Should().ThrowAsync<ApiException>()).Which.StatusCode.Should().Be(status);
         (await update.Should().ThrowAsync<ApiException>()).Which.StatusCode.Should().Be(status);
@@ -40,7 +40,7 @@ public sealed class LaboratoryTestsGatewayTests
     public async Task Administrators_create_update_and_change_status_using_the_shared_client()
     {
         var test = new LaboratoryTestDefinitionDto(Guid.NewGuid(), "2345-7", "Глюкоза", true,
-            DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 17);
         var paths = new List<string>();
         using var http = Client(request =>
         {
@@ -51,8 +51,8 @@ public sealed class LaboratoryTestsGatewayTests
         var request = new SaveLaboratoryTestRequest(test.LoincCode, test.DisplayName);
 
         await gateway.SaveAsync(null, request, CancellationToken.None);
-        await gateway.SaveAsync(test.Id, request, CancellationToken.None);
-        await gateway.SetActiveAsync(test.Id, false, CancellationToken.None);
+        await gateway.SaveAsync(test.Id, request with { Version = test.Version }, CancellationToken.None);
+        await gateway.SetActiveAsync(test.Id, false, test.Version, CancellationToken.None);
 
         paths.Should().Equal("POST /api/laboratory-tests", $"PUT /api/laboratory-tests/{test.Id}",
             $"PUT /api/laboratory-tests/{test.Id}/active");
