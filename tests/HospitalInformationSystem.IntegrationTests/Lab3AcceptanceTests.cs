@@ -68,7 +68,8 @@ public sealed class Lab3AcceptanceTests(ServiceAuthenticationApiFactory factory)
 
             using var denied = await client.PostAsJsonAsync(
                 $"/api/medical-records/{scenario.Record.Id}/laboratory-analysis-requests",
-                new CreateLaboratoryAnalysisRequestsRequest([scenario.Definitions[0].Id], "Не должно сохраниться"));
+                new CreateLaboratoryAnalysisRequestsRequest([scenario.Definitions[0].Id], "Не должно сохраниться",
+                    new Dictionary<Guid, uint> { [scenario.Definitions[0].Id] = scenario.Definitions[0].Version }));
             denied.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         }
 
@@ -101,7 +102,7 @@ public sealed class Lab3AcceptanceTests(ServiceAuthenticationApiFactory factory)
         var originalName = authenticated.Worker.FirstName;
         var definition = scenario.Definitions.Single(item => item.Id == scenario.Requests[0].LaboratoryTestDefinitionId);
         using var changedDefinition = await administrator.PutAsJsonAsync($"/api/laboratory-tests/{definition.Id}",
-            new SaveLaboratoryTestRequest(definition.LoincCode, "Новое имя справочника после назначения"));
+            new SaveLaboratoryTestRequest(definition.LoincCode, "Новое имя справочника после назначения", definition.Version));
         changedDefinition.EnsureSuccessStatusCode();
         using var renamed = await administrator.PutAsJsonAsync($"/api/medical-workers/{authenticated.Worker.Id}",
             new SaveMedicalWorkerRequest("Изменённое", "Имя", "Врач-хирург", MedicalWorkerRole.Doctor));
@@ -148,7 +149,8 @@ public sealed class Lab3AcceptanceTests(ServiceAuthenticationApiFactory factory)
         var record = (await recordResponse.Content.ReadFromJsonAsync<MedicalRecordDto>())!;
         factory.AdvanceTime(TimeSpan.FromSeconds(1));
         using var assigned = await doctor.PostAsJsonAsync($"/api/medical-records/{record.Id}/laboratory-analysis-requests",
-            new CreateLaboratoryAnalysisRequestsRequest(definitions.Select(definition => definition.Id).ToArray(), "Натощак"));
+            new CreateLaboratoryAnalysisRequestsRequest(definitions.Select(definition => definition.Id).ToArray(), "Натощак",
+                definitions.ToDictionary(definition => definition.Id, definition => definition.Version)));
         assigned.StatusCode.Should().Be(HttpStatusCode.Created);
         var requests = (await assigned.Content.ReadFromJsonAsync<LaboratoryAnalysisRequestDto[]>())!;
         requests.Should().HaveCount(3).And.OnlyContain(request => request.RequestedByMedicalWorkerId == doctorId &&
@@ -156,7 +158,9 @@ public sealed class Lab3AcceptanceTests(ServiceAuthenticationApiFactory factory)
         requests.Select(request => request.Id).Should().OnlyHaveUniqueItems();
         requests.Select(request => request.LoincCode).Should().BeEquivalentTo(definitions.Select(definition => definition.LoincCode));
         using var repeated = await doctor.PostAsJsonAsync($"/api/medical-records/{record.Id}/laboratory-analysis-requests",
-            new CreateLaboratoryAnalysisRequestsRequest([requests[0].LaboratoryTestDefinitionId], "Повторный заказ"));
+            new CreateLaboratoryAnalysisRequestsRequest([requests[0].LaboratoryTestDefinitionId], "Повторный заказ",
+                definitions.Where(definition => definition.Id == requests[0].LaboratoryTestDefinitionId)
+                    .ToDictionary(definition => definition.Id, definition => definition.Version)));
         repeated.StatusCode.Should().Be(HttpStatusCode.Created);
         var repeat = (await repeated.Content.ReadFromJsonAsync<LaboratoryAnalysisRequestDto[]>())!.Single();
         repeat.LoincCode.Should().Be(requests[0].LoincCode);
