@@ -32,9 +32,9 @@
               }
             </td>
             <td data-label="Врач">
-              @if (RequesterNames.TryGetValue(request.Id, out var name))
+              @if (!string.IsNullOrWhiteSpace(request.RequestedByNameSnapshot))
               {
-                @name
+                @request.RequestedByNameSnapshot
               }
               else
               {
@@ -67,7 +67,6 @@
 
 @code {
   [Parameter] public IReadOnlyCollection<LaboratoryAnalysisRequestDto> Requests { get; set; } = [];
-  [Parameter] public IReadOnlyDictionary<Guid, string> RequesterNames { get; set; } = new Dictionary<Guid, string>();
   [Parameter] public bool Historical { get; set; }
 
   private static string StatusLabel(LaboratoryAnalysisRequestStatus status) => status switch

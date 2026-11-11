@@ -28,6 +28,7 @@ public sealed class LaboratoryAnalysesPanelTests
         catalog.Verify(x => x.ListAsync(It.IsAny<CancellationToken>(), It.IsAny<bool>()), Times.Never);
         records.Verify(x => x.CreateLaboratoryAnalysisRequestsAsync(It.IsAny<Guid>(),
             It.IsAny<CreateLaboratoryAnalysisRequestsRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        records.Verify(x => x.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         Get<bool>(panel, "_formOpen").Should().BeFalse();
     }
 
@@ -79,6 +80,8 @@ public sealed class LaboratoryAnalysesPanelTests
             {
                 request.LaboratoryTestDefinitionIds.Should().BeEquivalentTo([first.Id, second.Id]);
                 request.Comment.Should().Be("Натощак");
+                request.ExpectedVersions.Should().BeEquivalentTo(new Dictionary<Guid, uint>
+                    { [first.Id] = first.Version, [second.Id] = second.Version });
             }).ReturnsAsync(created);
         using var panel = await PanelAsync(record, records, catalog);
         await InvokeAsync(panel, "OpenFormAsync");
@@ -99,6 +102,7 @@ public sealed class LaboratoryAnalysesPanelTests
         refreshed.Should().Be(1);
         Get<string>(panel, "_notice").Should().Contain("Создано отдельных заказов: 2");
         catalog.Verify(x => x.ListAsync(It.IsAny<CancellationToken>(), true), Times.Once);
+        records.Verify(x => x.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -267,9 +271,84 @@ public sealed class LaboratoryAnalysesPanelTests
         Get<IReadOnlyList<LaboratoryTestDefinitionDto>?>(panel, "_catalog").Should().BeNull();
     }
 
+    [Fact]
+    public async Task CatalogConflict_ShouldRequireExplicitReloadAndReselectionWithoutSilentlyReplacingVersions()
+    {
+        var record = Record();
+        var original = Definition();
+        var latest = original with { Version = original.Version + 1, DisplayName = "Уточнённое исследование" };
+        var catalog = Catalog(original);
+        catalog.SetupSequence(x => x.ListAsync(It.IsAny<CancellationToken>(), true))
+            .ReturnsAsync([original]).ReturnsAsync([latest]);
+        var records = Records();
+        var writes = 0;
+        records.Setup(x => x.CreateLaboratoryAnalysisRequestsAsync(record.Id,
+                It.IsAny<CreateLaboratoryAnalysisRequestsRequest>(), It.IsAny<CancellationToken>()))
+            .Returns((Guid _, CreateLaboratoryAnalysisRequestsRequest request, CancellationToken _) =>
+            {
+                writes++;
+                request.Comment.Should().Be("Натощак");
+                if (writes == 1)
+                {
+                    request.ExpectedVersions![original.Id].Should().Be(original.Version);
+                    throw new ApiException("Справочник изменился.", HttpStatusCode.Conflict);
+                }
+                request.ExpectedVersions![latest.Id].Should().Be(latest.Version);
+                return Task.FromResult<IReadOnlyList<LaboratoryAnalysisRequestDto>>([Request(record, latest)]);
+            });
+        using var panel = await PanelAsync(record, records, catalog);
+        await InvokeAsync(panel, "OpenFormAsync");
+        Toggle(panel, original.Id);
+        Set(panel, "_comment", " Натощак ");
+
+        await InvokeAsync(panel, "SubmitAsync");
+        await InvokeAsync(panel, "SubmitAsync");
+        Toggle(panel, original.Id);
+        SetProperty(panel, nameof(LaboratoryAnalysesPanel.Record), record with { Version = record.Version + 1 });
+        await InvokeAsync(panel, "OnParametersSetAsync");
+        await InvokeAsync(panel, "RefreshAsync");
+
+        writes.Should().Be(1);
+        Get<bool>(panel, "_catalogStale").Should().BeTrue();
+        Get<IReadOnlyList<LaboratoryTestDefinitionDto>>(panel, "_catalog").Should().Equal(original);
+        catalog.Verify(x => x.ListAsync(It.IsAny<CancellationToken>(), true), Times.Once);
+        Get<string>(panel, "_formError").Should().Contain("выберите исследования заново");
+
+        await InvokeAsync(panel, "LoadCatalogAsync");
+        Get<HashSet<Guid>>(panel, "_selected").Should().BeEmpty();
+        Get<bool>(panel, "_catalogStale").Should().BeFalse();
+        Get<string>(panel, "_comment").Should().Be(" Натощак ");
+        await InvokeAsync(panel, "SubmitAsync");
+        writes.Should().Be(1);
+        Toggle(panel, latest.Id);
+        await InvokeAsync(panel, "SubmitAsync");
+
+        writes.Should().Be(2);
+        records.Verify(x => x.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RecordChangesAndManualRefresh_ShouldUseEmbeddedRequesterSnapshotWithoutLoadingHistory()
+    {
+        var record = Record();
+        var request = Request(record, Definition()) with { RequestedByNameSnapshot = "Имя врача при назначении" };
+        var records = Records();
+        using var panel = await PanelAsync(record with { LaboratoryAnalysisRequests = [request] }, records, Catalog());
+        SetProperty(panel, nameof(LaboratoryAnalysesPanel.Record), record with
+        {
+            Version = record.Version + 1, LaboratoryAnalysisRequests = [request]
+        });
+
+        await InvokeAsync(panel, "OnParametersSetAsync");
+        await InvokeAsync(panel, "RefreshAsync");
+
+        Visible(panel).Single().RequestedByNameSnapshot.Should().Be("Имя врача при назначении");
+        records.VerifyNoOtherCalls();
+    }
+
     private static MedicalRecordDto Record() => new(Guid.NewGuid(), Guid.NewGuid(), At, 1, [], []);
     private static LaboratoryTestDefinitionDto Definition(string code = "2345-7") => new(Guid.NewGuid(), code,
-        "Лабораторное исследование", true, At, At);
+        "Лабораторное исследование", true, At, At, 17);
     private static LaboratoryAnalysisRequestDto Request(MedicalRecordDto record, LaboratoryTestDefinitionDto definition) =>
         new(Guid.NewGuid(), record.Id, record.PatientId, Guid.NewGuid(), definition.Id, definition.LoincCode,
             definition.DisplayName, null, At, LaboratoryAnalysisRequestStatus.Active, null);
@@ -283,9 +362,7 @@ public sealed class LaboratoryAnalysesPanelTests
 
     private static Mock<IMedicalRecordsGateway> Records()
     {
-        var mock = new Mock<IMedicalRecordsGateway>();
-        mock.Setup(x => x.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
-        return mock;
+        return new Mock<IMedicalRecordsGateway>(MockBehavior.Strict);
     }
 
     private static async Task<LaboratoryAnalysesPanel> PanelAsync(MedicalRecordDto record,

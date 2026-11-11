@@ -1,17 +1,14 @@
 using System.ComponentModel.DataAnnotations;
-using System.Text.RegularExpressions;
+using HospitalInformationSystem.Contracts.LaboratoryTests;
 
 namespace HospitalInformationSystem.Web.Validation;
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter)]
-public sealed partial class LaboratoryTestCodeAttribute : ValidationAttribute
+public sealed class LaboratoryTestCodeAttribute : ValidationAttribute
 {
     public LaboratoryTestCodeAttribute()
-        : base("Код LOINC должен содержать от 3 до 32 символов: цифры, дефис и одну завершающую цифру.") { }
+        : base("Укажите числовой код LOINC длиной от 3 до 32 символов с правильной контрольной цифрой.") { }
 
     public override bool IsValid(object? value) => value is null ||
-        value is string text && text.Trim() is { Length: >= 3 and <= 32 } code && CodePattern().IsMatch(code);
-
-    [GeneratedRegex(@"\A[0-9]+-[0-9]\z", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
-    private static partial Regex CodePattern();
+        value is string text && LaboratoryTestCodeRules.IsValidCode(text);
 }

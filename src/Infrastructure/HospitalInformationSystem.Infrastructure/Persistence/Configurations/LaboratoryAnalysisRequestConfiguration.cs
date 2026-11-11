@@ -29,6 +29,9 @@ public sealed class LaboratoryAnalysisRequestConfiguration : IEntityTypeConfigur
         builder.Property(x => x.DisplayNameSnapshot).HasColumnName("display_name_snapshot").HasMaxLength(256).IsRequired();
         builder.Property(x => x.Comment).HasColumnName("comment").HasMaxLength(2000);
         builder.Property(x => x.AuthoredAtUtc).HasColumnName("authored_at_utc");
+        builder.Property<DateTimeOffset>("AuthoredAtFhirUtc").HasColumnName("authored_at_fhir_utc")
+            .HasComputedColumnSql(
+                "date_trunc('milliseconds', authored_at_utc AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'", stored: true);
         builder.Property(x => x.Status).HasColumnName("status").HasMaxLength(16)
             .HasConversion(value => LaboratoryAnalysisStorage.WriteStatus(value),
                 value => LaboratoryAnalysisStorage.ReadStatus(value)).IsRequired();
@@ -36,6 +39,7 @@ public sealed class LaboratoryAnalysisRequestConfiguration : IEntityTypeConfigur
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<LaboratoryTestDefinitionDbo>().WithMany().HasForeignKey(x => x.LaboratoryTestDefinitionId)
             .OnDelete(DeleteBehavior.Restrict);
-        builder.HasIndex(x => new { x.Status, x.AuthoredAtUtc, x.Id }).HasDatabaseName("ix_lab_requests_queue");
+        builder.HasIndex("Status", "AuthoredAtFhirUtc", "Id").HasDatabaseName("ix_lab_requests_queue");
+        builder.HasIndex("AuthoredAtFhirUtc", "Id").HasDatabaseName("ix_lab_requests_fhir_order");
     }
 }

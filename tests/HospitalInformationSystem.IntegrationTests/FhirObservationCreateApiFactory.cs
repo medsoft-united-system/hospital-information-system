@@ -77,7 +77,7 @@ public sealed class FhirObservationCreateApiFactory : WebApplicationFactory<Prog
             CreatedAtUtc = CreatedAt, UpdatedAtUtc = CreatedAt
         };
         var definition = LaboratoryTestDefinitionFactory.Create(
-            BitConverter.ToUInt64(Guid.NewGuid().ToByteArray()).ToString(System.Globalization.CultureInfo.InvariantCulture) + "-0",
+            NewCode(),
             "Исследование, сохранённое в назначении", CreatedAt);
         db.Patients.Add(patient);
         db.LaboratoryTestDefinitions.Add(new LaboratoryTestDefinitionDbo
@@ -93,6 +93,21 @@ public sealed class FhirObservationCreateApiFactory : WebApplicationFactory<Prog
         await db.SaveChangesAsync();
         return new Scenario(patient.Id, record.Id, request.Id, definition.Id, definition.LoincCode,
             definition.DisplayName, record.Version);
+    }
+
+    private static string NewCode()
+    {
+        var number = BitConverter.ToUInt64(Guid.NewGuid().ToByteArray())
+            .ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var sum = 0;
+        for (var index = number.Length - 1; index >= 0; index--)
+        {
+            var digit = number[index] - '0';
+            if ((number.Length - index) % 2 == 1)
+                digit *= 2;
+            sum += digit / 10 + digit % 10;
+        }
+        return number + "-" + (10 - sum % 10) % 10;
     }
 
     public async Task InitializeAsync()

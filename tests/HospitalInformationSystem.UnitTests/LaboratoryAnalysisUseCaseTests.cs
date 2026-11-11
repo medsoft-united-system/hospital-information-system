@@ -32,7 +32,8 @@ public sealed class LaboratoryAnalysisUseCaseTests
         using var source = new CancellationTokenSource();
         var token = source.Token;
         var result = await fixture.CreateHandler().Handle(new CreateLaboratoryAnalysisRequestsCommand(
-            fixture.Record.Id, fixture.Definitions.Select(x => x.Id).ToArray(), " Комментарий врачу лаборатории "), token);
+            fixture.Record.Id, fixture.Definitions.Select(x => x.Id).ToArray(), " Комментарий врачу лаборатории ",
+            fixture.ExpectedVersions), token);
 
         result.Should().HaveCount(2);
         result.Select(x => x.Id).Should().OnlyHaveUniqueItems();
@@ -64,7 +65,7 @@ public sealed class LaboratoryAnalysisUseCaseTests
             fixture.Tests.Setup(x => x.FindAsync(last.Id, false, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((LaboratoryTestDefinition?)null);
         var handle = () => fixture.CreateHandler().Handle(new CreateLaboratoryAnalysisRequestsCommand(
-            fixture.Record.Id, fixture.Definitions.Select(x => x.Id).ToArray(), null), CancellationToken.None);
+            fixture.Record.Id, fixture.Definitions.Select(x => x.Id).ToArray(), null, fixture.ExpectedVersions), CancellationToken.None);
 
         if (inactive)
             await handle.Should().ThrowAsync<DomainValidationException>();
@@ -78,6 +79,67 @@ public sealed class LaboratoryAnalysisUseCaseTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CreateBatch_StaleFinalDefinition_DoesNotCreateRequestsOrHistory(bool deactivate)
+    {
+        var fixture = new Fixture();
+        var expectedVersions = fixture.ExpectedVersions;
+        var changed = fixture.Definitions[^1];
+        changed.LoincCode = "5196-1";
+        changed.DisplayName = "Исследование, изменённое администратором";
+        changed.IsActive = !deactivate;
+        changed.Version++;
+        var handle = () => fixture.CreateHandler().Handle(new CreateLaboratoryAnalysisRequestsCommand(
+            fixture.Record.Id, fixture.Definitions.Select(x => x.Id).ToArray(), null, expectedVersions), CancellationToken.None);
+
+        await handle.Should().ThrowAsync<BusinessConflictException>();
+        fixture.Record.LaboratoryAnalysisRequests.Should().BeEmpty();
+        fixture.Record.Version.Should().Be(1);
+        fixture.Record.HistoryEvents.Should().ContainSingle();
+        fixture.Records.Verify(x => x.UpdateAsync(It.IsAny<MedicalRecord>(), It.IsAny<CancellationToken>()), Times.Never);
+        fixture.UnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("empty")]
+    [InlineData("missing-key")]
+    [InlineData("extra-key")]
+    [InlineData("wrong-key")]
+    [InlineData("zero")]
+    public async Task CreateBatch_InvalidExpectedVersions_RejectsBeforeLoadingOrChangingRecord(string kind)
+    {
+        var fixture = new Fixture();
+        var versions = fixture.ExpectedVersions.ToDictionary(x => x.Key, x => x.Value);
+        switch (kind)
+        {
+            case "empty": versions.Clear(); break;
+            case "missing-key": versions.Remove(fixture.Definitions[^1].Id); break;
+            case "extra-key": versions.Add(Guid.NewGuid(), 1); break;
+            case "wrong-key":
+                versions.Remove(fixture.Definitions[^1].Id);
+                versions.Add(Guid.NewGuid(), 1);
+                break;
+            case "zero": versions[fixture.Definitions[^1].Id] = 0; break;
+        }
+        var command = new CreateLaboratoryAnalysisRequestsCommand(fixture.Record.Id,
+            fixture.Definitions.Select(x => x.Id).ToArray(), null, kind == "missing" ? null : versions);
+        new CreateLaboratoryAnalysisRequestsCommandValidator().Validate(command).Errors.Should()
+            .Contain(x => x.PropertyName == nameof(command.ExpectedVersions));
+
+        var handle = () => fixture.CreateHandler().Handle(command, CancellationToken.None);
+
+        await handle.Should().ThrowAsync<DomainValidationException>();
+        fixture.Record.LaboratoryAnalysisRequests.Should().BeEmpty();
+        fixture.Record.HistoryEvents.Should().ContainSingle();
+        fixture.Record.Version.Should().Be(1);
+        fixture.Records.Verify(x => x.FindAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        fixture.Tests.Verify(x => x.FindAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        fixture.UnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
     [InlineData(MedicalWorkerRole.Nurse)]
     [InlineData(MedicalWorkerRole.LaboratoryTechnician)]
     [InlineData(MedicalWorkerRole.Other)]
@@ -86,7 +148,8 @@ public sealed class LaboratoryAnalysisUseCaseTests
         var fixture = new Fixture();
         fixture.Doctor.Role = role;
         var handle = () => fixture.CreateHandler().Handle(new CreateLaboratoryAnalysisRequestsCommand(
-            fixture.Record.Id, [fixture.Definitions[0].Id], null), CancellationToken.None);
+            fixture.Record.Id, [fixture.Definitions[0].Id], null,
+            new Dictionary<Guid, uint> { [fixture.Definitions[0].Id] = fixture.Definitions[0].Version }), CancellationToken.None);
 
         await handle.Should().ThrowAsync<ClinicalAccessDeniedException>();
         fixture.Records.Verify(x => x.FindAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -100,7 +163,8 @@ public sealed class LaboratoryAnalysisUseCaseTests
         var fixture = new Fixture();
         fixture.Doctor.IsDeleted = true;
         var handle = () => fixture.CreateHandler().Handle(new CreateLaboratoryAnalysisRequestsCommand(
-            fixture.Record.Id, [fixture.Definitions[0].Id], null), CancellationToken.None);
+            fixture.Record.Id, [fixture.Definitions[0].Id], null,
+            new Dictionary<Guid, uint> { [fixture.Definitions[0].Id] = fixture.Definitions[0].Version }), CancellationToken.None);
 
         await handle.Should().ThrowAsync<DomainValidationException>();
         fixture.Record.LaboratoryAnalysisRequests.Should().BeEmpty();
@@ -232,7 +296,9 @@ public sealed class LaboratoryAnalysisUseCaseTests
         var create = new CreateLaboratoryAnalysisRequestsCommandValidator();
         var result = new RecordLaboratoryAnalysisResultCommandValidator();
         var unicode = string.Concat(Enumerable.Repeat("🧪", 2000));
-        var batch = new CreateLaboratoryAnalysisRequestsCommand(Guid.NewGuid(), [Guid.NewGuid()], " " + unicode + " ");
+        var definitionId = Guid.NewGuid();
+        var batch = new CreateLaboratoryAnalysisRequestsCommand(Guid.NewGuid(), [definitionId], " " + unicode + " ",
+            new Dictionary<Guid, uint> { [definitionId] = 1 });
         create.Validate(batch).IsValid.Should().BeTrue();
         create.Validate(batch with { Comment = unicode + "а" }).IsValid.Should().BeFalse();
         create.Validate(batch with { Comment = "Комментарий\0" }).IsValid.Should().BeFalse();
@@ -265,6 +331,7 @@ public sealed class LaboratoryAnalysisUseCaseTests
             LaboratoryTestDefinitionFactory.Create("718-7", "Гемоглобин в крови", Now.AddDays(-1))
         ];
         public DateTimeOffset ServerNow { get; set; } = Now;
+        public IReadOnlyDictionary<Guid, uint> ExpectedVersions => Definitions.ToDictionary(x => x.Id, x => x.Version);
         public MedicalRecordCommandContext Context { get; }
 
         public Fixture()
@@ -281,7 +348,10 @@ public sealed class LaboratoryAnalysisUseCaseTests
             CurrentWorker.Setup(x => x.RequireId()).Returns(Doctor.Id);
             CurrentService.Setup(x => x.RequireIdentity()).Returns(Service);
             foreach (var definition in Definitions)
+            {
+                definition.Version = 1;
                 Tests.Setup(x => x.FindAsync(definition.Id, false, It.IsAny<CancellationToken>())).ReturnsAsync(definition);
+            }
         }
 
         public CreateLaboratoryAnalysisRequestsCommandHandler CreateHandler() => new(Context, Tests.Object, CurrentWorker.Object);

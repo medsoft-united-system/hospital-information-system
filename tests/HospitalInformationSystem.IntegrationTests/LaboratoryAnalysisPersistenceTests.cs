@@ -248,7 +248,7 @@ public sealed class LaboratoryAnalysisPersistenceTests(HospitalApiFactory factor
             CreatedAtUtc = T0, UpdatedAtUtc = T0
         });
         var domainDefinition = LaboratoryTestDefinitionFactory.Create(
-            BitConverter.ToUInt64(Guid.NewGuid().ToByteArray()).ToString(System.Globalization.CultureInfo.InvariantCulture) + "-0",
+            NewCode(),
             "Синтетическое исследование для проверки хранения", T0);
         db.LaboratoryTestDefinitions.Add(new LaboratoryTestDefinitionDbo
         {
@@ -280,6 +280,21 @@ public sealed class LaboratoryAnalysisPersistenceTests(HospitalApiFactory factor
         Value = "142", IssuedAtUtc = T0.AddMinutes(2), ReceivedAtUtc = T0.AddMinutes(3),
         CreatedByServiceAccountId = state.ServiceId
     };
+
+    private static string NewCode()
+    {
+        var number = BitConverter.ToUInt64(Guid.NewGuid().ToByteArray())
+            .ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var sum = 0;
+        for (var index = number.Length - 1; index >= 0; index--)
+        {
+            var digit = number[index] - '0';
+            if ((number.Length - index) % 2 == 1)
+                digit *= 2;
+            sum += digit / 10 + digit % 10;
+        }
+        return number + "-" + (10 - sum % 10) % 10;
+    }
 
     private static PatientDbo NewPatient() => new()
     {
