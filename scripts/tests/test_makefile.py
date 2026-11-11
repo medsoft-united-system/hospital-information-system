@@ -24,6 +24,7 @@ class MakefileTests(unittest.TestCase):
             "import json, os, sys\n"
             "from pathlib import Path\n"
             "Path(os.environ['MEDSOFT_MAKE_PROBE']).write_text(json.dumps(sys.argv[1:]))\n"
+            "Path(os.environ['MEDSOFT_MAKE_PROBE'] + '.env').write_text(json.dumps({key: os.environ.get(key) for key in ('HIS_CA_FILE', 'LAB3_NETWORK')}))\n"
         )
         self.executable.chmod(0o700)
 
@@ -94,6 +95,57 @@ class MakefileTests(unittest.TestCase):
         self.assertEqual(json.loads(self.probe.read_text()), [
             "scripts/verify-lab3-integration.py", "--isu-id", "123456", "--report", str(report), "--docker", "docker",
             "--lis-source", str(source), "--no-build"])
+
+
+    def test_lis_launch_quotes_paths_and_passes_matching_network_and_ca(self):
+        repo = self.directory / "LIS ' $literal"
+        security = self.directory / "security ' $literal"
+        result = self.run_make("lis-up", "PYTHON=" + str(self.executable), "DOCKER=" + str(self.executable),
+                               "LIS_REPO=" + str(repo).replace("$", "$$"),
+                               "INTEGRATION_SECURITY_DIR=" + str(security).replace("$", "$$"),
+                               "LAB3_NETWORK=private-lab3", "NO_BUILD=1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        arguments = json.loads(self.probe.read_text())
+        self.assertEqual(arguments, ["compose", "--project-directory", str(repo), "-f", str(repo / "compose.yaml"),
+                                    "-f", str(REPOSITORY / "compose.lis-integration.yaml"), "up", "-d"])
+        environment = json.loads(Path(str(self.probe) + ".env").read_text())
+        self.assertEqual(environment, {"HIS_CA_FILE": str(security / "lis-ca-cert.pem"), "LAB3_NETWORK": "private-lab3"})
+
+    def test_lis_operations_keep_data_and_use_same_compose_files(self):
+        for target, ending in [("lis-stop", ["stop"]), ("lis-status", ["ps"]),
+                               ("lis-logs", ["logs", "--tail", "100", "-f", "lis"])]:
+            with self.subTest(target=target):
+                result = self.run_make(target, "DOCKER=" + str(self.executable))
+                self.assertEqual(result.returncode, 0, result.stderr)
+                arguments = json.loads(self.probe.read_text())
+                self.assertEqual(arguments[-len(ending):], ending)
+                self.assertNotIn("--volumes", arguments)
+                self.assertEqual(arguments[0], "compose")
+
+    def test_combined_check_uses_lis_repo_without_losing_literal_dollar(self):
+        repo = self.directory / "LIS ' $literal"
+        result = self.run_make("lab3-check", "PYTHON=" + str(self.executable),
+                               "LIS_REPO=" + str(repo).replace("$", "$$"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        arguments = json.loads(self.probe.read_text())
+        self.assertEqual(arguments[arguments.index("--lis-source") + 1], str(repo))
+
+    def test_certificates_reuse_existing_manifest(self):
+        security = self.directory / "existing security"
+        security.mkdir()
+        manifest = security / "development-security.json"
+        manifest.write_text("existing profile")
+        result = self.run_make("certificates", "PYTHON=" + str(self.executable), "SECURITY_DIR=" + str(security))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(self.probe.exists())
+        self.assertEqual(manifest.read_text(), "existing profile")
+
+    def test_new_database_flag_is_explicit(self):
+        for value, expected in [("0", []), ("1", ["--fresh-database"])]:
+            with self.subTest(value=value):
+                result = self.run_make("setup", "PYTHON=" + str(self.executable), "FRESH_DATABASE=" + value)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(self.probe.read_text()), ["scripts/setup-development.py", *expected])
 
 
 if __name__ == "__main__":
