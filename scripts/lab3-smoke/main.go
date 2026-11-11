@@ -164,8 +164,11 @@ func run(cfg config, interactive, connectOnly bool) error {
 	}
 	wrong := input
 	wrong.Subject.Reference = "Patient/99999999-9999-4999-8999-999999999999"
-	if _, err = medical.CreateObservation(ctx, snapshot, order.Value, wrong); err == nil {
-		return errors.New("Go client accepted mismatched patient")
+	_, err = medical.CreateObservation(ctx, snapshot, order.Value, wrong)
+	var mismatch *fhir.Error
+	if !errors.As(err, &mismatch) || mismatch.Kind != "input" || mismatch.Code != "invalid_input" ||
+		mismatch.HTTPStatus != 0 || mismatch.UnknownOutcome {
+		return errors.New("Go client did not reject mismatched patient locally before POST")
 	}
 	event("go_rejected_wrong_patient_before_post")
 	created, err := medical.CreateObservation(ctx, snapshot, order.Value, input)

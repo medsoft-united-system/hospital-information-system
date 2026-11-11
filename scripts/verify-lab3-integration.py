@@ -43,6 +43,21 @@ class SmokeCheckError(ValueError):
     pass
 
 
+def validate_python_runtime():
+    if sys.version_info < (3, 11):
+        raise SmokeCheckError("Lab3 smoke requires Python 3.11 or newer with OpenSSL TLS 1.3 support. "
+                              "Select a supported interpreter with make lab3-smoke PYTHON=/path/to/python3.")
+    if not ssl.HAS_TLSv1_3:
+        raise SmokeCheckError("This Python SSL library does not support TLS 1.3. "
+                              "Use Python 3.11 or newer linked to OpenSSL with TLS 1.3 support.")
+    try:
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.minimum_version = context.maximum_version = ssl.TLSVersion.TLSv1_3
+    except (ValueError, ssl.SSLError):
+        raise SmokeCheckError("This Python SSL library cannot enable TLS 1.3. "
+                              "Select an OpenSSL-enabled Python interpreter before starting Lab3 smoke.") from None
+
+
 def clean_environment(environment=None):
     source = os.environ if environment is None else environment
     return {key: value for key, value in source.items() if not key.startswith(CONFIG_PREFIXES)
@@ -336,8 +351,10 @@ def prepare_clinical(doctor):
         "birthDate": "1990-01-01", "sex": "Male", "comment": "Synthetic isolated Lab3 smoke"}, expected=201)
     record = doctor.request("POST", "/api/patients/" + patient["id"] + "/medical-record", expected=201)
     path = "/api/medical-records/" + record["id"] + "/laboratory-analysis-requests"
-    orders = doctor.request("POST", path, {"laboratoryTestDefinitionIds": [item["id"] for item in catalog[:3]], "comment": "Учебное назначение"}, expected=201)
-    repeated = doctor.request("POST", path, {"laboratoryTestDefinitionIds": [catalog[0]["id"]], "comment": "Повторное назначение того же анализа"}, expected=201)
+    orders = doctor.request("POST", path, {"laboratoryTestDefinitionIds": [item["id"] for item in catalog[:3]],
+        "expectedVersions": {item["id"]: item["version"] for item in catalog[:3]}, "comment": "Учебное назначение"}, expected=201)
+    repeated = doctor.request("POST", path, {"laboratoryTestDefinitionIds": [catalog[0]["id"]],
+        "expectedVersions": {catalog[0]["id"]: catalog[0]["version"]}, "comment": "Повторное назначение того же анализа"}, expected=201)
     if len(orders) != 3 or len(repeated) != 1 or len({item["id"] for item in orders + repeated}) != 4:
         raise SmokeCheckError("Batch/repeated orders did not receive distinct IDs.")
     return record, orders
@@ -561,8 +578,10 @@ def run(arguments):
         "workingDatabaseUsed": False, "actualGoLisClientChecked": False, "actualLisLocalHistoryChecked": False, "checks": []}
     failure = None
     temporary = None
-    stage = "docker_availability"
+    stage = "python_runtime"
     try:
+        validate_python_runtime()
+        stage = "docker_availability"
         docker.command("info")
         stage = "api_image"
         if arguments.no_build:

@@ -18,6 +18,37 @@ spec.loader.exec_module(smoke)
 
 
 class Lab3IsolationTests(unittest.TestCase):
+    def test_python_runtime_rejects_old_python_before_docker_or_stand_creation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            args = argparse.Namespace(isu_id="408944", report=Path(directory) / "report.json", docker="docker",
+                                      lis_source=None, go="go", no_build=True)
+            with patch.object(smoke.sys, "version_info", (3, 9, 6)), \
+                    patch.object(smoke.DockerRun, "command") as command, \
+                    patch.object(smoke, "prepare_security") as security, \
+                    redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                self.assertEqual(smoke.run(args), 1)
+            command.assert_not_called()
+            security.assert_not_called()
+            report = json.loads(args.report.read_text())
+            self.assertEqual(report["failedStage"], "python_runtime")
+            self.assertEqual(report["cleanup"], "passed")
+            self.assertIn("Python 3.11", report["failureMessage"])
+
+    def test_python_runtime_rejects_ssl_without_tls13(self):
+        with patch.object(smoke.sys, "version_info", (3, 11, 0)), patch.object(smoke.ssl, "HAS_TLSv1_3", False):
+            with self.assertRaisesRegex(smoke.SmokeCheckError, "does not support TLS 1.3"):
+                smoke.validate_python_runtime()
+
+    def test_python_runtime_rejects_unusable_tls13_context(self):
+        with patch.object(smoke.sys, "version_info", (3, 11, 0)), patch.object(smoke.ssl, "HAS_TLSv1_3", True), \
+                patch.object(smoke.ssl, "SSLContext", side_effect=ValueError("unavailable")):
+            with self.assertRaisesRegex(smoke.SmokeCheckError, "cannot enable TLS 1.3"):
+                smoke.validate_python_runtime()
+
+    def test_python_runtime_accepts_tls13_and_rfc3339_z_dates(self):
+        smoke.validate_python_runtime()
+        self.assertEqual(smoke.datetime.fromisoformat("2026-11-11T12:13:14.123Z").utcoffset().total_seconds(), 0)
+
     def test_working_his_and_lis_settings_are_filtered_from_child_environment(self):
         inherited = {"PATH": "/bin", "DOCKER_CONTEXT": "desktop-linux", "ConnectionStrings__Postgres": "working-db",
                      "Authentication__Jwt__PrivateKeyPath": "working-key", "Security__DataProtection__KeyDirectory": "working-ring",
@@ -113,7 +144,7 @@ class Lab3IsolationTests(unittest.TestCase):
                 self.assertTrue(workspaces[0].is_dir())
                 return []
             docker.cleanup.side_effect = cleanup
-            with patch.object(smoke, "DockerRun", return_value=docker), patch.object(smoke, "prepare_security", side_effect=fail_security), \
+            with patch.object(smoke, "validate_python_runtime"), patch.object(smoke, "DockerRun", return_value=docker), patch.object(smoke, "prepare_security", side_effect=fail_security), \
                     redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
                 self.assertEqual(smoke.run(args), 1)
             self.assertFalse(workspaces[0].exists())
