@@ -18,7 +18,8 @@
 | L6 | HTTP-приём результата реализован | Строгий Observation R5, серверный ID, 201/Location, одна транзакция результата/истории/сервисного аудита, защита от повторной и конкурентной записи. |
 | L7 | Управление сервисными аккаунтами реализовано | Admin API/UI, одноразовые ключи, версии строк, аудит и атомарный отзыв сервисных сессий. Хранилище сессий используется выпуском/обновлением L8. |
 | L8 | Реализовано и проверено | token/refresh/testConnection, отдельный ServiceBearer, текущая проверка сессии/активности/версии в БД, узкие CSRF-исключения и сервисный аудит. |
-| L9–L10 | Ещё не завершены | Итоговая матрица безопасности и обоих протоколов, согласование C2 и совместная HTTPS-интеграция с Go LIS. |
+| L9 | Приёмка HIS пройдена | Матрица требований, настоящие JWT всех ролей, результат/история/replay и разрешимость исторического врача; 546 интеграционных тестов. |
+| L10 | В работе | Обновление схемы лабораторной 2, HTTPS-адрес/запуск и обмен с внешним Go-клиентом. Полный UI/локальная история LIS ожидают реализации Тёмыча. |
 
 Согласование C2 с Тёмычем по-прежнему отмечается в [общем контракте](lab3-integration-contract-c2-v1.md#15-что-должен-согласовать-тёмыч). Автоматические проверки JSON не заменяют это согласование. L1 сохранён коммитом `3da98dc` ([PR #14](https://github.com/medsoft-united-system/hospital-information-system/pull/14)), L2 — `a42c07c` ([PR #15](https://github.com/medsoft-united-system/hospital-information-system/pull/15)), L3 — `584209f` ([PR #16](https://github.com/medsoft-united-system/hospital-information-system/pull/16)). Каждая следующая задача получает отдельную ветку и PR; зависимый PR направляется в предыдущую ветку, чтобы его diff содержал только свою задачу.
 
@@ -168,6 +169,27 @@ Refresh — 32 случайных байта, канонические 43 base64
 Для подключения оператор создаёт API key в HIS и вводит его своему Go-серверу LIS. LIS отправляет token, атомарно сохраняет четыре поля пары на сервере, предъявляет access на testConnection и читает `/fhir/metadata`. На входе в браузер LIS bearer/refresh не возвращаются. Перед новой медицинской операцией LIS обновляет access при необходимости; после неизвестного исхода refresh повторять его автоматически нельзя — требуется явное переподключение. Медицинский POST также не повторяется скрыто. Общий HTTPS-адрес, доверие CA/SAN и фактический совместный smoke остаются задачей L10.
 
 Проверки L8: `ServiceTokenSecurityTests`, `ServiceCredentialProtocolTests`, `ServiceAuthenticationApiTests`, `ServiceAuthorizationTests` и `ServiceTokenSessionPersistenceTests`. Полный прогон 10.11.2026: **1164 unit-теста и 544 интеграционных теста**, без пропусков. Проверен настоящий RS256 HTTP-цикл token → testConnection → FHIR-чтение → POST Observation → результат/история/сервисный аудит. Отдельно проверены точный exp, окончание семейства и неизменность срока refresh, работоспособность старого access после нормального обновления, reuse и изоляция независимых семейств, отключение/замена ключа и отказ старых access/refresh. Есть проверки неверной привязки jti/sid/account, rate limit и транспортных ошибок C2 без cookies/секретов, rollback после SQL/ошибки аудита и ожидание account-lock с последующим отказом устаревшим credentials. Человеческие API/CSRF и границы JWT сохранены. Тесты используют одноразовые PostgreSQL и один TimeProvider; рабочая БД и реальная Go LIS не используются.
+
+### Что проверено в L9
+
+Ветка — `feat/lab3-l9-acceptance`, основана на L8 ([PR #21](https://github.com/medsoft-united-system/hospital-information-system/pull/21)). Новые сценарии `Lab3AcceptanceTests` соединяют настоящий административный вход, создание медицинских аккаунтов, JWT врача и JWT LIS. Синтетические данные создаются через API на одноразовой PostgreSQL.
+
+| Требование | Автоматическое доказательство |
+|---|---|
+| Врач назначает три разных анализа и повторяет один отдельным заказом | `Lab3AcceptanceTests.RealHumanAndServiceTokens_ResultShouldReachEveryMedicalReaderAndHistoricalSnapshot`: четыре разных ID, один анализ на заказ |
+| Все четыре медицинские роли видят результат, дату, историю и снимки до/после | Тот же сценарий с настоящим JWT каждой роли |
+| Nurse/LaboratoryTechnician/Other не назначают, Administrator не читает клиническую карту | Тот же сценарий: 403 и неизменные карта/история/число заказов |
+| Исторический врач остаётся разрешимым после удаления, справочник не переписывает снимки | `Lab3AcceptanceTests.RealServiceToken_SoftDeletedRequesterShouldRemainResolvableWithoutRewritingClinicalSnapshots` |
+| Только четыре FHIR-ресурса и POST Observation доступны LIS | `ServiceAuthorizationTests`; изменение других ресурсов даёт отказ |
+| Неверные Patient/basedOn/LOINC/значение не меняют данные | `FhirObservationCreateApiTests.Create_InvalidProfileOrClinicalLink_ShouldLeaveAllClinicalStateUnchanged` и strict reader tests |
+| Два POST одного заказа дают ровно один результат; соседнее изменение карты сохраняется | `FhirObservationCreateApiTests.Create_ConcurrentSubmissions_ShouldCommitExactlyOneResultHistoryAndAudit` и `Create_ConcurrentUnrelatedRecordEdit_ShouldNotOverwriteEitherCommittedChange` |
+| Ошибка после SQL не оставляет результата/истории/аудита | `FhirObservationCreateApiTests.Create_FailureAfterDatabaseWriteBeforeCommit_ShouldRollBackResultHistoryAndAudit` |
+| Отключение/замена ключа отзывают access и refresh | `ServiceAuthenticationApiTests.KeyRotationOrDeactivation_ShouldInvalidateEveryOldAccessAndRefresh` |
+| Обычный refresh сохраняет access, конкурентный повтор отзывает семейство | `ServiceTokenSessionPersistenceTests.Refresh_ShouldKeepOriginalFamilyDeadlineAndOldAccessWhileConsumingOnlyTheCredential` и `ConcurrentRefresh_ShouldCreateOneContinuationAndRevokeItWhenReuseIsDetected` |
+| Пагинация не теряет назначения; human/service права и CSRF разделены | `FhirReadApiTests`, `ServiceAuthorizationTests`, `ServiceAccountsApiTests` |
+| JSON fixtures соответствуют FHIR R5 и техническим DTO C2 | `Lab3FhirContractTests`, `ServiceAuthContractTests`, `LaboratoryTestCatalogContractTests` |
+
+Полный интеграционный прогон L9 10.11.2026: **546/546**, без пропусков и предупреждений. Предыдущий подтверждённый unit-прогон L8 — **1164/1164**, C# production-код в L9 не менялся. Общие 22 JSON fixtures побайтно совпадают с Go LIS PR #3 (`7a26f23f005ab34f04cf170b83cf638387e259d4`); отдельный HIS catalog fixture не относится к медицинскому HTTP API. Это техническая сверка, не формальное согласование C2. Проверки HTTPS, обновления схемы именно лабораторной 2 и реального внешнего Go-клиента продолжаются в L10; они не подменяются этим test host.
 
 ## Общий технический контракт C2 — одинаковый в обеих карточках
 
@@ -543,7 +565,7 @@ Policies должны явно выбирать `ServiceBearer`: `LisFhirRead`, 
 
 Добавить отдельные тесты HIS `ServiceAccountsApiTests`, `ServiceTokenSessionTests`, `ServiceAuthorizationTests`, `ServiceAuditTests`: неверный ключ, ротация, конкурентный refresh, отзыв access с ближайшего запроса, разделение human/service policies, неизменность обычного CSRF. Проверить, что медработник не управляет сервисными аккаунтами, а сервис не получает доступ к обычным API.
 
-**Готово, когда:** твоя ветка проверяется без запущенной LIS, проходят реальные отрицательные сценарии авторизации. Фикстуры проверяются как потребителем, так и сервером.
+**Готово в L9:** [x] HIS проверяется без запущенной LIS; [x] реальные отрицательные сценарии авторизации; [x] матрица требований; [x] FHIR R5/технические fixtures проверены сервером, их 22 общих файла совпадают с потребителем Go. Фактический HTTPS-обмен и готовность UI/истории LIS проверяются отдельно в L10.
 
 **Взаимодействие с Тёмычем:** Go `httptest` и xUnit должны использовать одни JSON fixtures C2; реальный совместный тест обязателен, но не заменяет автономные тесты HIS.
 
@@ -576,12 +598,12 @@ Policies должны явно выбирать `ServiceBearer`: `LisFhirRead`, 
 - [ ] C2/fixtures согласованы с Go LIS; R5 ServiceRequest.code.concept и Observation.valueString проверяются обеими сторонами.
 - [x] Семь настоящих LOINC-вариантов, уникальный справочник и UI администратора HIS.
 - [x] Только врач назначает; один выбор N анализов создаёт N заказов с разными ID.
-- [ ] Результат видят все существующие читатели ЭМК; replay и старые снимки не сломаны.
+- [x] Результат видят все существующие читатели ЭМК; replay и старые снимки проверены.
 - [ ] FHIR R5 metadata/read/search/Bundle/OperationOutcome и HTTPS/сервисная защита соответствуют контракту.
 - [x] POST Observation создаёт **один** результат, завершает заказ, сохраняет время HIS, событие и автора атомарно; настоящая сервисная аутентификация проверяется отдельно в L8.
 - [x] Сервисные аккаунты, одноразовые API key, роль LIS, admin UI, аудит управления и человеческая CSRF-защита реализованы в HIS в L7.
 - [x] Выпуск/обновление сервисных JWT/refresh и их проверка на каждом обращении реализованы и проверены в HIS в L8.
-- [ ] Отключение/смена ключа немедленно отзывает сервисные access и refresh; human JWT на FHIR не принимается.
-- [ ] Неизменность человеческих логина/ролей/CSRF и старых функций лабораторной 2 доказана тестами.
+- [x] Отключение/смена ключа немедленно отзывает сервисные access и refresh; human JWT на FHIR не принимается.
+- [x] Неизменность человеческих логина/ролей/CSRF и старых функций лабораторной 2 доказана тестами.
 - [ ] Миграции HIS делаются мною и проходят на существующей БД без сброса.
 - [ ] Положительный и отрицательный end-to-end с реальной Go LIS выполнен; прямого SQL/DTO-обмена между системами нет.
