@@ -63,7 +63,7 @@ MedSoft — учебная медицинская информационная �
 Нужны Docker Desktop, .NET 10 SDK, Python 3, OpenSSL с TLS 1.3 и браузер. Для администратора потребуется приложение-аутентификатор с TOTP. Команды ниже выполняются из корня проекта:
 
 ```bash
-cd ~/MedSoft
+cd ~/hospital-information-system
 dotnet --version
 docker info
 python3 --version
@@ -72,6 +72,10 @@ dotnet tool restore
 ```
 
 `global.json` задаёт SDK `10.0.100` с `rollForward=latestFeature`: допускается совместимый установленный feature band .NET 10. Версии библиотек хранятся централизованно в `Directory.Packages.props`.
+
+Makefile выбирает установленный `/opt/homebrew/bin/python3`, если этот файл существует. Для другого интерпретатора передайте `PYTHON=/absolute/path/to/python3`. Совместный прогон требует Python 3.11+ с TLS 1.3.
+
+Для первоначальной подготовки новой установки выполните `make prepare FRESH_DATABASE=1`. Команда восстанавливает .NET-зависимости и инструменты, запускает настройку БД и создаёт сертификаты. Для существующей установки используйте `make prepare`. При наличии манифеста сертификатов используется прежний выпуск. Отдельные этапы доступны через `make restore`, `make setup` и `make certificates`.
 
 ### 2.1. Подготовка базы
 
@@ -176,7 +180,7 @@ make demo
 Запустите Docker Desktop. Остановите предыдущий API/Web через Ctrl+C, если они работают. Затем:
 
 ```bash
-cd ~/MedSoft
+cd ~/hospital-information-system
 python3 scripts/run-application.py --start-database
 ```
 
@@ -687,14 +691,35 @@ Access — RS256 JWT с собственной audience MedSoft.Lis, account_kin
 
 Web открывается по `https://localhost:5101`. API внутри сети `medsoft-lab3` доступен по `https://his-api:5201`. Ссылки FHIR `self`, `next` и `Location` используют этот же адрес. Если задаёте `LAB3_NETWORK`, используйте одинаковое значение для HIS и LIS. Для контейнерного запуска HIS на Linux укажите в `ConnectionStrings__Postgres` адрес PostgreSQL, доступный из контейнера.
 
-Подготовьте `.env` в репозитории LIS по её README. Откройте второй терминал в каталоге HIS и укажите путь к репозиторию LIS и к файлу `lis-ca-cert.pem`, путь к которому напечатала команда запуска HIS. Compose подключает приложение LIS к сети HIS и монтирует этот публичный сертификат для проверки TLS. Подготовка выставляет права чтения `0644` для пользователя контейнера.
+Подготовьте `.env` в репозитории LIS по её README. Откройте второй терминал в каталоге HIS. Команда запуска подключает LIS к сети HIS и монтирует публичный сертификат для проверки TLS. Подготовка выставляет права чтения `0644` для пользователя контейнера.
 
 ```bash
-LIS_REPO=/path/to/laboratory-information-system
-HIS_CA_FILE=/path/printed/by/make/lis-ca-cert.pem
-HIS_CA_FILE="$HIS_CA_FILE" docker compose --project-directory "$LIS_REPO" \
-  -f "$LIS_REPO/compose.yaml" -f "$PWD/compose.lis-integration.yaml" up -d --build
+make lis-up
 ```
+
+`LIS_REPO` по умолчанию указывает на соседний каталог `../laboratory-information-system`. Для другого расположения передайте путь явно.
+
+```bash
+make lis-up LIS_REPO="/absolute/path/to/laboratory-information-system"
+```
+
+Предварительно подготовьте `.env` LIS по её README. Makefile подставляет публичный CA из `INTEGRATION_SECURITY_DIR`, сеть `LAB3_NETWORK` и оба Compose-файла. `NO_BUILD=1` позволяет использовать существующий образ LIS. Для просмотра состояния, логов и остановки применяются те же параметры.
+
+```bash
+make lis-status
+make lis-logs
+make lis-stop
+```
+
+Совместный прогон и его отчёт открываются короткими командами.
+
+```bash
+make lab3-check
+make lab3-report
+```
+
+Для `lab3-check` путь к исходникам LIS берётся из `LIS_REPO`. Команда `lab3-smoke` поддерживает прежний отдельный параметр `LIS_SOURCE`.
+
 
 В HIS администратор создаёт сервисный аккаунт LIS и копирует одноразово показанный ключ. Откройте LIS по `http://127.0.0.1:8080`, введите `https://his-api:5201` и ключ в настройках подключения. Сохраните и проверьте связь.
 

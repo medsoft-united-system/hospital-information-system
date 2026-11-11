@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-PYTHON ?= python3
+PYTHON ?= $(if $(wildcard /opt/homebrew/bin/python3),/opt/homebrew/bin/python3,python3)
 DOTNET ?= dotnet
 DOCKER ?= docker
 ISU_ID ?= 408944
@@ -11,28 +11,41 @@ INTEGRATION_SECURITY_DIR ?= $(SECURITY_DIR)-lab3
 LAB3_NETWORK ?= medsoft-lab3
 LAB3_REPORT ?= artifacts/lab3/integration-report.json
 LIS_SOURCE ?=
+LIS_REPO ?= $(abspath ../laboratory-information-system)
+FRESH_DATABASE ?= 0
 
 quote = '$(subst ','"'"',$(1))'
 build_flag = $(if $(filter 1,$(NO_BUILD)),--no-build,)
+fresh_database_flag = $(if $(filter 1,$(FRESH_DATABASE)),--fresh-database,)
+lis_build_flag = $(if $(filter 1,$(NO_BUILD)),,--build)
+lis_compose = HIS_CA_FILE=$(call quote,$(INTEGRATION_SECURITY_DIR)/lis-ca-cert.pem) LAB3_NETWORK=$(call quote,$(LAB3_NETWORK)) $(call quote,$(DOCKER)) compose --project-directory $(call quote,$(LIS_REPO)) -f $(call quote,$(LIS_REPO)/compose.yaml) -f $(call quote,$(CURDIR)/compose.lis-integration.yaml)
 trust_flag = $(if $(filter 1,$(TRUST_CA)),--trust-ca,)
 lis_source_flag = $(if $(strip $(LIS_SOURCE)),--lis-source $(call quote,$(LIS_SOURCE)),)
 
-.PHONY: help run demo db db-stop build test lab3-prepare lab3-run lab3-smoke
+.PHONY: help run demo db db-stop build test restore setup certificates prepare lis-up lis-stop lis-status lis-logs lab3-check lab3-report test-unit test-integration test-scripts lab3-prepare lab3-run lab3-smoke
 
 help:
 	@printf '%s\n' \
+	  'make prepare   — восстановить инструменты, подготовить БД и сертификаты' \
 	  'make run       — запустить PostgreSQL, API и Web с рабочими данными' \
 	  'make demo      — одноразовый стенд для настройки администратора' \
 	  'make db        — запустить только PostgreSQL и дождаться готовности' \
 	  'make db-stop   — остановить PostgreSQL с сохранением данных' \
 	  'make build     — собрать solution' \
 	  'make test      — выполнить C#-тесты и проверки Python-скриптов' \
+	  'make test-unit / test-integration / test-scripts — отдельные проверки' \
 	  'make lab3-prepare — подготовить TLS his-api с сохранением рабочих ключей' \
 	  'make lab3-run  — рабочая HIS в отдельной сети для подключения Go LIS' \
+	  'make lis-up    — запустить LIS и подключить её к сети HIS' \
+	  'make lis-stop / lis-status / lis-logs — управление LIS' \
+	  'make lab3-check — совместная проверка HIS и LIS' \
+	  'make lab3-report — показать отчёт проверки' \
 	  'make lab3-smoke — изолированная HTTPS-проверка лабораторной 3' \
 	  '' \
 	  'Параметры: ISU_ID=408944, SECURITY_DIR=/path/to/security, NO_BUILD=1.' \
 	  'make demo TRUST_CA=0 — не добавлять CA в связку ключей повторно.' \
+	  'LIS_REPO=/path/to/laboratory-information-system — путь к LIS.' \
+	  'make prepare FRESH_DATABASE=1 — первоначальная настройка новой БД.' \
 	  'LIS_SOURCE=/path/to/lis — дополнительно проверить закреплённый Go-клиент.' \
 	  'Docker Desktop должен работать. Остановка приложения: Ctrl+C.'
 
@@ -71,4 +84,47 @@ build:
 
 test:
 	@$(call quote,$(DOTNET)) test HospitalInformationSystem.slnx
+	@$(call quote,$(PYTHON)) -m unittest discover -s scripts/tests
+
+restore:
+	@$(call quote,$(DOTNET)) restore HospitalInformationSystem.slnx
+	@$(call quote,$(DOTNET)) tool restore
+
+setup:
+	@$(call quote,$(PYTHON)) scripts/setup-development.py $(fresh_database_flag)
+
+certificates:
+	@if test -f $(call quote,$(SECURITY_DIR)/development-security.json); then \
+	  printf '%s\n' 'Используется существующий выпуск сертификатов.'; \
+	else \
+	  $(call quote,$(PYTHON)) scripts/generate-development-certificates.py --isu-id $(call quote,$(ISU_ID)) --output-dir $(call quote,$(SECURITY_DIR)); \
+	fi
+
+prepare: restore setup certificates
+
+lis-up: lab3-prepare
+	@$(lis_compose) up -d $(lis_build_flag)
+
+lis-stop:
+	@$(lis_compose) stop
+
+lis-status:
+	@$(lis_compose) ps
+
+lis-logs:
+	@$(lis_compose) logs --tail 100 -f lis
+
+lab3-check: LIS_SOURCE = $(LIS_REPO)
+lab3-check: lab3-smoke
+
+lab3-report:
+	@$(call quote,$(PYTHON)) -m json.tool $(call quote,$(LAB3_REPORT))
+
+test-unit:
+	@$(call quote,$(DOTNET)) test tests/HospitalInformationSystem.UnitTests -m:1 /p:UseSharedCompilation=false
+
+test-integration:
+	@$(call quote,$(DOTNET)) test tests/HospitalInformationSystem.IntegrationTests -m:1 /p:UseSharedCompilation=false
+
+test-scripts:
 	@$(call quote,$(PYTHON)) -m unittest discover -s scripts/tests
