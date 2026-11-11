@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "run-secure-development.py"
@@ -53,7 +54,8 @@ class SecureDevelopmentLauncherTests(unittest.TestCase):
                                    "import json, os, sys\n"
                                    "from pathlib import Path\n"
                                    "if sys.argv[1] in ('stop', 'rm'): sys.exit(0)\n"
-                                   "data = {'arguments': sys.argv[1:], 'path': os.environ.get('ASPNETCORE_Kestrel__Certificates__Default__Path'), 'password': os.environ.get('ASPNETCORE_Kestrel__Certificates__Default__Password'), 'urls': os.environ.get('ASPNETCORE_URLS'), 'database': os.environ.get('ConnectionStrings__Postgres'), 'key': os.environ.get('Authentication__Jwt__PrivateKeyPath')}\n"
+                                   "if sys.argv[1:3] == ['network', 'inspect']: print('bridge'); sys.exit(0)\n"
+                                   "data = {'arguments': sys.argv[1:], 'path': os.environ.get('ASPNETCORE_Kestrel__Certificates__Default__Path'), 'password': os.environ.get('ASPNETCORE_Kestrel__Certificates__Default__Password'), 'urls': os.environ.get('ASPNETCORE_URLS'), 'database': os.environ.get('ConnectionStrings__Postgres'), 'key': os.environ.get('Authentication__Jwt__PrivateKeyPath'), 'fhir': os.environ.get('Fhir__PublicBaseUrl'), 'allowedHosts': os.environ.get('AllowedHosts')}\n"
                                    "Path(os.environ['LAUNCHER_PROBE']).write_text(json.dumps(data))\n"
                                    "sys.exit(int(os.environ.get('LAUNCHER_EXIT', '0')))\n")
         self.fake_dotnet.chmod(0o700)
@@ -90,6 +92,44 @@ class SecureDevelopmentLauncherTests(unittest.TestCase):
         result = self.start("--api-only", environment={"ConnectionStrings__Postgres": ""})
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(self.probe.exists())
+
+    def test_explicit_integration_network_and_public_fhir_address_reach_container(self):
+        result = self.start("--api-only", "--docker-network", "medsoft-lab3", "--network-alias", "his-api",
+                            environment={"Fhir__PublicBaseUrl": "https://his-api:5201/fhir",
+                                         "AllowedHosts": "localhost;his-api"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        probe = json.loads(self.probe.read_text())
+        arguments = probe["arguments"]
+        self.assertEqual(arguments[arguments.index("--network") + 1], "medsoft-lab3")
+        self.assertEqual(arguments[arguments.index("--network-alias") + 1], "his-api")
+        self.assertEqual(probe["fhir"], "https://his-api:5201/fhir")
+        self.assertEqual(probe["allowedHosts"], "localhost;his-api")
+        self.assertIn("Fhir__PublicBaseUrl", arguments)
+        self.assertIn("AllowedHosts", arguments)
+        self.assertNotIn("HiddenDatabasePassword", result.stdout + result.stderr + str(arguments))
+
+    def test_invalid_network_and_alias_without_network_are_rejected_before_start(self):
+        for arguments in [("--docker-network", "--host"), ("--docker-network", "bad name"),
+                          ("--network-alias", "his-api"), ("--docker-network", "bridge", "--network-alias", "his-api"),
+                          ("--docker-network", "valid", "--network-alias", "*.invalid")]:
+            with self.subTest(arguments=arguments):
+                result = self.start("--api-only", *arguments)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(self.probe.exists())
+
+    def test_existing_nonbridge_network_is_rejected_without_replacement(self):
+        with patch.object(launcher.subprocess, "run", return_value=Mock(returncode=0, stdout="overlay\n")) as run:
+            with self.assertRaisesRegex(ValueError, "bridge"):
+                launcher.ensure_named_network("docker", "medsoft-lab3")
+        self.assertEqual(run.call_count, 1)
+        self.assertEqual(run.call_args.args[0][-1], "medsoft-lab3")
+
+    def test_concurrent_network_creation_rechecks_existing_bridge(self):
+        results = [Mock(returncode=1, stdout=""), Mock(returncode=1, stdout=""), Mock(returncode=0, stdout="bridge\n")]
+        with patch.object(launcher.subprocess, "run", side_effect=results) as run:
+            launcher.ensure_named_network("docker", "medsoft-lab3")
+        self.assertEqual(run.call_count, 3)
+        self.assertEqual(run.call_args_list[1].args[0], ["docker", "network", "create", "--driver", "bridge", "medsoft-lab3"])
 
     def test_preserved_data_protection_directory_can_be_mounted_separately(self):
         preserved = tempfile.TemporaryDirectory(prefix="medsoft-preserved-protection-")

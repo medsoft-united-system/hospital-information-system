@@ -1,0 +1,19 @@
+services:
+  lis:
+    environment:
+      LIS_HIS_CA_FILE: /run/his-ca/ca.pem
+    volumes:
+      - type: bind
+        source: ${HIS_CA_FILE:?Set HIS_CA_FILE to the public MedSoft CA certificate}
+        target: /run/his-ca/ca.pem
+        read_only: true
+        bind:
+          create_host_path: false
+    networks:
+      - default
+      - his-integration
+
+networks:
+  his-integration:
+    external: true
+    name: ${LAB3_NETWORK:-medsoft-lab3}

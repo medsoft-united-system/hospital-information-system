@@ -75,6 +75,26 @@ class MakefileTests(unittest.TestCase):
         self.assertNotIn("down", arguments)
         self.assertNotIn("--volumes", arguments)
 
+    def test_lab3_launch_passes_profile_and_network_to_the_preparer(self):
+        source = self.directory / "source security"
+        integration = self.directory / "integration security"
+        result = self.run_make("lab3-run", "PYTHON=" + str(self.executable), "SECURITY_DIR=" + str(source),
+                               "INTEGRATION_SECURITY_DIR=" + str(integration), "LAB3_NETWORK=lab3-private", "NO_BUILD=1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(self.probe.read_text()), [
+            "scripts/prepare-lab3-integration.py", "--run", "--start-database", "--security-directory", str(source),
+            "--output-directory", str(integration), "--docker-network", "lab3-private", "--docker", "docker", "--no-build"])
+
+    def test_lab3_smoke_passes_lis_checkout_and_report_as_separate_arguments(self):
+        source = self.directory / "Go LIS ' source"
+        report = self.directory / "report file.json"
+        result = self.run_make("lab3-smoke", "PYTHON=" + str(self.executable), "ISU_ID=123456",
+                               "LIS_SOURCE=" + str(source), "LAB3_REPORT=" + str(report), "NO_BUILD=1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(self.probe.read_text()), [
+            "scripts/verify-lab3-integration.py", "--isu-id", "123456", "--report", str(report), "--docker", "docker",
+            "--lis-source", str(source), "--no-build"])
+
 
 if __name__ == "__main__":
     unittest.main()
