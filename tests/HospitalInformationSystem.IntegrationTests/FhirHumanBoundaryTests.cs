@@ -42,7 +42,7 @@ public sealed class FhirHumanBoundaryTests(SecureHospitalApiFactory factory) : I
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task UnconfiguredServiceScheme_ShouldRejectArbitraryBearerAndKeepMetadataOpen()
+    public async System.Threading.Tasks.Task ServiceScheme_ShouldRejectArbitraryBearerAndKeepMetadataOpen()
     {
         using var client = factory.CreateCookieClient();
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "not-a-token");

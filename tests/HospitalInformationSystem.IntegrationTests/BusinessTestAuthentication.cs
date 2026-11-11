@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using HospitalInformationSystem.Contracts.Auth;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -35,6 +36,7 @@ internal static class BusinessTestAuthentication
                 options.DefaultAuthenticateScheme = Scheme;
                 options.DefaultChallengeScheme = Scheme;
                 options.DefaultForbidScheme = Scheme;
+                options.SchemeMap[JwtBearerDefaults.AuthenticationScheme].HandlerType = typeof(BusinessTestAuthenticationHandler);
             })
             .AddScheme<AuthenticationSchemeOptions, BusinessTestAuthenticationHandler>(Scheme, _ => { });
         });

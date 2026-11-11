@@ -63,17 +63,22 @@ public static class ApiSecurityRegistration
         {
             options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
             options.AddPolicy(ApiSecurityPolicies.Administrator, policy =>
-                policy.RequireRole(ApplicationRoles.Administrator));
+                policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+                    .RequireRole(ApplicationRoles.Administrator));
             options.AddPolicy(ApiSecurityPolicies.Clinical, policy =>
-                policy.RequireRole(ApplicationRoles.MedicalWorker));
+                policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+                    .RequireRole(ApplicationRoles.MedicalWorker));
             options.AddPolicy(ApiSecurityPolicies.ManagePatients, policy =>
-                policy.RequireRole(ApplicationRoles.MedicalWorker)
+                policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+                    .RequireRole(ApplicationRoles.MedicalWorker)
                     .AddRequirements(new MedicalRoleRequirement(MedicalWorkerRole.Doctor, MedicalWorkerRole.Nurse)));
             options.AddPolicy(ApiSecurityPolicies.EditMedicalRecord, policy =>
-                policy.RequireRole(ApplicationRoles.MedicalWorker)
+                policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+                    .RequireRole(ApplicationRoles.MedicalWorker)
                     .AddRequirements(new MedicalRoleRequirement(MedicalWorkerRole.Doctor)));
             options.AddPolicy(ApiSecurityPolicies.CatalogRead, policy =>
-                policy.RequireRole(ApplicationRoles.Administrator, ApplicationRoles.MedicalWorker));
+                policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+                    .RequireRole(ApplicationRoles.Administrator, ApplicationRoles.MedicalWorker));
         });
         services.AddAntiforgery(options =>
         {

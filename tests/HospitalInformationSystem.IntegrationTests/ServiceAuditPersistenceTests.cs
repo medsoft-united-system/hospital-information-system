@@ -12,6 +12,39 @@ namespace HospitalInformationSystem.IntegrationTests;
 public sealed class ServiceAuditPersistenceTests(FhirReadApiFactory factory) : IClassFixture<FhirReadApiFactory>
 {
     [Fact]
+    public async Task Query_ServiceLogins_ShouldSeparateNewAndLegacyServiceEventsFromEmployeeLogins()
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
+        var at = new DateTimeOffset(2042, 3, 5, 5, 6, 7, TimeSpan.Zero);
+        var events = new AuditEventFactory(new FixedTimeProvider(at));
+        var actor = new AuditActor(AuditActorKind.ServiceAccount, null, "lis.external", "request", null,
+            FhirReadApiFactory.ServiceId);
+        var legacy = events.Create(AuditEventType.UserLogin, "Сервис получил сессию.", actor);
+        var current = events.Create(AuditEventType.ServiceLogin, "Сервис получил сессию.", actor);
+        var employee = events.Create(AuditEventType.UserLogin, "Сотрудник получил сессию.",
+            new AuditActor(AuditActorKind.User, Guid.NewGuid(), "Врач", "request", null));
+        db.AuditEvents.AddRange(legacy, current, employee);
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+        var service = new AuditQueryService(db);
+
+        var all = await service.ListAsync(new AuditQuery(From: at, To: at), CancellationToken.None);
+        var serviceLogins = await service.ListAsync(new AuditQuery(EventType: AuditEventType.ServiceLogin,
+            From: at, To: at), CancellationToken.None);
+        var employeeLogins = await service.ListAsync(new AuditQuery(EventType: AuditEventType.UserLogin,
+            From: at, To: at), CancellationToken.None);
+
+        all.Items.Where(item => item.Actor.Kind == AuditActorKind.ServiceAccount)
+            .Should().HaveCount(2).And.OnlyContain(item => item.EventType == AuditEventType.ServiceLogin);
+        serviceLogins.Items.Select(item => item.EventId).Should().BeEquivalentTo([legacy.EventId, current.EventId]);
+        serviceLogins.Items.Should().OnlyContain(item => item.EventType == AuditEventType.ServiceLogin);
+        employeeLogins.Items.Should().ContainSingle().Which.EventId.Should().Be(employee.EventId);
+        (await db.AuditEvents.AsNoTracking().SingleAsync(item => item.EventId == legacy.EventId))
+            .EventType.Should().Be(nameof(AuditEventType.UserLogin));
+    }
+
+    [Fact]
     public async Task SaveAndQuery_ServiceActor_ShouldPreserveServiceIdentityWithoutHumanUser()
     {
         await using var scope = factory.Services.CreateAsyncScope();

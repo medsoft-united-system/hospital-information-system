@@ -12,6 +12,17 @@ namespace HospitalInformationSystem.UnitTests.Web;
 
 public sealed class AuditRevocationDisplayTests
 {
+    [Fact]
+    public void ServiceLogin_ShouldHaveItsOwnLabelAndStringContract()
+    {
+        global::HospitalInformationSystem.Web.AuditLabels.EventType(AuditEventType.ServiceLogin)
+            .Should().Be("Вход сервисного аккаунта");
+        JsonSerializer.Serialize(AuditEventType.ServiceLogin).Should().Be("\"ServiceLogin\"");
+        JsonSerializer.Deserialize<AuditEventType>("\"ServiceLogin\"").Should().Be(AuditEventType.ServiceLogin);
+        global::HospitalInformationSystem.Web.AuditLabels.EventType(AuditEventType.UserLogin)
+            .Should().Be("Вход сотрудника");
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(2)]

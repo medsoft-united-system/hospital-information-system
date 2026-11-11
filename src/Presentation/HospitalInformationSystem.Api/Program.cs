@@ -6,6 +6,7 @@ using HospitalInformationSystem.Infrastructure.DI;
 using HospitalInformationSystem.Infrastructure.Initializers;
 using HospitalInformationSystem.Infrastructure.Identity;
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
+using HospitalInformationSystem.Infrastructure.ServiceAccounts.Tokens;
 using System.Security.Authentication;
 using HospitalInformationSystem.Api.Fhir;
 
@@ -32,14 +33,17 @@ builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddApiSecurity(builder.Configuration, builder.Environment);
+builder.Services.AddServiceAccountSecurity(builder.Configuration);
 builder.Services.AddFhirApi();
 
 var app = builder.Build();
 _ = app.Services.GetRequiredService<JwtKeyMaterial>();
+_ = app.Services.GetRequiredService<ServiceTokenValidationParameters>().ValidationParameters;
 _ = app.Services.GetRequiredService<FhirEndpointOptions>();
 app.UseMiddleware<ApiSecurityHeadersMiddleware>();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseMiddleware<ServiceAuthProtocolMiddleware>();
 app.UseMiddleware<FhirProtocolMiddleware>();
 if (!app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Testing"))
     app.UseHsts();

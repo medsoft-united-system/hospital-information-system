@@ -25,7 +25,8 @@ internal static partial class AuditEntryMapping
     public static partial AuditEventDbo ToDbo(AuditEntry entry);
 
     public static AuditEventDto ToDto(AuditEventDbo entry) => new(entry.EventId, entry.EventTimeUtc,
-        ParseEventType(entry.EventType),
+        entry is { EventType: nameof(AuditEventType.UserLogin), ActorKind: "service" }
+            ? AuditEventType.ServiceLogin : ParseEventType(entry.EventType),
         new AuditActorDto(ParseActorKind(entry.ActorKind), entry.ActorUserId, entry.ActorDisplayName,
             entry.RequestId, entry.Component, entry.ActorServiceAccountId), entry.Message,
         JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(entry.MetadataJson, MetadataOptions)
