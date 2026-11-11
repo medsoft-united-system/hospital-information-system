@@ -1,6 +1,5 @@
 using System.Net;
 using System.Text;
-using System.Text.RegularExpressions;
 using HospitalInformationSystem.Contracts.LaboratoryTests;
 using HospitalInformationSystem.Contracts.MedicalRecords;
 
@@ -29,7 +28,7 @@ public sealed partial class UiMockHttpMessageHandler
             if (state.LaboratoryTests.Values.Any(x => x.LoincCode == code))
                 return Error(HttpStatusCode.Conflict, "Анализ с таким кодом LOINC уже существует.");
             var now = DateTimeOffset.UtcNow;
-            var item = new LaboratoryTestDefinitionDto(Guid.NewGuid(), code, input.DisplayName.Trim(), true, now, now);
+            var item = new LaboratoryTestDefinitionDto(Guid.NewGuid(), code, input.DisplayName.Trim(), true, now, now, 1);
             state.LaboratoryTests.Add(item.Id, item);
             var response = Json(item, HttpStatusCode.Created);
             response.Headers.Location = new Uri($"api/laboratory-tests/{item.Id}", UriKind.Relative);
@@ -41,8 +40,10 @@ public sealed partial class UiMockHttpMessageHandler
         {
             if (path[3] != "active" || request.Method != HttpMethod.Put) return NotFound();
             var input = Read<SetLaboratoryTestActiveRequest>(body);
+            if (input.Version == 0) return BadRequest("Передайте прочитанную версию анализа.");
+            if (input.Version != current.Version) return Error(HttpStatusCode.Conflict, "Анализ уже изменён. Обновите карточку.");
             var updated = current.IsActive == input.IsActive ? current
-                : current with { IsActive = input.IsActive, UpdatedAtUtc = DateTimeOffset.UtcNow };
+                : current with { IsActive = input.IsActive, UpdatedAtUtc = DateTimeOffset.UtcNow, Version = current.Version + 1 };
             state.LaboratoryTests[current.Id] = updated;
             return Json(updated);
         }
@@ -50,10 +51,16 @@ public sealed partial class UiMockHttpMessageHandler
         if (request.Method != HttpMethod.Put) return Error(HttpStatusCode.MethodNotAllowed, "Удаление анализов недоступно.");
         var update = Read<SaveLaboratoryTestRequest>(body);
         if (!ValidLaboratoryDefinition(update)) return BadRequest("Код LOINC: 3–32; название: 3–256 символов.");
+        if (update.Version is null or 0) return BadRequest("Передайте прочитанную версию анализа.");
+        if (update.Version != current.Version) return Error(HttpStatusCode.Conflict, "Анализ уже изменён. Обновите карточку.");
         var updatedCode = update.LoincCode.Trim();
         if (state.LaboratoryTests.Values.Any(x => x.Id != current.Id && x.LoincCode == updatedCode))
             return Error(HttpStatusCode.Conflict, "Анализ с таким кодом LOINC уже существует.");
-        var saved = current with { LoincCode = updatedCode, DisplayName = update.DisplayName.Trim(), UpdatedAtUtc = DateTimeOffset.UtcNow };
+        var saved = current with
+        {
+            LoincCode = updatedCode, DisplayName = update.DisplayName.Trim(), UpdatedAtUtc = DateTimeOffset.UtcNow,
+            Version = current.Version + 1
+        };
         state.LaboratoryTests[current.Id] = saved;
         return Json(saved);
     }
@@ -65,10 +72,15 @@ public sealed partial class UiMockHttpMessageHandler
         if (ids is null || ids.Count is < 1 or > 100 || ids.Any(x => x == Guid.Empty)
             || ids.Distinct().Count() != ids.Count || !ValidOptionalLaboratoryComment(input.Comment))
             return BadRequest("Выберите 1–100 разных анализов; комментарий не должен превышать 2000 символов.");
+        var versions = input.ExpectedVersions;
+        if (versions is null || versions.Count != ids.Count || versions.Any(x => x.Value == 0 || !ids.Contains(x.Key)))
+            return BadRequest("Передайте прочитанные версии всех выбранных анализов.");
         var definitions = new List<LaboratoryTestDefinitionDto>();
         foreach (var id in ids)
         {
             if (!state.LaboratoryTests.TryGetValue(id, out var definition)) return NotFound();
+            if (versions[id] != definition.Version)
+                return Error(HttpStatusCode.Conflict, "Выбранный анализ уже изменён. Обновите справочник и выберите исследования заново.");
             if (!definition.IsActive) return BadRequest("Неактивный анализ нельзя назначить.");
             definitions.Add(definition);
         }
@@ -76,9 +88,10 @@ public sealed partial class UiMockHttpMessageHandler
         if (string.IsNullOrEmpty(comment)) comment = null;
         var now = DateTimeOffset.UtcNow;
         var author = state.CurrentSession!.MedicalWorkerId!.Value;
+        var worker = state.Workers[author];
         var created = definitions.Select(x => new LaboratoryAnalysisRequestDto(Guid.NewGuid(), record.Current.Id,
             record.Current.PatientId, author, x.Id, x.LoincCode, x.DisplayName, comment, now,
-            LaboratoryAnalysisRequestStatus.Active, null)).ToArray();
+            LaboratoryAnalysisRequestStatus.Active, null, $"{worker.LastName} {worker.FirstName}")).ToArray();
         foreach (var request in created)
         {
             record.Current = record.Current with
@@ -99,7 +112,7 @@ public sealed partial class UiMockHttpMessageHandler
     }
 
     private static bool ValidLaboratoryDefinition(SaveLaboratoryTestRequest input) =>
-        input.LoincCode?.Trim() is { Length: >= 3 and <= 32 } code && LaboratoryCode().IsMatch(code)
+        LaboratoryTestCodeRules.IsValidCode(input.LoincCode)
         && ValidLaboratoryText(input.DisplayName, 3, 256);
 
     private static bool ValidLaboratoryText(string? text, int minimum, int maximum) => text is not null
@@ -109,6 +122,4 @@ public sealed partial class UiMockHttpMessageHandler
     private static bool ValidOptionalLaboratoryComment(string? comment) => comment is null
         || ValidLaboratoryText(comment, 0, 2000);
 
-    [GeneratedRegex(@"\A[0-9]+-[0-9]\z", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
-    private static partial Regex LaboratoryCode();
 }

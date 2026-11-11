@@ -131,7 +131,8 @@ public static class MedicalRecordSnapshotReplay
                                 new LaboratoryAnalysisRequestDto(payload.LaboratoryAnalysisRequestId,
                                     payload.MedicalRecordId, payload.PatientId, payload.RequestedByMedicalWorkerId,
                                     payload.LaboratoryTestDefinitionId, payload.LoincCode, payload.DisplayName,
-                                    payload.Comment, payload.AuthoredAtUtc, ContractAnalysisStatus.Active, null)),
+                                    payload.Comment, payload.AuthoredAtUtc, ContractAnalysisStatus.Active, null,
+                                    item.PerformedByNameSnapshot)),
                         "повторный идентификатор назначения анализа");
                     break;
                 }

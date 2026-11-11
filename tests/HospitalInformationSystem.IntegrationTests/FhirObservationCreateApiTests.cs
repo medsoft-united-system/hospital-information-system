@@ -225,7 +225,7 @@ public sealed class FhirObservationCreateApiTests(FhirObservationCreateApiFactor
         switch (invalid)
         {
             case "patient": body["subject"]!["reference"] = $"Patient/{Guid.NewGuid():D}"; break;
-            case "loinc": body["code"]!["coding"]![0]!["code"] = "999999-9"; break;
+            case "loinc": body["code"]!["coding"]![0]!["code"] = "999999-6"; break;
             case "absolute-subject": body["subject"]!["reference"] = $"https://attacker.invalid/fhir/Patient/{state.PatientId:D}"; break;
             case "absolute-based-on": body["basedOn"]![0]!["reference"] = $"https://attacker.invalid/fhir/ServiceRequest/{state.RequestId:D}"; break;
             case "wrong-reference-type": body["basedOn"]![0]!["reference"] = $"Patient/{state.RequestId:D}"; break;

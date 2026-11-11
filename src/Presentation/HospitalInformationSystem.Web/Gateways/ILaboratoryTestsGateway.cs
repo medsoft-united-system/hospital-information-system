@@ -9,5 +9,6 @@ public interface ILaboratoryTestsGateway
     Task<LaboratoryTestDefinitionDto> GetAsync(Guid id, CancellationToken cancellationToken);
     Task<LaboratoryTestDefinitionDto> SaveAsync(Guid? id, SaveLaboratoryTestRequest request,
         CancellationToken cancellationToken);
-    Task<LaboratoryTestDefinitionDto> SetActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken);
+    Task<LaboratoryTestDefinitionDto> SetActiveAsync(Guid id, bool isActive, uint version,
+        CancellationToken cancellationToken);
 }

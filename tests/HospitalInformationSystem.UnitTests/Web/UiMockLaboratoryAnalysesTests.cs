@@ -3,6 +3,8 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using HospitalInformationSystem.Contracts.LaboratoryTests;
 using HospitalInformationSystem.Contracts.MedicalRecords;
+using HospitalInformationSystem.Contracts.MedicalWorkers;
+using HospitalInformationSystem.Contracts.Security;
 using HospitalInformationSystem.Web.Authentication;
 using HospitalInformationSystem.Web.Development;
 
@@ -18,10 +20,10 @@ public sealed class UiMockLaboratoryAnalysesTests
         catalog.Select(x => x.LoincCode).Should().BeEquivalentTo(
             ["2345-7", "718-7", "7918-6", "5196-1", "13955-0", "5393-4", "101363-0"]);
         catalog.Select(x => x.Id).Should().OnlyHaveUniqueItems();
-        catalog.Should().OnlyContain(x => x.IsActive && x.CreatedAtUtc != default && x.UpdatedAtUtc >= x.CreatedAtUtc);
+        catalog.Should().OnlyContain(x => x.IsActive && x.CreatedAtUtc != default && x.UpdatedAtUtc >= x.CreatedAtUtc && x.Version > 0);
         var definition = catalog.Single(x => x.LoincCode == "718-7");
         (await fixture.Http.PutAsJsonAsync($"api/laboratory-tests/{definition.Id}/active",
-            new SetLaboratoryTestActiveRequest(false))).EnsureSuccessStatusCode();
+            new SetLaboratoryTestActiveRequest(false, definition.Version))).EnsureSuccessStatusCode();
 
         (await fixture.Http.GetFromJsonAsync<LaboratoryTestDefinitionDto[]>("api/laboratory-tests"))!
             .Should().NotContain(x => x.Id == definition.Id);
@@ -44,6 +46,7 @@ public sealed class UiMockLaboratoryAnalysesTests
         using var response = await fixture.Http.PostAsJsonAsync(path + "/laboratory-analysis-requests", new
         {
             LaboratoryTestDefinitionIds = definitions.Select(x => x.Id).ToArray(), Comment = " Контроль утром ",
+            ExpectedVersions = definitions.ToDictionary(x => x.Id, x => x.Version),
             RequestedByMedicalWorkerId = UiMockState.NurseId
         });
 
@@ -51,7 +54,8 @@ public sealed class UiMockLaboratoryAnalysesTests
         var created = (await response.Content.ReadFromJsonAsync<LaboratoryAnalysisRequestDto[]>())!;
         created.Should().HaveCount(2).And.OnlyContain(x => x.RequestedByMedicalWorkerId == UiMockState.DoctorId
             && x.PatientId == before.PatientId && x.MedicalRecordId == before.Id
-            && x.Comment == "Контроль утром" && x.Result == null && x.Status == LaboratoryAnalysisRequestStatus.Active);
+            && x.Comment == "Контроль утром" && x.Result == null && x.Status == LaboratoryAnalysisRequestStatus.Active
+            && x.RequestedByNameSnapshot == "Учебный Алексей");
         created.Select(x => x.Id).Should().OnlyHaveUniqueItems();
         var current = (await fixture.Http.GetFromJsonAsync<MedicalRecordDto>(path))!;
         current.Version.Should().Be(before.Version + 2);
@@ -80,7 +84,8 @@ public sealed class UiMockLaboratoryAnalysesTests
         var definitions = (await fixture.Http.GetFromJsonAsync<LaboratoryTestDefinitionDto[]>("api/laboratory-tests"))!;
         if (kind == "inactive")
             (await fixture.Http.PutAsJsonAsync($"api/laboratory-tests/{definitions[1].Id}/active",
-                new SetLaboratoryTestActiveRequest(false))).EnsureSuccessStatusCode();
+                new SetLaboratoryTestActiveRequest(false, definitions[1].Version))).EnsureSuccessStatusCode();
+        definitions = (await fixture.Http.GetFromJsonAsync<LaboratoryTestDefinitionDto[]>("api/laboratory-tests?activeOnly=false"))!;
         fixture.State.SwitchPersona(UiMockPersona.Doctor);
         IReadOnlyList<Guid>? ids = kind switch
         {
@@ -98,7 +103,12 @@ public sealed class UiMockLaboratoryAnalysesTests
         var comment = kind switch { "long-comment" => new string('Я', 2001), "nul-comment" => "Текст\0комментария", _ => null };
 
         using var response = await fixture.Http.PostAsJsonAsync(path + "/laboratory-analysis-requests",
-            new { LaboratoryTestDefinitionIds = ids, Comment = comment });
+            new
+            {
+                LaboratoryTestDefinitionIds = ids, Comment = comment,
+                ExpectedVersions = ids?.Distinct().ToDictionary(id => id,
+                    id => definitions.FirstOrDefault(x => x.Id == id)?.Version ?? 1)
+            });
 
         response.StatusCode.Should().Be(expected);
         (await fixture.Http.GetStringAsync(path)).Should().Be(before);
@@ -131,6 +141,7 @@ public sealed class UiMockLaboratoryAnalysesTests
         var path = $"api/medical-records/{UiMockState.LaboratoryMedicalRecordId}";
         var current = (await fixture.Http.GetFromJsonAsync<MedicalRecordDto>(path))!;
         current.LaboratoryAnalysisRequests.Should().HaveCount(2);
+        current.LaboratoryAnalysisRequests.Should().OnlyContain(x => x.RequestedByNameSnapshot == "Учебный Алексей");
         var completed = current.LaboratoryAnalysisRequests.Single(x => x.Id == UiMockState.LaboratoryCompletedRequestId);
         var active = current.LaboratoryAnalysisRequests.Single(x => x.Id == UiMockState.LaboratoryActiveRequestId);
         completed.Status.Should().Be(LaboratoryAnalysisRequestStatus.Completed);
@@ -153,12 +164,46 @@ public sealed class UiMockLaboratoryAnalysesTests
         after.LaboratoryAnalysisRequests.Single(x => x.Id == completed.Id).Result!.Value.Should().Be("5.6");
 
         fixture.State.SwitchPersona(UiMockPersona.Administrator);
+        var definition = (await fixture.Http.GetFromJsonAsync<LaboratoryTestDefinitionDto>(
+            $"api/laboratory-tests/{completed.LaboratoryTestDefinitionId}"))!;
         (await fixture.Http.PutAsJsonAsync($"api/laboratory-tests/{completed.LaboratoryTestDefinitionId}",
-            new SaveLaboratoryTestRequest(completed.LoincCode, "Изменённый справочник"))).EnsureSuccessStatusCode();
+            new SaveLaboratoryTestRequest(completed.LoincCode, "Изменённый справочник", definition.Version))).EnsureSuccessStatusCode();
+        (await fixture.Http.PutAsJsonAsync($"api/medical-workers/{UiMockState.DoctorId}",
+            new SaveMedicalWorkerRequest("Другое", "Имя", "Врач", MedicalWorkerRole.Doctor))).EnsureSuccessStatusCode();
         fixture.State.SwitchPersona(UiMockPersona.Nurse);
         var unchanged = (await fixture.Http.GetFromJsonAsync<MedicalRecordDto>(path))!;
         unchanged.LaboratoryAnalysisRequests.Single(x => x.Id == completed.Id).DisplayName.Should().Be(completed.DisplayName);
+        unchanged.LaboratoryAnalysisRequests.Should().OnlyContain(x => x.RequestedByNameSnapshot == "Учебный Алексей");
         (await Snapshot(fixture, current.Id, completed.Result.ReceivedAtUtc)).Should().BeEquivalentTo(after);
+    }
+
+    [Fact]
+    public async Task CatalogVersions_ShouldRejectStaleStatusChangeAndStaleBatchWithoutPartialMutation()
+    {
+        using var fixture = new Fixture(UiMockPersona.Administrator);
+        var initial = (await fixture.Http.GetFromJsonAsync<LaboratoryTestDefinitionDto[]>("api/laboratory-tests"))!
+            .Take(2).ToArray();
+        using var updatedResponse = await fixture.Http.PutAsJsonAsync($"api/laboratory-tests/{initial[1].Id}",
+            new SaveLaboratoryTestRequest(initial[1].LoincCode, "Уточнённое наименование", initial[1].Version));
+        updatedResponse.EnsureSuccessStatusCode();
+        var latest = (await updatedResponse.Content.ReadFromJsonAsync<LaboratoryTestDefinitionDto>())!;
+        latest.Version.Should().BeGreaterThan(initial[1].Version);
+        (await fixture.Http.PutAsJsonAsync($"api/laboratory-tests/{latest.Id}/active",
+            new SetLaboratoryTestActiveRequest(true, initial[1].Version))).StatusCode.Should().Be(HttpStatusCode.Conflict);
+        fixture.State.SwitchPersona(UiMockPersona.Doctor);
+        var path = $"api/medical-records/{UiMockState.MedicalRecordId}";
+        var before = await fixture.Http.GetStringAsync(path);
+        var historyBefore = await fixture.Http.GetStringAsync(path + "/history");
+
+        using var rejected = await fixture.Http.PostAsJsonAsync(path + "/laboratory-analysis-requests",
+            new CreateLaboratoryAnalysisRequestsRequest(initial.Select(x => x.Id).ToArray(), null,
+                initial.ToDictionary(x => x.Id, x => x.Version)));
+
+        rejected.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await fixture.Http.GetStringAsync(path)).Should().Be(before);
+        (await fixture.Http.GetStringAsync(path + "/history")).Should().Be(historyBefore);
+        (await fixture.Http.GetFromJsonAsync<LaboratoryTestDefinitionDto>($"api/laboratory-tests/{latest.Id}"))!
+            .Should().Be(latest);
     }
 
     [Fact]

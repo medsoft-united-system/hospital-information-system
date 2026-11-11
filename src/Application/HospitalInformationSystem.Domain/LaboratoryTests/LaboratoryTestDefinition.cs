@@ -8,4 +8,5 @@ public sealed class LaboratoryTestDefinition
     public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedAtUtc { get; init; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
+    public uint Version { get; set; }
 }

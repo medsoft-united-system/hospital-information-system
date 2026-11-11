@@ -11,4 +11,5 @@ public sealed record LaboratoryAnalysisRequestDto(
     string? Comment,
     DateTimeOffset AuthoredAtUtc,
     LaboratoryAnalysisRequestStatus Status,
-    LaboratoryAnalysisResultDto? Result);
+    LaboratoryAnalysisResultDto? Result,
+    string? RequestedByNameSnapshot = null);

@@ -30,6 +30,7 @@ public sealed class LaboratoryTestDefinitionTests
     [InlineData("   ")]
     [InlineData("2345")]
     [InlineData("2345-77")]
+    [InlineData("2345-8")]
     [InlineData("2345--7")]
     [InlineData("２３４５-７")]
     [InlineData("LOINC:2345-7")]
@@ -65,8 +66,8 @@ public sealed class LaboratoryTestDefinitionTests
     [Fact]
     public void Create_CodeBoundaryIsIndependentOfDiagnosisCodeLength()
     {
-        LaboratoryTestDefinitionFactory.Create("1-1", "Тест", Now).LoincCode.Should().Be("1-1");
-        var maxCode = new string('1', 30) + "-1";
+        LaboratoryTestDefinitionFactory.Create("1-8", "Тест", Now).LoincCode.Should().Be("1-8");
+        var maxCode = new string('1', 30) + "-5";
         LaboratoryTestDefinitionFactory.Create(maxCode, "Тест", Now).LoincCode.Should().Be(maxCode);
         var tooLong = () => LaboratoryTestDefinitionFactory.Create("1" + maxCode, "Тест", Now);
         tooLong.Should().Throw<DomainValidationException>();
