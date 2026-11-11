@@ -1,5 +1,6 @@
 @page "/admin/laboratory-tests"
 @attribute [Authorize(Roles = ApplicationRoles.Administrator)]
+@using System.Net
 @using HospitalInformationSystem.Contracts.LaboratoryTests
 @using HospitalInformationSystem.Web.Forms
 @using HospitalInformationSystem.Web.Gateways
@@ -37,7 +38,7 @@
             <label for="laboratory-code">Код LOINC</label>
             <InputText id="laboratory-code" class="form-control" @bind-Value="_form.LoincCode"
                        placeholder="Например, 2345-7" aria-describedby="laboratory-code-help"/>
-            <small id="laboratory-code-help">От 3 до 32 символов: цифры, дефис и одна завершающая цифра.</small>
+            <small id="laboratory-code-help">От 3 до 32 символов: цифры, дефис и контрольная цифра LOINC.</small>
             <ValidationMessage For="() => _form.LoincCode"/>
           </div>
           <div>
@@ -49,8 +50,12 @@
         </div>
         <ErrorAlert Message="@_formError"/>
         <div class="form-actions">
+          @if (_formStale)
+          {
+            <button type="button" class="btn btn-outline-primary" @onclick="ReloadEditingAsync">Загрузить актуальную карточку</button>
+          }
           <button type="button" class="btn btn-light" @onclick="CancelForm">Отмена</button>
-          <button type="submit" class="btn btn-primary"><Icon Name="check"/> @(_saving ? "Сохранение…" : "Сохранить")</button>
+          <button type="submit" class="btn btn-primary" disabled="@_formStale"><Icon Name="check"/> @(_saving ? "Сохранение…" : "Сохранить")</button>
         </div>
       </fieldset>
     </EditForm>
@@ -68,7 +73,11 @@
     </div>
     <ErrorAlert Message="@_statusError"/>
     <div class="button-row">
-      <button class="btn btn-primary" disabled="@IsMutating" @onclick="SetActiveAsync">
+      @if (_statusStale)
+      {
+        <button class="btn btn-outline-primary" disabled="@IsMutating" @onclick="ReloadPendingStatusAsync">Проверить актуальный статус</button>
+      }
+      <button class="btn btn-primary" disabled="@(IsMutating || _statusStale)" @onclick="SetActiveAsync">
         @(_changingStatus ? "Сохранение…" : _pendingStatus.IsActive ? "Деактивировать" : "Активировать")
       </button>
       <button class="btn btn-light" disabled="@IsMutating" @onclick="CancelStatus">Отмена</button>
@@ -157,10 +166,13 @@
   private bool _loading = true;
   private bool _saving;
   private bool _changingStatus;
+  private bool _reloadingRecord;
+  private bool _formStale;
+  private bool _statusStale;
   private bool _disposed;
   private int _loadVersion;
   private CancellationTokenSource? _cts;
-  private bool IsMutating => _saving || _changingStatus;
+  private bool IsMutating => _saving || _changingStatus || _reloadingRecord;
 
   private IEnumerable<LaboratoryTestDefinitionDto> VisibleTests => (_tests ?? [])
     .Where(x => _statusFilter switch { "active" => x.IsActive, "inactive" => !x.IsActive, _ => true })
@@ -179,6 +191,7 @@
     _editingId = null;
     _form = new LaboratoryTestForm();
     _formError = null;
+    _formStale = false;
     _formOpen = true;
     CancelStatus();
   }
@@ -187,8 +200,9 @@
   {
     if (IsMutating || _disposed) return;
     _editingId = test.Id;
-    _form = new LaboratoryTestForm { LoincCode = test.LoincCode, DisplayName = test.DisplayName };
+    _form = new LaboratoryTestForm { LoincCode = test.LoincCode, DisplayName = test.DisplayName, Version = test.Version };
     _formError = null;
+    _formStale = false;
     _formOpen = true;
     CancelStatus();
   }
@@ -198,6 +212,7 @@
     if (IsMutating || _disposed) return;
     _formOpen = false;
     _formError = null;
+    _formStale = false;
   }
 
   private void AskStatus(LaboratoryTestDefinitionDto test)
@@ -205,6 +220,7 @@
     if (IsMutating || _disposed) return;
     _pendingStatus = test;
     _statusError = null;
+    _statusStale = false;
     CancelForm();
   }
 
@@ -213,11 +229,12 @@
     if (IsMutating || _disposed) return;
     _pendingStatus = null;
     _statusError = null;
+    _statusStale = false;
   }
 
   private async Task SaveAsync()
   {
-    if (IsMutating || _disposed || _cts is null) return;
+    if (IsMutating || _formStale || _disposed || _cts is null) return;
     var token = _cts.Token;
     _saving = true;
     _formError = null;
@@ -225,7 +242,7 @@
     try
     {
       var saved = await Gateway.SaveAsync(_editingId,
-        new SaveLaboratoryTestRequest(_form.LoincCode.Trim(), _form.DisplayName.Trim()), token);
+        new SaveLaboratoryTestRequest(_form.LoincCode.Trim(), _form.DisplayName.Trim(), _form.Version), token);
       if (!IsCurrent(token)) return;
       ApplySaved(saved);
       _formOpen = false;
@@ -233,6 +250,14 @@
     }
     catch (OperationCanceledException) when (!IsCurrent(token)) { }
     catch (OperationCanceledException) { _formError = "Сервер не ответил вовремя. Обновите список и проверьте, сохранился ли анализ, перед повторной отправкой."; }
+    catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.Conflict && _editingId is not null)
+    {
+      if (IsCurrent(token))
+      {
+        _formStale = true;
+        _formError = $"{ex.Message} Введённые данные сохранены в форме. Загрузка актуальной карточки заменит их, после чего внесите изменения повторно.";
+      }
+    }
     catch (ApiException ex) { if (IsCurrent(token)) _formError = ex.Message; }
     catch (HttpRequestException) { if (IsCurrent(token)) _formError = "Не удалось связаться с сервером. Обновите список и проверьте результат перед повторной отправкой."; }
     finally { if (IsCurrent(token)) { _saving = false; _loading = false; } }
@@ -240,14 +265,14 @@
 
   private async Task SetActiveAsync()
   {
-    if (IsMutating || _disposed || _cts is null || _pendingStatus is not { } pending) return;
+    if (IsMutating || _statusStale || _disposed || _cts is null || _pendingStatus is not { } pending) return;
     var token = _cts.Token;
     _changingStatus = true;
     _statusError = null;
     ++_loadVersion;
     try
     {
-      var saved = await Gateway.SetActiveAsync(pending.Id, !pending.IsActive, token);
+      var saved = await Gateway.SetActiveAsync(pending.Id, !pending.IsActive, pending.Version, token);
       if (!IsCurrent(token)) return;
       ApplySaved(saved);
       _pendingStatus = null;
@@ -255,9 +280,61 @@
     }
     catch (OperationCanceledException) when (!IsCurrent(token)) { }
     catch (OperationCanceledException) { _statusError = "Сервер не ответил вовремя. Обновите список и проверьте статус перед повторной отправкой."; }
+    catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.Conflict)
+    {
+      if (IsCurrent(token))
+      {
+        _statusStale = true;
+        _statusError = $"{ex.Message} Проверьте актуальный статус и подтвердите действие повторно.";
+      }
+    }
     catch (ApiException ex) { if (IsCurrent(token)) _statusError = ex.Message; }
     catch (HttpRequestException) { if (IsCurrent(token)) _statusError = "Не удалось связаться с сервером. Обновите список и проверьте статус перед повторной отправкой."; }
     finally { if (IsCurrent(token)) { _changingStatus = false; _loading = false; } }
+  }
+
+  private async Task ReloadEditingAsync()
+  {
+    if (IsMutating || !_formStale || _disposed || _cts is null || _editingId is not { } id) return;
+    var token = _cts.Token;
+    _reloadingRecord = true;
+    ++_loadVersion;
+    try
+    {
+      var current = await Gateway.GetAsync(id, token);
+      if (!IsCurrent(token)) return;
+      ApplySaved(current);
+      _form = new LaboratoryTestForm { LoincCode = current.LoincCode, DisplayName = current.DisplayName, Version = current.Version };
+      _formStale = false;
+      _formError = null;
+    }
+    catch (OperationCanceledException) when (!IsCurrent(token)) { }
+    catch (OperationCanceledException) { _formError = "Сервер не ответил вовремя. Повторите загрузку карточки."; }
+    catch (ApiException ex) { if (IsCurrent(token)) _formError = ex.Message; }
+    catch (HttpRequestException) { if (IsCurrent(token)) _formError = "Не удалось загрузить актуальную карточку. Повторите попытку."; }
+    finally { if (IsCurrent(token)) { _reloadingRecord = false; _loading = false; } }
+  }
+
+  private async Task ReloadPendingStatusAsync()
+  {
+    if (IsMutating || !_statusStale || _disposed || _cts is null || _pendingStatus is not { } pending) return;
+    var token = _cts.Token;
+    _reloadingRecord = true;
+    ++_loadVersion;
+    try
+    {
+      var current = await Gateway.GetAsync(pending.Id, token);
+      if (!IsCurrent(token)) return;
+      ApplySaved(current);
+      _pendingStatus = current.IsActive == pending.IsActive ? current : null;
+      _statusStale = false;
+      _statusError = null;
+    }
+    catch (OperationCanceledException) when (!IsCurrent(token)) { }
+    catch (OperationCanceledException) { _statusError = "Сервер не ответил вовремя. Повторите проверку статуса."; }
+    catch (ApiException ex) { if (IsCurrent(token)) _statusError = ex.Message; }
+    catch (HttpRequestException) { if (IsCurrent(token)) _statusError = "Не удалось проверить актуальный статус. Повторите попытку."; }
+    finally { if (IsCurrent(token)) { _reloadingRecord = false; _loading = false; } }
   }
 
   private void ApplySaved(LaboratoryTestDefinitionDto saved) =>

@@ -1,2 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <Compile Include="../HospitalInformationSystem.Domain/LaboratoryTests/LoincCodeValidation.cs"
+             Link="LaboratoryTests/LoincCodeValidation.cs" />
+  </ItemGroup>
 </Project>

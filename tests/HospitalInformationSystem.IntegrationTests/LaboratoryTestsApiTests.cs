@@ -26,6 +26,7 @@ public sealed class LaboratoryTestsApiTests(HospitalApiFactory factory) : IClass
         definition.LoincCode.Should().Be(code);
         definition.DisplayName.Should().Be(name);
         definition.IsActive.Should().BeTrue();
+        definition.Version.Should().BeGreaterThan(0);
         definition.CreatedAtUtc.Offset.Should().Be(TimeSpan.Zero);
         definition.UpdatedAtUtc.Should().Be(definition.CreatedAtUtc);
         created.Headers.Location!.ToString().Should().EndWith($"/api/laboratory-tests/{definition.Id}");
@@ -33,7 +34,7 @@ public sealed class LaboratoryTestsApiTests(HospitalApiFactory factory) : IClass
 
         var renamedCode = NewCode();
         using var updated = await _client.PutAsJsonAsync($"/api/laboratory-tests/{definition.Id}",
-            new SaveLaboratoryTestRequest(" " + renamedCode + " ", " Изменённое исследование "));
+            new SaveLaboratoryTestRequest(" " + renamedCode + " ", " Изменённое исследование ", definition.Version));
         updated.StatusCode.Should().Be(HttpStatusCode.OK);
         var saved = (await updated.Content.ReadFromJsonAsync<LaboratoryTestDefinitionDto>())!;
         saved.Id.Should().Be(definition.Id);
@@ -41,9 +42,10 @@ public sealed class LaboratoryTestsApiTests(HospitalApiFactory factory) : IClass
         saved.UpdatedAtUtc.Should().BeOnOrAfter(saved.CreatedAtUtc);
         saved.LoincCode.Should().Be(renamedCode);
         saved.DisplayName.Should().Be("Изменённое исследование");
+        saved.Version.Should().BeGreaterThan(0).And.NotBe(definition.Version);
 
         using var disabled = await _client.PutAsJsonAsync($"/api/laboratory-tests/{definition.Id}/active",
-            new SetLaboratoryTestActiveRequest(false));
+            new SetLaboratoryTestActiveRequest(false, saved.Version));
         disabled.StatusCode.Should().Be(HttpStatusCode.OK);
         (await _client.GetFromJsonAsync<LaboratoryTestDefinitionDto[]>("/api/laboratory-tests"))!
             .Should().NotContain(x => x.Id == definition.Id);
@@ -55,17 +57,19 @@ public sealed class LaboratoryTestsApiTests(HospitalApiFactory factory) : IClass
             $"/api/laboratory-tests/{definition.Id}"))!;
         inactive.IsActive.Should().BeFalse();
         inactive.LoincCode.Should().Be(renamedCode);
+        inactive.Version.Should().BeGreaterThan(0).And.NotBe(saved.Version);
 
         using var sameState = await _client.PutAsJsonAsync($"/api/laboratory-tests/{definition.Id}/active",
-            new SetLaboratoryTestActiveRequest(false));
+            new SetLaboratoryTestActiveRequest(false, inactive.Version));
         sameState.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await sameState.Content.ReadFromJsonAsync<LaboratoryTestDefinitionDto>())!.UpdatedAtUtc
-            .Should().Be(inactive.UpdatedAtUtc);
+        var unchanged = (await sameState.Content.ReadFromJsonAsync<LaboratoryTestDefinitionDto>())!;
+        unchanged.UpdatedAtUtc.Should().Be(inactive.UpdatedAtUtc);
+        unchanged.Version.Should().Be(inactive.Version);
         (await _client.DeleteAsync($"/api/laboratory-tests/{definition.Id}")).StatusCode.Should()
             .Be(HttpStatusCode.MethodNotAllowed);
 
         using var reactivated = await _client.PutAsJsonAsync($"/api/laboratory-tests/{definition.Id}/active",
-            new SetLaboratoryTestActiveRequest(true));
+            new SetLaboratoryTestActiveRequest(true, inactive.Version));
         reactivated.StatusCode.Should().Be(HttpStatusCode.OK);
         (await _client.GetFromJsonAsync<LaboratoryTestDefinitionDto[]>("/api/laboratory-tests"))!
             .Should().Contain(x => x.Id == definition.Id && x.IsActive);
@@ -96,12 +100,80 @@ public sealed class LaboratoryTestsApiTests(HospitalApiFactory factory) : IClass
         duplicate.StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await duplicate.Content.ReadFromJsonAsync<ProblemDetails>())!.Status.Should().Be(409);
         (await _client.PutAsJsonAsync($"/api/laboratory-tests/{second.Id}",
-            new SaveLaboratoryTestRequest(" " + code + " ", "Новое название"))).StatusCode.Should()
+            new SaveLaboratoryTestRequest(" " + code + " ", "Новое название", second.Version))).StatusCode.Should()
             .Be(HttpStatusCode.Conflict);
         (await _client.GetFromJsonAsync<LaboratoryTestDefinitionDto>($"/api/laboratory-tests/{second.Id}"))!
             .LoincCode.Should().Be(otherCode);
         (await _client.PutAsJsonAsync($"/api/laboratory-tests/{first.Id}",
-            new SaveLaboratoryTestRequest(code, name))).StatusCode.Should().Be(HttpStatusCode.OK);
+            new SaveLaboratoryTestRequest(code, name, first.Version))).StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Save_StaleForms_ShouldConflictWithoutOverwritingNewerNameCodeOrActivity()
+    {
+        using var created = await _client.PostAsJsonAsync("/api/laboratory-tests",
+            new SaveLaboratoryTestRequest(NewCode(), "Исходный анализ"));
+        created.EnsureSuccessStatusCode();
+        var original = (await created.Content.ReadFromJsonAsync<LaboratoryTestDefinitionDto>())!;
+        var url = $"/api/laboratory-tests/{original.Id}";
+        var openForm = (await _client.GetFromJsonAsync<LaboratoryTestDefinitionDto>(url))!;
+        openForm.Version.Should().Be(original.Version);
+        var newCode = NewCode();
+        using var updated = await _client.PutAsJsonAsync(url,
+            new SaveLaboratoryTestRequest(newCode, "Актуальное название", original.Version));
+        updated.EnsureSuccessStatusCode();
+        var current = (await updated.Content.ReadFromJsonAsync<LaboratoryTestDefinitionDto>())!;
+        current.Version.Should().NotBe(openForm.Version);
+
+        using var staleEdit = await _client.PutAsJsonAsync(url,
+            new SaveLaboratoryTestRequest(openForm.LoincCode, "Устаревшее изменение", openForm.Version));
+        staleEdit.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await staleEdit.Content.ReadFromJsonAsync<ProblemDetails>())!.Status.Should().Be(409);
+        foreach (var isActive in new[] { true, false })
+        {
+            using var staleActivity = await _client.PutAsJsonAsync(url + "/active",
+                new SetLaboratoryTestActiveRequest(isActive, openForm.Version));
+            staleActivity.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        }
+        (await _client.GetFromJsonAsync<LaboratoryTestDefinitionDto>(url)).Should().BeEquivalentTo(current);
+
+        using var disabled = await _client.PutAsJsonAsync(url + "/active",
+            new SetLaboratoryTestActiveRequest(false, current.Version));
+        disabled.EnsureSuccessStatusCode();
+        var inactive = (await disabled.Content.ReadFromJsonAsync<LaboratoryTestDefinitionDto>())!;
+        using var staleAfterActivity = await _client.PutAsJsonAsync(url,
+            new SaveLaboratoryTestRequest(current.LoincCode, "Изменение после деактивации", current.Version));
+        staleAfterActivity.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await _client.GetFromJsonAsync<LaboratoryTestDefinitionDto>(url)).Should().BeEquivalentTo(inactive);
+    }
+
+    [Fact]
+    public async Task Save_MissingOrZeroVersion_ShouldRejectWithoutChangingCatalogEntry()
+    {
+        using var created = await _client.PostAsJsonAsync("/api/laboratory-tests",
+            new SaveLaboratoryTestRequest(NewCode(), "Анализ для проверки версии"));
+        created.EnsureSuccessStatusCode();
+        var original = (await created.Content.ReadFromJsonAsync<LaboratoryTestDefinitionDto>())!;
+        var url = $"/api/laboratory-tests/{original.Id}";
+        foreach (var body in new object[]
+                 {
+                     new { original.LoincCode, DisplayName = "Без версии" },
+                     new SaveLaboratoryTestRequest(original.LoincCode, "Нулевая версия", 0)
+                 })
+        {
+            using var response = await _client.PutAsJsonAsync(url, body);
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        }
+        foreach (var body in new object[]
+                 {
+                     new { IsActive = false },
+                     new SetLaboratoryTestActiveRequest(false, 0)
+                 })
+        {
+            using var response = await _client.PutAsJsonAsync(url + "/active", body);
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        }
+        (await _client.GetFromJsonAsync<LaboratoryTestDefinitionDto>(url)).Should().BeEquivalentTo(original);
     }
 
     [Theory]
@@ -111,6 +183,7 @@ public sealed class LaboratoryTestsApiTests(HospitalApiFactory factory) : IClass
     [InlineData("1", "Анализ")]
     [InlineData("2345", "Анализ")]
     [InlineData("2345-X", "Анализ")]
+    [InlineData("2345-8", "Анализ")]
     [InlineData("2345-77", "Анализ")]
     [InlineData("٢٣٤٥-٧", "Анализ")]
     [InlineData("2345-7\nother", "Анализ")]
@@ -141,8 +214,8 @@ public sealed class LaboratoryTestsApiTests(HospitalApiFactory factory) : IClass
         var definition = (await created.Content.ReadFromJsonAsync<LaboratoryTestDefinitionDto>())!;
         foreach (var invalid in new[]
                  {
-                     new SaveLaboratoryTestRequest(code, name + "Я"),
-                     new SaveLaboratoryTestRequest(new string('1', 31) + "-1", "Анализ")
+                     new SaveLaboratoryTestRequest(code, name + "Я", definition.Version),
+                     new SaveLaboratoryTestRequest(new string('1', 31) + "-1", "Анализ", definition.Version)
                  })
         {
             (await _client.PostAsJsonAsync("/api/laboratory-tests", invalid)).StatusCode.Should()
@@ -180,12 +253,25 @@ public sealed class LaboratoryTestsApiTests(HospitalApiFactory factory) : IClass
         using var response = operation switch
         {
             "GET" => await _client.GetAsync(url),
-            "PUT" => await _client.PutAsJsonAsync(url, new SaveLaboratoryTestRequest(NewCode(), "Анализ")),
-            _ => await _client.PutAsJsonAsync(url + "/active", new SetLaboratoryTestActiveRequest(false))
+            "PUT" => await _client.PutAsJsonAsync(url, new SaveLaboratoryTestRequest(NewCode(), "Анализ", 1)),
+            _ => await _client.PutAsJsonAsync(url + "/active", new SetLaboratoryTestActiveRequest(false, 1))
         };
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await response.Content.ReadFromJsonAsync<ProblemDetails>())!.Status.Should().Be(404);
     }
 
-    private static string NewCode() => BitConverter.ToUInt64(Guid.NewGuid().ToByteArray()) + "-0";
+    private static string NewCode()
+    {
+        var number = BitConverter.ToUInt64(Guid.NewGuid().ToByteArray())
+            .ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var sum = 0;
+        for (var index = number.Length - 1; index >= 0; index--)
+        {
+            var digit = number[index] - '0';
+            if ((number.Length - index) % 2 == 1)
+                digit *= 2;
+            sum += digit / 10 + digit % 10;
+        }
+        return number + "-" + (10 - sum % 10) % 10;
+    }
 }
