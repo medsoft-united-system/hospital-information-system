@@ -19,5 +19,6 @@
     <ProjectReference Include="../../src/Application/HospitalInformationSystem.Application/HospitalInformationSystem.Application.csproj" />
     <ProjectReference Include="../../src/Infrastructure/HospitalInformationSystem.Infrastructure/HospitalInformationSystem.Infrastructure.csproj" />
     <ProjectReference Include="../../src/Presentation/HospitalInformationSystem.Web/HospitalInformationSystem.Web.csproj" />
+    <ProjectReference Include="../../src/Presentation/HospitalInformationSystem.Api/HospitalInformationSystem.Api.csproj" />
   </ItemGroup>
 </Project>
