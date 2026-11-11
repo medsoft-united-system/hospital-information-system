@@ -44,7 +44,7 @@ public sealed class AuditEventFactory(TimeProvider timeProvider)
         OptionalText(metadata.AttemptedUserName, 128, "введённый логин");
         OptionalText(metadata.RemoteIp, 64, "IP-адрес");
         OptionalText(metadata.Outcome, 64, "результат операции");
-        if (metadata.RevokedRefreshTokenCount < 0)
+        if (metadata.RevokedRefreshTokenCount < 0 || metadata.RevokedServiceSessionCount < 0)
             throw new DomainValidationException("Число отозванных сессий не может быть отрицательным.");
     }
 

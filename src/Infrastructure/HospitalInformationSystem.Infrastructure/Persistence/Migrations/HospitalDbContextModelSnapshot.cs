@@ -1092,6 +1092,88 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.ServiceRefreshSessionDbo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long>("AuthenticationVersion")
+                        .HasColumnType("bigint")
+                        .HasColumnName("authentication_version");
+
+                    b.Property<DateTimeOffset?>("ConsumedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consumed_at_utc");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at_utc");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_id");
+
+                    b.Property<Guid?>("ReplacedBySessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("replaced_by_session_id");
+
+                    b.Property<string>("RevokeReason")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("revoke_reason");
+
+                    b.Property<DateTimeOffset?>("RevokedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at_utc");
+
+                    b.Property<Guid>("ServiceAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("service_account_id");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FamilyId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("ServiceAccountId", "RevokedAtUtc");
+
+                    b.HasIndex("ReplacedBySessionId", "ServiceAccountId", "FamilyId");
+
+                    b.ToTable("service_refresh_sessions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_service_refresh_dates", "expires_at_utc > created_at_utc\nAND (consumed_at_utc IS NULL OR consumed_at_utc >= created_at_utc)\nAND (revoked_at_utc IS NULL OR revoked_at_utc >= created_at_utc)");
+
+                            t.HasCheckConstraint("ck_service_refresh_hash", "token_hash ~ '^[0-9a-f]{64}$'");
+
+                            t.HasCheckConstraint("ck_service_refresh_ids", "id <> '00000000-0000-0000-0000-000000000000'::uuid AND family_id <> '00000000-0000-0000-0000-000000000000'::uuid");
+
+                            t.HasCheckConstraint("ck_service_refresh_replacement", "(consumed_at_utc IS NULL AND replaced_by_session_id IS NULL)\nOR (consumed_at_utc IS NOT NULL AND replaced_by_session_id IS NOT NULL AND replaced_by_session_id <> id)");
+
+                            t.HasCheckConstraint("ck_service_refresh_revoke_reason", "(revoked_at_utc IS NULL AND revoke_reason IS NULL)\nOR (revoked_at_utc IS NOT NULL AND revoke_reason IS NOT NULL\n    AND char_length(btrim(revoke_reason)) BETWEEN 1 AND 128)");
+
+                            t.HasCheckConstraint("ck_service_refresh_version", "authentication_version > 0");
+                        });
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1383,6 +1465,21 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.ServiceRefreshSessionDbo", b =>
+                {
+                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.ServiceAccountDbo", null)
+                        .WithMany()
+                        .HasForeignKey("ServiceAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.ServiceRefreshSessionDbo", null)
+                        .WithMany()
+                        .HasForeignKey("ReplacedBySessionId", "ServiceAccountId", "FamilyId")
+                        .HasPrincipalKey("Id", "ServiceAccountId", "FamilyId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>

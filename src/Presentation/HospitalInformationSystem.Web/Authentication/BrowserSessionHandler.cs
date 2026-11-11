@@ -31,6 +31,7 @@ public sealed class BrowserSessionHandler(SessionState session, AntiforgeryToken
         RequireSessionVersion(version);
         var response = await base.SendAsync(request, cancellationToken);
         if (response.StatusCode != HttpStatusCode.Unauthorized || !CanRefresh(request.RequestUri!) ||
+            request.Options.TryGetValue(ApiRequestOptions.NoAutomaticRetry, out var noRetry) && noRetry ||
             originalSession is null && RequiresAntiforgery(request.Method))
         {
             return response;
