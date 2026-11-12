@@ -1,4 +1,3 @@
-.laboratory-units { display: flex; align-items: center; gap: 9px; padding: 13px 20px; margin: 18px 28px; border-radius: 8px; background: #edf5e9; color: #425f4b; font-size: 12px; }
 .laboratory-historical { padding: 0 28px; color: #64756a; font-size: 12px; }
 .laboratory-results-table { min-width: 960px; }
 .laboratory-results-table th { font-size: 11px; }
@@ -14,7 +13,6 @@
 .laboratory-state.completed { background: #e6f1e2; color: #2e6944; }
 .laboratory-value { font-weight: 550; min-width: 90px; max-width: 250px; overflow-wrap: anywhere; white-space: pre-wrap; }
 @media (max-width: 600px) {
-  .laboratory-units { margin: 16px 18px; padding: 12px; align-items: flex-start; line-height: 1.6; }
   .laboratory-historical { padding: 0 18px; }
   .laboratory-results-table { min-width: 0; }
   .laboratory-results-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }

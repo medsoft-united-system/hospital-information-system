@@ -1,7 +1,6 @@
 @using HospitalInformationSystem.Contracts.MedicalRecords
 
 <div class="laboratory-results" aria-label="@(Historical ? "Анализы на выбранный момент" : "Лабораторные анализы пациента")">
-  <p class="laboratory-units"><Icon Name="record"/> Учебный режим: единицы измерения не используются</p>
   @if (Historical)
   {
     <p class="laboratory-historical">Назначения и результаты показаны на выбранный момент времени.</p>
