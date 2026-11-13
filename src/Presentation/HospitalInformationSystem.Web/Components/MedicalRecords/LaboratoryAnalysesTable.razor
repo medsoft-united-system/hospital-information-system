@@ -15,7 +15,7 @@
       <table class="table mr-table laboratory-results-table">
         <thead><tr>
           <th scope="col">Назначен</th><th scope="col">Исследование</th><th scope="col">Врач</th>
-          <th scope="col">Статус</th><th scope="col">Результат</th><th scope="col">Зафиксирован в LIS</th>
+          <th scope="col">Статус</th><th scope="col">Результат <small>(без единиц измерения)</small></th><th scope="col">Зафиксирован в LIS</th>
           <th scope="col">Получен в HIS</th>
         </tr></thead>
         <tbody>
@@ -41,7 +41,7 @@
               }
             </td>
             <td data-label="Статус"><span class="laboratory-state @(request.Status == LaboratoryAnalysisRequestStatus.Completed ? "completed" : "active")">@StatusLabel(request.Status)</span></td>
-            <td data-label="Результат" class="laboratory-value">@(request.Result?.Value ?? "—")</td>
+            <td data-label="Результат (без единиц измерения)" class="laboratory-value">@(request.Result?.Value ?? "—")</td>
             <td data-label="Зафиксирован в LIS">
               @if (request.Result is { } result)
               {

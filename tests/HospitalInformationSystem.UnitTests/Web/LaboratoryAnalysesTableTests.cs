@@ -28,7 +28,8 @@ public sealed class LaboratoryAnalysesTableTests
         var html = WebUtility.HtmlDecode(await RenderAsync([request]));
 
         html.Should().Contain("Врач в момент назначения").And.Contain("Глюкоза").And.Contain("LOINC 2345-7")
-            .And.Contain("Выполнен").And.Contain("Учебный режим: единицы измерения не используются")
+            .And.Contain("Выполнен").And.Contain("без единиц измерения")
+            .And.NotContain("Учебный режим:")
             .And.Contain(LaboratoryAnalysisPresentation.FormatDate(At))
             .And.Contain(LaboratoryAnalysisPresentation.FormatDate(At.AddMinutes(1)))
             .And.Contain(LaboratoryAnalysisPresentation.FormatDate(At.AddMinutes(2)))
