@@ -15,7 +15,7 @@ namespace HospitalInformationSystem.IntegrationTests;
 public sealed class LaboratoryTestPersistenceTests(HospitalApiFactory factory) : IClassFixture<HospitalApiFactory>
 {
     [Fact]
-    public async Task InitializeWithoutDemoSeed_ShouldRestoreMissingCatalogEntryAndPreserveUserChanges()
+    public async Task InitializeWithoutDemoSeed_ShouldExpandExistingCatalogAndPreserveUserChanges()
     {
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
@@ -26,6 +26,8 @@ public sealed class LaboratoryTestPersistenceTests(HospitalApiFactory factory) :
         changed.UpdatedAtUtc = DateTimeOffset.UtcNow;
         var changedId = changed.Id;
         var changedAt = changed.UpdatedAtUtc;
+        var additionalCodes = defaults.Skip(7).Select(x => x.Code).ToArray();
+        await db.LaboratoryTestDefinitions.Where(x => additionalCodes.Contains(x.LoincCode)).ExecuteDeleteAsync();
         var missingCode = defaults[1].Code;
         await db.LaboratoryTestDefinitions.Where(x => x.LoincCode == missingCode).ExecuteDeleteAsync();
         var custom = NewDefinition();

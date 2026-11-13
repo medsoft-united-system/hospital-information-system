@@ -327,7 +327,7 @@ Go проверяет 201, resourceType, непустой UUID, Location, зак
 | Поиск | `service-requests-page-1.json`, `service-requests-page-2.json`, `service-requests-empty.json`, `observations-empty.json`, `observations-found.json` |
 | Ошибки FHIR | `operation-outcome-400.json`, `-401.json`, `-403.json`, `-404.json`, `-409.json`, `-500.json` |
 | Технический JSON | `service-token-request.json`, `service-token-response.json`, `service-refresh-request.json`, `test-connection.json`, `service-auth-error.json` |
-| Исходный справочник HIS | `laboratory-test-catalog.json` — семь LOINC-кодов с названиями и ссылками на источник; это данные справочника, не FHIR-ресурс и не HTTP-ответ LIS |
+| Исходный справочник HIS | `laboratory-test-catalog.json` — 40 LOINC-кодов, включая семь обязательных исследований, с названиями и ссылками на источник; это данные справочника, не FHIR-ресурс и не HTTP-ответ LIS |
 
 Страницы содержат два разных заказа; active/completed файлы с одним ID — разные состояния одного заказа, не одновременные записи. HTTP-статусы/заголовки задаёт mock по таблицам этого документа: сами JSON-файлы содержат только тела. Для CapabilityStatement, 413/415/429, конфликтов и негативных тел реализации добавляют проверки по правилам C2; перечисленные примеры не являются полным FHIR SDK/валидатором или готовыми автотестами.
 

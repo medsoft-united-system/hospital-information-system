@@ -13,12 +13,13 @@ namespace HospitalInformationSystem.UnitTests.Web;
 public sealed class UiMockLaboratoryAnalysesTests
 {
     [Fact]
-    public async Task Catalog_ShouldProvideSevenDistinctSourcedDefinitionsAndFilterActivity()
+    public async Task Catalog_ShouldMatchExpandedSeedAndFilterActivity()
     {
         using var fixture = new Fixture(UiMockPersona.Administrator);
         var catalog = (await fixture.Http.GetFromJsonAsync<LaboratoryTestDefinitionDto[]>("api/laboratory-tests"))!;
-        catalog.Select(x => x.LoincCode).Should().BeEquivalentTo(
-            ["2345-7", "718-7", "7918-6", "5196-1", "13955-0", "5393-4", "101363-0"]);
+        catalog.Select(x => (x.LoincCode, x.DisplayName)).Should().BeEquivalentTo(
+            HospitalInformationSystem.Infrastructure.Initializers.LaboratoryTestCatalogInitializer.Definitions
+                .Select(x => (x.Code, x.DisplayName)));
         catalog.Select(x => x.Id).Should().OnlyHaveUniqueItems();
         catalog.Should().OnlyContain(x => x.IsActive && x.CreatedAtUtc != default && x.UpdatedAtUtc >= x.CreatedAtUtc && x.Version > 0);
         var definition = catalog.Single(x => x.LoincCode == "718-7");

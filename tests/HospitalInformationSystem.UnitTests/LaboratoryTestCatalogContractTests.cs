@@ -8,7 +8,7 @@ namespace HospitalInformationSystem.UnitTests;
 public sealed class LaboratoryTestCatalogContractTests
 {
     [Fact]
-    public void SharedCatalogFixture_ShouldMatchSeedAndKeepSevenSourcedLoincDefinitions()
+    public void SharedCatalogFixture_ShouldMatchExpandedSeedAndKeepRequiredLoincDefinitions()
     {
         var json = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "Lab3",
             "laboratory-test-catalog.json"));
@@ -16,7 +16,8 @@ public sealed class LaboratoryTestCatalogContractTests
             new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
 
         definitions.Should().BeEquivalentTo(LaboratoryTestCatalogInitializer.Definitions);
-        definitions.Select(x => x.Code).Should().BeEquivalentTo(
+        definitions.Should().HaveCount(40);
+        definitions.Select(x => x.Code).Should().Contain(
             ["2345-7", "718-7", "7918-6", "5196-1", "13955-0", "5393-4", "101363-0"]);
         definitions.Select(x => x.Code).Should().OnlyHaveUniqueItems();
         foreach (var definition in definitions)
