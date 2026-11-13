@@ -6,11 +6,13 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using FluentAssertions;
 using HospitalInformationSystem.Application.Abstractions;
+using HospitalInformationSystem.Application.ServiceAccounts;
 using HospitalInformationSystem.Contracts.Auth;
 using HospitalInformationSystem.Contracts.Security;
 using HospitalInformationSystem.Contracts.ServiceAccounts;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Infrastructure.ServiceAccounts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using WorkerRole = HospitalInformationSystem.Domain.MedicalWorkers.MedicalWorkerRole;
@@ -60,7 +62,7 @@ public sealed class ServiceAccountsApiTests(SecureHospitalApiFactory factory) : 
         var saved = await db.ServiceAccounts.AsNoTracking().SingleAsync(account => account.Id == created.Account.Id);
         saved.NormalizedName.Should().Be(name.ToUpperInvariant());
         saved.AuthenticationVersion.Should().Be(1);
-        saved.ApiKeyHash.Should().Equal(HashKey(created.ApiKey));
+        AssertArgonKey(created.ApiKey, created.Account.Id, saved.ApiKeyHash);
         (await db.Users.AnyAsync(account => account.Id == created.Account.Id)).Should().BeFalse();
         var audit = (await AuditsAsync(db, created.Account.Id)).Should().ContainSingle().Subject;
         audit.EventType.Should().Be(nameof(AuditEventType.AccountCreated));
@@ -100,7 +102,7 @@ public sealed class ServiceAccountsApiTests(SecureHospitalApiFactory factory) : 
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
         var stored = await db.ServiceAccounts.AsNoTracking().SingleAsync(account => account.Id == created.Account.Id);
-        stored.ApiKeyHash.Should().Equal(HashKey(created.ApiKey));
+        AssertArgonKey(created.ApiKey, created.Account.Id, stored.ApiKeyHash);
         stored.AuthenticationVersion.Should().Be(1);
         (await AuditsAsync(db, created.Account.Id)).Should().HaveCount(2);
     }
@@ -304,10 +306,17 @@ public sealed class ServiceAccountsApiTests(SecureHospitalApiFactory factory) : 
 
     internal static string UniqueName() => "lis-" + Guid.NewGuid().ToString("N");
 
-    internal static byte[] HashKey(string key)
+    internal static byte[] LegacyHashKey(string key)
     {
         var secret = key[(key.IndexOf('.') + 1)..].Replace('-', '+').Replace('_', '/') + "=";
         return SHA256.HashData(Convert.FromBase64String(secret));
+    }
+
+    internal static void AssertArgonKey(string key, Guid accountId, byte[] hash)
+    {
+        Encoding.UTF8.GetString(hash).Should().StartWith("$argon2id$v=19$");
+        new ServiceApiKeyGenerator().Verify(key, accountId, hash).Should()
+            .NotBe(ServiceApiKeyVerificationResult.Failed);
     }
 
     private static bool ValidKey(Guid id, string key) =>

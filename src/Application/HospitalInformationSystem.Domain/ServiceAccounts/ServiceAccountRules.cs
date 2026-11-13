@@ -4,6 +4,9 @@ namespace HospitalInformationSystem.Domain.ServiceAccounts;
 
 public static class ServiceAccountRules
 {
+    public const int LegacyHashLength = 32;
+    public const int MinEncodedHashLength = 90;
+    public const int MaxEncodedHashLength = 128;
     public const int MinNameLength = 3;
     public const int MaxNameLength = 64;
 
@@ -24,10 +27,15 @@ public static class ServiceAccountRules
         return name.Trim();
     }
 
+    public static bool IsSupportedHash(byte[]? hash) =>
+        hash is { Length: LegacyHashLength } ||
+        hash is { Length: >= MinEncodedHashLength and <= MaxEncodedHashLength } &&
+        hash.AsSpan().StartsWith("$argon2id$v=19$"u8);
+
     public static void RequireHash(byte[]? hash)
     {
-        if (hash is not { Length: 32 })
-            throw new DomainValidationException("Хеш API key должен содержать 32 байта SHA-256.");
+        if (!IsSupportedHash(hash))
+            throw new DomainValidationException("Некорректный формат хеша API key.");
     }
 
     public static DateTimeOffset Timestamp(DateTimeOffset value)

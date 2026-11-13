@@ -71,6 +71,81 @@ public sealed class ServiceAuthenticationApiTests(ServiceAuthenticationApiFactor
                 .And.NotContain(tokens.AccessToken).And.NotContain(tokens.RefreshToken);
     }
 
+    [Fact]
+    public async Task LegacyKey_ShouldUpgradeHashOnceWithoutRevokingExistingSessionsOrChangingAccountMetadata()
+    {
+        var account = await factory.CreateAccountAsync();
+        var existingSession = await factory.IssueAsync(account.ApiKey);
+        var legacyHash = ServiceAccountsApiTests.LegacyHashKey(account.ApiKey);
+        DateTimeOffset updatedAt;
+        long authenticationVersion;
+        await using (var setup = factory.Services.CreateAsyncScope())
+        {
+            var db = setup.ServiceProvider.GetRequiredService<HospitalDbContext>();
+            var row = await db.ServiceAccounts.SingleAsync(x => x.Id == account.Account.Id);
+            row.ApiKeyHash = legacyHash;
+            updatedAt = row.UpdatedAtUtc;
+            authenticationVersion = row.AuthenticationVersion;
+            await db.SaveChangesAsync();
+        }
+
+        var upgradedSession = await factory.IssueAsync(account.ApiKey);
+
+        byte[] upgradedHash;
+        await using (var verification = factory.Services.CreateAsyncScope())
+        {
+            var db = verification.ServiceProvider.GetRequiredService<HospitalDbContext>();
+            var row = await db.ServiceAccounts.AsNoTracking().SingleAsync(x => x.Id == account.Account.Id);
+            ServiceAccountsApiTests.AssertArgonKey(account.ApiKey, account.Account.Id, row.ApiKeyHash);
+            row.AuthenticationVersion.Should().Be(authenticationVersion);
+            row.UpdatedAtUtc.Should().Be(updatedAt);
+            upgradedHash = row.ApiKeyHash;
+            (await db.ServiceRefreshSessions.AsNoTracking().Where(x => x.ServiceAccountId == account.Account.Id)
+                .ToArrayAsync()).Should().HaveCount(2).And.OnlyContain(x => x.RevokedAtUtc == null);
+        }
+        foreach (var accessToken in new[] { existingSession.AccessToken, upgradedSession.AccessToken })
+        {
+            using var authenticated = factory.CreateMachineClient(accessToken);
+            (await authenticated.GetAsync("/api/testConnection")).StatusCode.Should().Be(HttpStatusCode.OK);
+        }
+
+        await factory.IssueAsync(account.ApiKey);
+
+        await using var unchanged = factory.Services.CreateAsyncScope();
+        var after = await unchanged.ServiceProvider.GetRequiredService<HospitalDbContext>().ServiceAccounts
+            .AsNoTracking().SingleAsync(x => x.Id == account.Account.Id);
+        after.ApiKeyHash.Should().Equal(upgradedHash, "a current Argon2id hash should not be regenerated on each login");
+        after.AuthenticationVersion.Should().Be(authenticationVersion);
+        after.UpdatedAtUtc.Should().Be(updatedAt);
+    }
+
+    [Fact]
+    public async Task WrongLegacyKey_ShouldNotUpgradeStoredHashOrCreateSession()
+    {
+        var account = await factory.CreateAccountAsync();
+        var legacyHash = ServiceAccountsApiTests.LegacyHashKey(account.ApiKey);
+        await using (var setup = factory.Services.CreateAsyncScope())
+        {
+            var db = setup.ServiceProvider.GetRequiredService<HospitalDbContext>();
+            var row = await db.ServiceAccounts.SingleAsync(x => x.Id == account.Account.Id);
+            row.ApiKeyHash = legacyHash;
+            await db.SaveChangesAsync();
+        }
+        var wrongKey = account.ApiKey[..37] + Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+            .TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        using var client = factory.CreateMachineClient();
+
+        using var response = await client.PostAsJsonAsync("/api/service-auth/token", new ServiceTokenRequest(wrongKey));
+
+        await ErrorAsync(response, HttpStatusCode.Unauthorized, ServiceAuthErrorCodes.InvalidCredentials);
+        await using var verification = factory.Services.CreateAsyncScope();
+        var stored = verification.ServiceProvider.GetRequiredService<HospitalDbContext>();
+        var after = await stored.ServiceAccounts.AsNoTracking().SingleAsync(x => x.Id == account.Account.Id);
+        after.ApiKeyHash.Should().Equal(legacyHash);
+        after.AuthenticationVersion.Should().Be(1);
+        (await stored.ServiceRefreshSessions.AnyAsync(x => x.ServiceAccountId == account.Account.Id)).Should().BeFalse();
+    }
+
     [Theory]
     [InlineData("/api/service-auth/token", "{}")]
     [InlineData("/api/service-auth/token", "{\"apiKey\":null}")]

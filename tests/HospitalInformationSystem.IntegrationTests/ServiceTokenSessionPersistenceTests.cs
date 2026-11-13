@@ -47,6 +47,15 @@ public sealed class ServiceTokenSessionPersistenceTests(SecureHospitalApiFactory
     public async Task IssueHttpFailureAfterSqlSave_ShouldReturnSafeTechnicalErrorAndRollBackCredentials()
     {
         var account = await AccountAsync();
+        byte[] originalHash;
+        await using (var setup = factory.Services.CreateAsyncScope())
+        {
+            var db = setup.ServiceProvider.GetRequiredService<HospitalDbContext>();
+            var row = await db.ServiceAccounts.SingleAsync(x => x.Id == account.Account.Id);
+            row.ApiKeyHash = ServiceAccountsApiTests.LegacyHashKey(account.ApiKey);
+            await db.SaveChangesAsync();
+            originalHash = row.ApiKeyHash;
+        }
         var fault = new FailAfterSave();
         await using var application = WithInterceptor(fault);
         using var client = application.CreateClient(new WebApplicationFactoryClientOptions
@@ -66,6 +75,10 @@ public sealed class ServiceTokenSessionPersistenceTests(SecureHospitalApiFactory
         error.Code.Should().Be(ServiceAuthErrorCodes.InternalError);
         fault.Triggered.Should().BeTrue();
         (await CountsAsync(account.Account.Id)).Should().Be(before);
+        await using var verification = factory.Services.CreateAsyncScope();
+        var stored = await verification.ServiceProvider.GetRequiredService<HospitalDbContext>().ServiceAccounts
+            .AsNoTracking().SingleAsync(x => x.Id == account.Account.Id);
+        stored.ApiKeyHash.Should().Equal(originalHash);
     }
 
     [Fact]

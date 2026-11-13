@@ -1078,7 +1078,7 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
 
                     b.ToTable("service_accounts", null, t =>
                         {
-                            t.HasCheckConstraint("ck_service_accounts_api_key_hash", "octet_length(api_key_hash) = 32");
+                            t.HasCheckConstraint("ck_service_accounts_api_key_hash", "octet_length(api_key_hash) = 32 OR (octet_length(api_key_hash) BETWEEN 90 AND 128 AND substring(api_key_hash FROM 1 FOR 15) = convert_to('$argon2id$v=19$', 'UTF8'))");
 
                             t.HasCheckConstraint("ck_service_accounts_authentication_version", "authentication_version > 0");
 

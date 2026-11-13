@@ -196,7 +196,7 @@ public sealed class ServiceTokenSecurityTests(JwtSigningKeyFixture fixture) : IC
     }
 
     private ServiceTokenSessionService SessionService() => new(null!, fixture.Keys,
-        Options.Create(new ServiceTokenOptions()), new FixedClock(), null!, null!);
+        Options.Create(new ServiceTokenOptions()), new FixedClock(), null!, null!, null!);
 
     private ServiceTokenValidationParameters Parameters() => new(fixture.Keys,
         Options.Create(new ServiceTokenOptions()), new FixedClock());

@@ -30,11 +30,13 @@ public sealed class Argon2idPasswordHasher : IPasswordHasher<HospitalUser>
         _parallelism = value.Parallelism;
     }
 
-    public string HashPassword(HospitalUser user, string password)
+    public string HashPassword(HospitalUser user, string password) => HashSecret(password);
+
+    public string HashSecret(string secret)
     {
-        ArgumentNullException.ThrowIfNull(password);
+        ArgumentNullException.ThrowIfNull(secret);
         var salt = RandomNumberGenerator.GetBytes(SaltLength);
-        var hash = Derive(password, salt, _memorySize, _iterations, _parallelism);
+        var hash = Derive(secret, salt, _memorySize, _iterations, _parallelism);
         try
         {
             return $"$argon2id$v=19$m={_memorySize},t={_iterations},p={_parallelism}${Encode(salt)}${Encode(hash)}";
@@ -52,7 +54,15 @@ public sealed class Argon2idPasswordHasher : IPasswordHasher<HospitalUser>
             return PasswordVerificationResult.Failed;
         if (!hashedPassword.StartsWith("$argon2id$", StringComparison.Ordinal))
             return VerifyLegacy(user, hashedPassword, providedPassword);
-        var parts = hashedPassword.Split('$');
+        return VerifyHashedSecret(hashedPassword, providedPassword);
+    }
+
+    public PasswordVerificationResult VerifyHashedSecret(string hashedSecret, string providedSecret)
+    {
+        if (string.IsNullOrEmpty(hashedSecret) || providedSecret is null || hashedSecret.Length > 512 ||
+            !hashedSecret.StartsWith("$argon2id$", StringComparison.Ordinal))
+            return PasswordVerificationResult.Failed;
+        var parts = hashedSecret.Split('$');
         if (parts.Length != 6 || parts[2] != "v=19")
             return PasswordVerificationResult.Failed;
         var parameters = parts[3].Split(',');
@@ -73,7 +83,7 @@ public sealed class Argon2idPasswordHasher : IPasswordHasher<HospitalUser>
         }
         if (salt.Length != SaltLength || expected.Length != HashLength)
             return PasswordVerificationResult.Failed;
-        var actual = Derive(providedPassword, salt, memory, iterations, parallelism);
+        var actual = Derive(providedSecret, salt, memory, iterations, parallelism);
         try
         {
             if (!CryptographicOperations.FixedTimeEquals(expected, actual))

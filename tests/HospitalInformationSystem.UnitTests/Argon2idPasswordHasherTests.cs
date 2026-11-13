@@ -59,6 +59,8 @@ public sealed class Argon2idPasswordHasherTests
             .Should().Be(PasswordVerificationResult.SuccessRehashNeeded);
         _hasher.VerifyHashedPassword(_user, hash, "WrongPassword123")
             .Should().Be(PasswordVerificationResult.Failed);
+        _hasher.VerifyHashedSecret(hash, "LegacyPassword123")
+            .Should().Be(PasswordVerificationResult.Failed);
     }
 
     [Fact]

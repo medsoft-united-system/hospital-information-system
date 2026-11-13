@@ -4,10 +4,12 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
 using FluentAssertions;
+using HospitalInformationSystem.Application.ServiceAccounts;
 using HospitalInformationSystem.Contracts.Auth;
 using HospitalInformationSystem.Contracts.ServiceAccounts;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Infrastructure.ServiceAccounts;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
@@ -41,8 +43,9 @@ public sealed class ServiceAccountManagementPersistenceTests(SecureHospitalApiFa
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
         var stored = await db.ServiceAccounts.AsNoTracking().SingleAsync(account => account.Id == created.Account.Id);
-        stored.ApiKeyHash.Should().Equal(ServiceAccountsApiTests.HashKey(rotated.ApiKey));
-        stored.ApiKeyHash.SequenceEqual(ServiceAccountsApiTests.HashKey(created.ApiKey)).Should().BeFalse();
+        ServiceAccountsApiTests.AssertArgonKey(rotated.ApiKey, created.Account.Id, stored.ApiKeyHash);
+        new ServiceApiKeyGenerator().Verify(created.ApiKey, created.Account.Id, stored.ApiKeyHash).Should()
+            .Be(ServiceApiKeyVerificationResult.Failed);
         stored.AuthenticationVersion.Should().Be(2);
         stored.IsActive.Should().BeTrue();
         await AssertRevokedAsync(db, sessions, "service-key-rotated");
@@ -91,7 +94,7 @@ public sealed class ServiceAccountManagementPersistenceTests(SecureHospitalApiFa
         var after = verification.ServiceProvider.GetRequiredService<HospitalDbContext>();
         var restored = await after.ServiceAccounts.AsNoTracking().SingleAsync(account => account.Id == created.Account.Id);
         restored.AuthenticationVersion.Should().BeGreaterThan(1);
-        restored.ApiKeyHash.Should().Equal(ServiceAccountsApiTests.HashKey(created.ApiKey));
+        ServiceAccountsApiTests.AssertArgonKey(created.ApiKey, created.Account.Id, restored.ApiKeyHash);
         await AssertRevokedAsync(after, sessions, "service-account-deactivated");
         (await ServiceAccountsApiTests.AuditsAsync(after, created.Account.Id)).Select(Action).Should()
             .BeEquivalentTo(new[] { "service-account-created", "service-account-deactivated", "service-account-activated" });
@@ -116,7 +119,7 @@ public sealed class ServiceAccountManagementPersistenceTests(SecureHospitalApiFa
         var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
         var saved = await db.ServiceAccounts.AsNoTracking().SingleAsync(account => account.Id == created.Account.Id);
         saved.AuthenticationVersion.Should().Be(1);
-        saved.ApiKeyHash.Should().Equal(ServiceAccountsApiTests.HashKey(created.ApiKey));
+        ServiceAccountsApiTests.AssertArgonKey(created.ApiKey, created.Account.Id, saved.ApiKeyHash);
         var rows = await db.ServiceRefreshSessions.AsNoTracking().Where(session => sessions.UnrevokedIds.Contains(session.Id)).ToArrayAsync();
         rows.Should().HaveCount(sessions.UnrevokedIds.Length).And.OnlyContain(session => session.RevokedAtUtc == null);
         (await ServiceAccountsApiTests.AuditsAsync(db, created.Account.Id)).Select(Action).Should()
@@ -149,7 +152,7 @@ public sealed class ServiceAccountManagementPersistenceTests(SecureHospitalApiFa
             await using var scope = factory.Services.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
             var saved = await db.ServiceAccounts.AsNoTracking().SingleAsync(account => account.Id == created.Account.Id);
-            saved.ApiKeyHash.Should().Equal(ServiceAccountsApiTests.HashKey(winner.ApiKey));
+            ServiceAccountsApiTests.AssertArgonKey(winner.ApiKey, created.Account.Id, saved.ApiKeyHash);
             saved.AuthenticationVersion.Should().Be(2);
             await AssertRevokedAsync(db, sessions, "service-key-rotated");
             (await ServiceAccountsApiTests.AuditsAsync(db, created.Account.Id)).Should().HaveCount(2);
@@ -254,7 +257,7 @@ public sealed class ServiceAccountManagementPersistenceTests(SecureHospitalApiFa
         var row = await db.ServiceAccounts.AsNoTracking().SingleAsync(account => account.Id == created.Account.Id);
         row.IsActive.Should().BeTrue();
         row.AuthenticationVersion.Should().Be(1);
-        row.ApiKeyHash.Should().Equal(ServiceAccountsApiTests.HashKey(created.ApiKey));
+        ServiceAccountsApiTests.AssertArgonKey(created.ApiKey, created.Account.Id, row.ApiKeyHash);
         (await db.ServiceAccounts.Where(account => account.Id == created.Account.Id)
             .Select(account => EF.Property<uint>(account, "xmin")).SingleAsync()).Should().Be(created.Account.Version);
         (await db.ServiceRefreshSessions.AsNoTracking().Where(session => sessions.UnrevokedIds.Contains(session.Id)).ToArrayAsync())

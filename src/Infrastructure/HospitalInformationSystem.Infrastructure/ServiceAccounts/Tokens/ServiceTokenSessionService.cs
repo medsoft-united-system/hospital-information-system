@@ -2,6 +2,8 @@ using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using HospitalInformationSystem.Application.Audit;
+using HospitalInformationSystem.Application.Abstractions;
+using HospitalInformationSystem.Application.ServiceAccounts;
 using HospitalInformationSystem.Contracts.Security;
 using HospitalInformationSystem.Contracts.ServiceAuth;
 using HospitalInformationSystem.Domain.ServiceAccounts;
@@ -14,7 +16,8 @@ using Microsoft.Extensions.Options;
 namespace HospitalInformationSystem.Infrastructure.ServiceAccounts.Tokens;
 
 public sealed partial class ServiceTokenSessionService(HospitalDbContext db, JwtKeyMaterial keys,
-    IOptions<ServiceTokenOptions> options, TimeProvider timeProvider, IAuditWriter audit, IAuditActorAccessor actors)
+    IOptions<ServiceTokenOptions> options, TimeProvider timeProvider, IAuditWriter audit, IAuditActorAccessor actors,
+    IServiceApiKeyGenerator apiKeys)
 {
     public async Task<ServiceTokenPairDto?> AuthenticateAsync(string? apiKey, CancellationToken cancellationToken)
     {
@@ -22,17 +25,26 @@ public sealed partial class ServiceTokenSessionService(HospitalDbContext db, Jwt
             return await RejectAsync("service-token-rejected", cancellationToken);
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var account = await LockAccountAsync(id, cancellationToken);
-        if (account is null || !Eligible(account) || !ServiceApiKeyGenerator.Verify(apiKey, id, account.ApiKeyHash))
+        var verification = account is not null && Eligible(account)
+            ? apiKeys.Verify(apiKey, id, account.ApiKeyHash)
+            : ServiceApiKeyVerificationResult.Failed;
+        if (verification == ServiceApiKeyVerificationResult.Failed)
         {
             await RejectAsync("service-token-rejected", cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return null;
         }
+        if (verification == ServiceApiKeyVerificationResult.SuccessRehashNeeded)
+        {
+            var hash = apiKeys.Hash(apiKey!);
+            await db.ServiceAccounts.Where(row => row.Id == id)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.ApiKeyHash, hash), cancellationToken);
+        }
         var now = Timestamp(timeProvider.GetUtcNow());
         var expires = DateTimeOffset.FromUnixTimeSeconds(now.ToUnixTimeSeconds()).AddDays(options.Value.RefreshTokenDays);
-        var result = AddSession(account, Guid.NewGuid(), now, expires, out _);
+        var result = AddSession(account!, Guid.NewGuid(), now, expires, out _);
         audit.Append(AuditEventType.ServiceLogin, "Сервисный аккаунт LIS получил сессию.",
-            Metadata(account.Id, "service-token-issued", "success"), VerifiedActor(account));
+            Metadata(account!.Id, "service-token-issued", "success"), VerifiedActor(account));
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return result;
