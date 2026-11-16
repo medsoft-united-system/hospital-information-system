@@ -37,7 +37,7 @@ public sealed class ServiceAccountsApiClient(HttpClient http)
     {
         var saved = await SendAsync<ServiceAccountKeyResultDto>(HttpMethod.Post, "api/service-accounts", input,
             HttpStatusCode.Created, cancellationToken);
-        if (!ValidKeyResult(saved) || saved.Account.Name != input.Name.Trim() || !saved.Account.IsActive || saved.RevokedSessionCount != 0)
+        if (!ValidKeyResult(saved) || saved.Account.Name != input.Name.Trim() || saved.Account.Role != input.Role || !saved.Account.IsActive || saved.RevokedSessionCount != 0)
             throw Invalid();
         return saved;
     }
@@ -113,7 +113,7 @@ public sealed class ServiceAccountsApiClient(HttpClient http)
     }
 
     private static bool Valid(ServiceAccountDto account) => account.Id != Guid.Empty &&
-        ServiceAccountNameRules.IsValid(account.Name) && account.Name == account.Name.Trim() && account.Role == "LIS" &&
+        ServiceAccountNameRules.IsValid(account.Name) && account.Name == account.Name.Trim() && ServiceAccountRoles.IsSupported(account.Role) &&
         account.CreatedAtUtc != default && account.CreatedAtUtc.Offset == TimeSpan.Zero &&
         account.UpdatedAtUtc >= account.CreatedAtUtc && account.UpdatedAtUtc.Offset == TimeSpan.Zero &&
         account.Version > 0 && account.KeyPrefix == $"msa_{account.Id:N}.";
@@ -143,7 +143,7 @@ public sealed class ServiceAccountsApiClient(HttpClient http)
         HttpStatusCode.Unauthorized => "Сессия завершена. Войдите снова и проверьте состояние аккаунта.",
         HttpStatusCode.Forbidden => "У текущего пользователя нет прав управления сервисными аккаунтами.",
         HttpStatusCode.Conflict => "Аккаунт уже изменён или имя занято. Обновите список перед новой операцией.",
-        HttpStatusCode.BadRequest => "Проверьте имя и актуальность версии сервисного аккаунта.",
+        HttpStatusCode.BadRequest => "Проверьте имя, роль и актуальность версии сервисного аккаунта.",
         HttpStatusCode.NotFound => "Сервисный аккаунт не найден. Обновите список.",
         _ => "Не удалось подтвердить результат операции. Обновите список перед новой отправкой."
     }, status);

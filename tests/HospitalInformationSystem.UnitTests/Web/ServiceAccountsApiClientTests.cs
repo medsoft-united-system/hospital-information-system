@@ -31,6 +31,9 @@ public sealed class ServiceAccountsApiClientTests
     [InlineData("version")]
     [InlineData("name")]
     [InlineData("role")]
+    [InlineData("null-role")]
+    [InlineData("empty-role")]
+    [InlineData("wrong-case-role")]
     [InlineData("prefix")]
     [InlineData("date")]
     [InlineData("duplicate")]
@@ -41,12 +44,47 @@ public sealed class ServiceAccountsApiClientTests
         {
             "id" => account with { Id = Guid.Empty }, "version" => account with { Version = 0 },
             "name" => account with { Name = "ab" }, "role" => account with { Role = "Administrator" },
+            "null-role" => account with { Role = null! }, "empty-role" => account with { Role = "" },
+            "wrong-case-role" => account with { Role = "Hl7Import" },
             "prefix" => account with { KeyPrefix = "msa_wrong." },
             "date" => account with { UpdatedAtUtc = account.CreatedAtUtc.AddSeconds(-1) }, _ => account
         };
         using var http = Client((_, _) => Task.FromResult(Json(invalid == "duplicate" ? new[] { broken, broken } : [broken])));
         var request = () => new ServiceAccountsApiClient(http).ListAsync(CancellationToken.None);
         await request.Should().ThrowAsync<ApiException>();
+    }
+
+    [Theory]
+    [InlineData(ServiceAccountRoles.Lis)]
+    [InlineData(ServiceAccountRoles.Hl7Import)]
+    public async Task Create_SerializesRoleAndAcceptsSelectedRole(string role)
+    {
+        var account = Account() with { Role = role };
+        using var http = Client(async (request, token) =>
+        {
+            request.Method.Should().Be(HttpMethod.Post);
+            using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(token));
+            body.RootElement.GetProperty("role").GetString().Should().Be(role);
+            return Raw(JsonSerializer.Serialize(new ServiceAccountKeyResultDto(account, Key(account), 0),
+                new JsonSerializerOptions(JsonSerializerDefaults.Web)), HttpStatusCode.Created);
+        });
+
+        var saved = await new ServiceAccountsApiClient(http).CreateAsync(new CreateServiceAccountRequest(account.Name, role), CancellationToken.None);
+
+        saved.Account.Role.Should().Be(role);
+    }
+
+    [Fact]
+    public async Task Create_RejectsResponseWithAnotherSupportedRole()
+    {
+        var account = Account();
+        using var http = Client((_, _) => Task.FromResult(Raw(JsonSerializer.Serialize(
+            new ServiceAccountKeyResultDto(account, Key(account), 0), new JsonSerializerOptions(JsonSerializerDefaults.Web)), HttpStatusCode.Created)));
+
+        var create = () => new ServiceAccountsApiClient(http).CreateAsync(
+            new CreateServiceAccountRequest(account.Name, ServiceAccountRoles.Hl7Import), CancellationToken.None);
+
+        await create.Should().ThrowAsync<ApiException>();
     }
 
     [Fact]

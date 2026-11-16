@@ -20,6 +20,103 @@ namespace HospitalInformationSystem.UnitTests.Web;
 
 public sealed class ServiceAccountsPageTests
 {
+    [Theory]
+    [InlineData(ServiceAccountRoles.Lis)]
+    [InlineData(ServiceAccountRoles.Hl7Import)]
+    public async Task Create_SendsSelectedRoleAndKeepsRoleWithOneTimeKey(string role)
+    {
+        var account = ServiceAccountsApiClientTests.Account() with { Role = role };
+        using var page = Page(new StubGateway
+        {
+            Create = (input, _) =>
+            {
+                input.Role.Should().Be(role);
+                return Task.FromResult(new ServiceAccountKeyResultDto(account, ServiceAccountsApiClientTests.Key(account), 0));
+            },
+            List = _ => Task.FromResult<IReadOnlyList<ServiceAccountDto>>([account])
+        });
+        Invoke(page, "BeginCreate");
+        var form = Get<ServiceAccountForm>(page, "_form");
+        form.Role.Should().Be(ServiceAccountRoles.Lis);
+        form.Name = account.Name;
+        form.Role = role;
+
+        await InvokeAsync(page, "SaveAsync");
+
+        Get<IReadOnlyList<ServiceAccountDto>>(page, "_accounts").Single().Role.Should().Be(role);
+        Get<string>(page, "_secretAccountRole").Should().Be(role);
+        Invoke(page, "CloseKey");
+        Get<string?>(page, "_secretAccountRole").Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("Hl7Import")]
+    [InlineData("Administrator")]
+    public async Task Create_RejectsUnsupportedRoleBeforeGateway(string? role)
+    {
+        var calls = 0;
+        using var page = Page(new StubGateway { Create = (_, _) => { calls++; throw new InvalidOperationException(); } });
+        Invoke(page, "BeginCreate");
+        var form = Get<ServiceAccountForm>(page, "_form");
+        form.Name = "Импорт пациентов";
+        form.Role = role!;
+        var results = new List<ValidationResult>();
+        Validator.TryValidateObject(form, new ValidationContext(form), results, true).Should().BeFalse();
+        results.Should().Contain(result => result.MemberNames.Contains(nameof(ServiceAccountForm.Role)));
+
+        await InvokeAsync(page, "SaveAsync");
+
+        calls.Should().Be(0);
+        Get<bool>(page, "_formOpen").Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(ServiceAccountRoles.Lis, false)]
+    [InlineData(ServiceAccountRoles.Lis, true)]
+    [InlineData(ServiceAccountRoles.Hl7Import, false)]
+    [InlineData(ServiceAccountRoles.Hl7Import, true)]
+    public async Task RenderedForm_ShowsRolePermissionsAndCreationOnlySelector(string role, bool editing)
+    {
+        var account = ServiceAccountsApiClientTests.Account() with { Role = role };
+        var services = new ServiceCollection().AddLogging().AddSingleton<IServiceAccountsGateway>(new StubGateway
+            { List = _ => Task.FromResult<IReadOnlyList<ServiceAccountDto>>([account]) })
+            .AddSingleton(Mock.Of<IJSRuntime>());
+        await using var provider = services.BuildServiceProvider();
+        await using var renderer = new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>());
+        var parameters = ParameterView.FromDictionary(new Dictionary<string, object?>
+        {
+            [nameof(OpenFormServiceAccounts.Role)] = role,
+            [nameof(OpenFormServiceAccounts.Editing)] = editing
+        });
+        var html = await renderer.Dispatcher.InvokeAsync(async () => WebUtility.HtmlDecode(
+            (await renderer.RenderComponentAsync<OpenFormServiceAccounts>(parameters)).ToHtmlString()));
+        var start = html.IndexOf("<section class=\"service-permissions\"", StringComparison.Ordinal);
+        start.Should().BeGreaterThanOrEqualTo(0);
+        var end = html.IndexOf("</section>", start, StringComparison.Ordinal);
+        var permissions = html[start..end];
+        permissions.Should().Contain("POST /api/service-auth/token").And.Contain("POST /api/service-auth/refresh")
+            .And.Contain("GET /api/testConnection").And.NotContain("<input").And.NotContain("<select");
+        if (role == ServiceAccountRoles.Hl7Import)
+        {
+            permissions.Should().Contain("Разрешения роли HL7 Import").And.Contain("MLLP / mTLS")
+                .And.NotContain("Чтение FHIR").And.NotContain("POST /fhir/Observation");
+            html.Should().Contain(">HL7 Import</span>").And.NotContain(">HL7Import<");
+        }
+        else
+        {
+            permissions.Should().Contain("Patient, Practitioner, ServiceRequest, Observation")
+                .And.Contain("POST /fhir/Observation").And.NotContain("MLLP / mTLS");
+        }
+        if (editing)
+            html.Should().Contain("readonly").And.Contain("Роль задана при создании аккаунта.")
+                .And.NotMatchRegex("<select[^>]*id=\"service-account-role\"");
+        else
+            html.Should().MatchRegex("<select[^>]*id=\"service-account-role\"")
+                .And.Contain("value=\"HL7Import\"").And.Contain("Роль выбирается при создании аккаунта.");
+    }
+
     [Fact]
     public async Task CreatedKey_IsShownOnceAndAccountSurvivesRefreshFailure()
     {
@@ -409,10 +506,28 @@ public sealed class ServiceAccountsPageTests
         Set(page, "_cts", new CancellationTokenSource());
         return page;
     }
-    private static void Set(object page, string name, object? value) => page.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(page, value);
-    private static T Get<T>(object page, string name) => (T)page.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
-    private static object? Invoke(object page, string name, params object[] args) => page.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, args);
+    private static void Set(object page, string name, object? value) => typeof(ServiceAccounts).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(page, value);
+    private static T Get<T>(object page, string name) => (T)typeof(ServiceAccounts).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+    private static object? Invoke(object page, string name, params object[] args) => typeof(ServiceAccounts).GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, args);
     private static Task InvokeAsync(object page, string name, params object[] args) => (Task)Invoke(page, name, args)!;
+
+    private sealed class OpenFormServiceAccounts : ServiceAccounts
+    {
+        [Parameter] public string Role { get; set; } = ServiceAccountRoles.Lis;
+        [Parameter] public bool Editing { get; set; }
+
+        protected override async Task OnInitializedAsync()
+        {
+            await base.OnInitializedAsync();
+            if (Editing)
+                Invoke(this, "BeginEdit", Get<IReadOnlyList<ServiceAccountDto>>(this, "_accounts").Single());
+            else
+            {
+                Invoke(this, "BeginCreate");
+                Get<ServiceAccountForm>(this, "_form").Role = Role;
+            }
+        }
+    }
 
     private sealed class StubGateway : IServiceAccountsGateway
     {

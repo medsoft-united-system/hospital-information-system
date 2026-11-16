@@ -452,12 +452,12 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                     b.HasAlternateKey("Id", "PatientId")
                         .HasName("ak_lab_requests_id_patient");
 
-                    b.HasIndex("AuthoredAtFhirUtc", "Id")
-                        .HasDatabaseName("ix_lab_requests_fhir_order");
-
                     b.HasIndex("LaboratoryTestDefinitionId");
 
                     b.HasIndex("RequestedByMedicalWorkerId");
+
+                    b.HasIndex("AuthoredAtFhirUtc", "Id")
+                        .HasDatabaseName("ix_lab_requests_fhir_order");
 
                     b.HasIndex("MedicalRecordId", "PatientId");
 
@@ -1088,7 +1088,7 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_service_accounts_normalized_name", "normalized_name = btrim(normalized_name) AND char_length(normalized_name) BETWEEN 3 AND 128");
 
-                            t.HasCheckConstraint("ck_service_accounts_role", "role = 'LIS'");
+                            t.HasCheckConstraint("ck_service_accounts_role", "role IN ('LIS', 'HL7Import')");
                         });
                 });
 

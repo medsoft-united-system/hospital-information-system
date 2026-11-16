@@ -27,6 +27,12 @@ public static class ServiceAccountRules
         return name.Trim();
     }
 
+    public static void RequireRole(ServiceAccountRole role)
+    {
+        if (role is not ServiceAccountRole.Lis and not ServiceAccountRole.Hl7Import)
+            throw new DomainValidationException("Неизвестная роль сервисного аккаунта.");
+    }
+
     public static bool IsSupportedHash(byte[]? hash) =>
         hash is { Length: LegacyHashLength } ||
         hash is { Length: >= MinEncodedHashLength and <= MaxEncodedHashLength } &&

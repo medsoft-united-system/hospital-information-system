@@ -3,8 +3,9 @@
   "fixtureSchemaVersion": 1,
   "status": {
     "kind": "contract-fixtures",
-    "teammateConsent": "pending",
-    "implementationReady": false
+    "teammateConsent": "accepted",
+    "implementationReady": false,
+    "acceptedOn": "2026-11-16"
   },
   "sourceSystem": "LAB4_XML",
   "sourceTimeZone": "Europe/Moscow",
@@ -401,8 +402,8 @@
       "sizeBytes": 66
     },
     "README.md": {
-      "sha256": "c1dd0472fa9780b1be36ee64dadcb79ef115c19eca0271250d86b9f89d6d12ba",
-      "sizeBytes": 14095
+      "sha256": "2603836786afe4fcfea3a8ed4bcb90ce00366da4bf92513bdf720ada848fcedf",
+      "sizeBytes": 15227
     },
     "ack-accepted-escaped-synthetic.hl7": {
       "sha256": "cf07ece52cdd6ac6c3016733034b203173b05f0b5751e54441378e5fcde656ca",

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Antiforgery;
 using HospitalInformationSystem.Api.Security;
 using HospitalInformationSystem.Contracts.ServiceAuth;
+using HospitalInformationSystem.Domain.ServiceAccounts;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 
@@ -43,6 +44,6 @@ public sealed class ApiAntiforgeryMiddleware(RequestDelegate next)
             return false;
         var authentication = await context.AuthenticateAsync(ServiceAuthenticationDefaults.Scheme);
         return authentication.Succeeded && authentication.Ticket?.AuthenticationScheme == ServiceAuthenticationDefaults.Scheme &&
-               ServiceAccountPrincipal.TryGetIdentity(authentication.Principal) is not null;
+               ServiceAccountPrincipal.TryGetIdentity(authentication.Principal)?.Role == ServiceAccountRole.Lis;
     }
 }

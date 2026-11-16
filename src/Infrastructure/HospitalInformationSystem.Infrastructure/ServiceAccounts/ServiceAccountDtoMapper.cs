@@ -15,6 +15,10 @@ internal static partial class ServiceAccountDtoMapper
 
     public static partial ServiceAccountDto ToDto(ServiceAccountReadRow source, string keyPrefix);
 
-    private static string ToRole(ServiceAccountRole role) => role == ServiceAccountRole.Lis ? "LIS" :
-        throw new InvalidOperationException("Неизвестная роль сервисного аккаунта.");
+    public static string ToRole(ServiceAccountRole role) => role switch
+    {
+        ServiceAccountRole.Lis => ServiceAccountRoles.Lis,
+        ServiceAccountRole.Hl7Import => ServiceAccountRoles.Hl7Import,
+        _ => throw new InvalidOperationException("Неизвестная роль сервисного аккаунта.")
+    };
 }

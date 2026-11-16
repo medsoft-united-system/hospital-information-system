@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace HospitalInformationSystem.Contracts.ServiceAccounts;
 
-public sealed record CreateServiceAccountRequest(string Name);
+public sealed record CreateServiceAccountRequest(string Name, string Role = ServiceAccountRoles.Lis);
 
 public sealed record UpdateServiceAccountRequest(string Name, [property: JsonRequired] uint Version);
 

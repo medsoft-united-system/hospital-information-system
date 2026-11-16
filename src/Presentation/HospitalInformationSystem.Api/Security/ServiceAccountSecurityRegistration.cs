@@ -1,4 +1,8 @@
 using System.Threading.RateLimiting;
+using HospitalInformationSystem.Application.Hl7Import;
+using HospitalInformationSystem.Application.ServiceAccounts;
+using HospitalInformationSystem.Contracts.Auth;
+using HospitalInformationSystem.Domain.ServiceAccounts;
 using HospitalInformationSystem.Contracts.ServiceAuth;
 using HospitalInformationSystem.Infrastructure.ServiceAccounts.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -20,6 +24,9 @@ public static class ServiceAccountSecurityRegistration
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<ServiceTokenOptions>, ServiceTokenOptionsValidator>());
         services.AddSingleton<ServiceTokenValidationParameters>();
         services.AddScoped<ServiceTokenSessionService>();
+        services.AddScoped<ServiceTokenValidator>();
+        services.AddScoped<IServiceTokenValidator>(provider => provider.GetRequiredService<ServiceTokenValidator>());
+        services.AddScoped<IHl7ImportTokenValidator>(provider => provider.GetRequiredService<ServiceTokenValidator>());
         services.AddScoped<ServiceCredentialReader>();
         services.AddAuthentication().AddJwtBearer(ServiceAuthenticationDefaults.Scheme);
         services.AddOptions<JwtBearerOptions>(ServiceAuthenticationDefaults.Scheme)
@@ -55,11 +62,15 @@ public static class ServiceAccountSecurityRegistration
         services.AddAuthorization(options =>
         {
             foreach (var name in new[] { ServiceAuthenticationDefaults.Policies.FhirRead,
-                         ServiceAuthenticationDefaults.Policies.ObservationCreate,
-                         ServiceAuthenticationDefaults.Policies.ConnectionProbe })
+                         ServiceAuthenticationDefaults.Policies.ObservationCreate })
                 options.AddPolicy(name, policy => policy.AddAuthenticationSchemes(ServiceAuthenticationDefaults.Scheme)
                     .RequireAuthenticatedUser()
-                    .RequireAssertion(context => ServiceAccountPrincipal.TryGetIdentity(context.User) is not null));
+                    .RequireAssertion(context => ServiceAccountPrincipal.TryGetIdentity(context.User)?.Role == ServiceAccountRole.Lis));
+            options.AddPolicy(ServiceAuthenticationDefaults.Policies.ConnectionProbe, policy =>
+                policy.AddAuthenticationSchemes(ServiceAuthenticationDefaults.Scheme, JwtBearerDefaults.AuthenticationScheme)
+                    .RequireAuthenticatedUser()
+                    .RequireAssertion(context => ServiceAccountPrincipal.TryGetIdentity(context.User) is not null ||
+                        context.User.IsInRole(ApplicationRoles.Administrator) || context.User.IsInRole(ApplicationRoles.MedicalWorker)));
         });
         services.AddRateLimiter(options => options.AddPolicy(ServiceAuthProtocol.RateLimitPolicy, context =>
             RateLimitPartition.GetSlidingWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "local",
