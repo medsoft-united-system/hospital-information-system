@@ -4,6 +4,7 @@
   <ItemGroup>
     <None Update="Fixtures/Security/*.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../Fixtures/Lab3/*.json" Link="Fixtures/Lab3/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../Fixtures/Lab4/**/*" Link="Fixtures/Lab4/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Hl7.Fhir.R5" />

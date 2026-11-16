@@ -1,0 +1,31 @@
+{
+  "sourceSystem": "LAB4_XML",
+  "sourceTimeZone": "Europe/Moscow",
+  "patients": [
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "000042",
+      "firstName": "Тест",
+      "lastName": "Разделители |^~\\&",
+      "middleName": "Проверка",
+      "sex": "Female",
+      "birthDate": "2000-02-29",
+      "diagnoses": [
+        {
+          "code": "Z99.9",
+          "title": "Тест | поле ^ компонент ~ повтор \\ escape & часть",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-05-14T10:20:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "Z99.9",
+          "title": "Тест | поле ^ компонент ~ повтор \\ escape & часть",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-03-22T14:30:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    }
+  ]
+}

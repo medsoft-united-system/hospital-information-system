@@ -1,0 +1,1251 @@
+{
+  "sourceSystem": "LAB4_XML",
+  "sourceTimeZone": "Europe/Moscow",
+  "patients": [
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "347821",
+      "firstName": "Алексей",
+      "lastName": "Иванов",
+      "middleName": "Петрович",
+      "sex": "Male",
+      "birthDate": "2021-04-12",
+      "diagnoses": []
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "904512",
+      "firstName": "Мария",
+      "lastName": "Смирнова",
+      "middleName": "Сергеевна",
+      "sex": "Female",
+      "birthDate": "1998-11-03",
+      "diagnoses": [
+        {
+          "code": "J45.9",
+          "title": "Астма неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-05-14T10:20:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "216734",
+      "firstName": "Дмитрий",
+      "lastName": "Кузнецов",
+      "middleName": "Андреевич",
+      "sex": "Male",
+      "birthDate": "1985-02-28",
+      "diagnoses": [
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-01-10T09:15:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "E78.5",
+          "title": "Гиперлипидемия неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-03-22T14:30:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "589201",
+      "firstName": "Анна",
+      "lastName": "Попова",
+      "middleName": "Викторовна",
+      "sex": "Female",
+      "birthDate": "1955-07-19",
+      "diagnoses": [
+        {
+          "code": "I25.1",
+          "title": "Атеросклеротическая болезнь сердца",
+          "codingSystem": "I10",
+          "diagnosedAt": "2021-11-02T08:00:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-02-17T11:45:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "M17.9",
+          "title": "Гонартроз неуточненный",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-06-05T16:20:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "672483",
+      "firstName": "Сергей",
+      "lastName": "Васильев",
+      "middleName": "Николаевич",
+      "sex": "Male",
+      "birthDate": "1948-12-01",
+      "diagnoses": [
+        {
+          "code": "I21.9",
+          "title": "Острый инфаркт миокарда неуточненный",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-04-11T09:30:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I50.9",
+          "title": "Сердечная недостаточность неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-04-11T09:30:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "E11.9",
+          "title": "Инсулиннезависимый сахарный диабет без осложнений",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-07-19T10:00:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "N18.9",
+          "title": "Хроническая болезнь почек неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-09-03T13:15:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "831056",
+      "firstName": "Елена",
+      "lastName": "Соколова",
+      "middleName": "Михайловна",
+      "sex": "Female",
+      "birthDate": "1972-03-14",
+      "diagnoses": [
+        {
+          "code": "E66.9",
+          "title": "Ожирение неуточненное",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-01-25T12:00:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-01-25T12:00:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "150293",
+      "firstName": "Ольга",
+      "lastName": "Михайлова",
+      "middleName": "Алексеевна",
+      "sex": "Female",
+      "birthDate": "2018-09-07",
+      "diagnoses": []
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "492817",
+      "firstName": "Николай",
+      "lastName": "Новиков",
+      "middleName": "Владимирович",
+      "sex": "Male",
+      "birthDate": "1960-06-21",
+      "diagnoses": [
+        {
+          "code": "J44.9",
+          "title": "Хроническая обструктивная легочная болезнь неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-08-14T09:00:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "763541",
+      "firstName": "Татьяна",
+      "lastName": "Федорова",
+      "middleName": "Петровна",
+      "sex": "Female",
+      "birthDate": "1945-01-30",
+      "diagnoses": [
+        {
+          "code": "H25.9",
+          "title": "Старческая катаракта неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2021-03-09T10:30:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-05-18T11:15:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "M81.9",
+          "title": "Остеопороз неуточненный",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-02-12T14:00:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "308672",
+      "firstName": "Андрей",
+      "lastName": "Морозов",
+      "middleName": "Сергеевич",
+      "sex": "Male",
+      "birthDate": "1990-10-05",
+      "diagnoses": [
+        {
+          "code": "K29.7",
+          "title": "Гастрит неуточненный",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-11-20T08:45:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "K76.0",
+          "title": "Жировая дегенерация печени",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-01-15T10:00:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "945123",
+      "firstName": "Ирина",
+      "lastName": "Волкова",
+      "middleName": "Андреевна",
+      "sex": "Female",
+      "birthDate": "1982-07-11",
+      "diagnoses": [
+        {
+          "code": "G43.9",
+          "title": "Мигрень неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-04-02T12:30:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "267890",
+      "firstName": "Павел",
+      "lastName": "Алексеев",
+      "middleName": "Дмитриевич",
+      "sex": "Male",
+      "birthDate": "1978-05-16",
+      "diagnoses": [
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-09-10T09:20:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "M54.5",
+          "title": "Дорсалгия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-07-03T15:00:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "513468",
+      "firstName": "Светлана",
+      "lastName": "Николаева",
+      "middleName": "Владимировна",
+      "sex": "Female",
+      "birthDate": "1968-12-09",
+      "diagnoses": [
+        {
+          "code": "E11.9",
+          "title": "Инсулиннезависимый сахарный диабет без осложнений",
+          "codingSystem": "I10",
+          "diagnosedAt": "2021-06-14T10:10:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-03-27T11:30:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "H40.9",
+          "title": "Глаукома неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-05-19T14:45:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "790234",
+      "firstName": "Михаил",
+      "lastName": "Егоров",
+      "middleName": "Викторович",
+      "sex": "Male",
+      "birthDate": "1938-08-22",
+      "diagnoses": [
+        {
+          "code": "I25.1",
+          "title": "Атеросклеротическая болезнь сердца",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-02-05T08:30:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I48",
+          "title": "Фибрилляция и трепетание предсердий",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-02-05T08:30:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "N18.9",
+          "title": "Хроническая болезнь почек неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-10-12T10:15:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "J18.9",
+          "title": "Пневмония неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-12-01T13:00:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "124579",
+      "firstName": "Екатерина",
+      "lastName": "Павлова",
+      "middleName": "Сергеевна",
+      "sex": "Female",
+      "birthDate": "2000-02-18",
+      "diagnoses": [
+        {
+          "code": "F32.9",
+          "title": "Депрессивный эпизод неуточненный",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-08-09T09:00:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "856712",
+      "firstName": "Владимир",
+      "lastName": "Семенов",
+      "middleName": "Анатольевич",
+      "sex": "Male",
+      "birthDate": "1952-11-30",
+      "diagnoses": [
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-07-18T10:45:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I67.2",
+          "title": "Церебральный атеросклероз",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-09-25T14:20:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "639085",
+      "firstName": "Наталья",
+      "lastName": "Григорьева",
+      "middleName": "Ивановна",
+      "sex": "Female",
+      "birthDate": "1958-04-03",
+      "diagnoses": [
+        {
+          "code": "M17.9",
+          "title": "Гонартроз неуточненный",
+          "codingSystem": "I10",
+          "diagnosedAt": "2021-12-01T11:00:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-05-06T09:30:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "E66.9",
+          "title": "Ожирение неуточненное",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-10-14T15:45:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "270945",
+      "firstName": "Артем",
+      "lastName": "Захаров",
+      "middleName": "Олегович",
+      "sex": "Male",
+      "birthDate": "2015-07-27",
+      "diagnoses": []
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "482310",
+      "firstName": "Людмила",
+      "lastName": "Белова",
+      "middleName": "Николаевна",
+      "sex": "Female",
+      "birthDate": "1950-09-14",
+      "diagnoses": [
+        {
+          "code": "H25.9",
+          "title": "Старческая катаракта неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-06-11T10:00:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "917634",
+      "firstName": "Александр",
+      "lastName": "Комаров",
+      "middleName": "Петрович",
+      "sex": "Male",
+      "birthDate": "1988-01-08",
+      "diagnoses": [
+        {
+          "code": "J45.9",
+          "title": "Астма неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-02-14T09:15:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "J20.9",
+          "title": "Острый бронхит неуточненный",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-04-22T11:30:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "358192",
+      "firstName": "Галина",
+      "lastName": "Орлова",
+      "middleName": "Дмитриевна",
+      "sex": "Female",
+      "birthDate": "1965-06-25",
+      "diagnoses": [
+        {
+          "code": "E11.9",
+          "title": "Инсулиннезависимый сахарный диабет без осложнений",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-08-30T10:45:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-11-07T13:20:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "K76.0",
+          "title": "Жировая дегенерация печени",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-12-19T08:00:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "529467",
+      "firstName": "Виктор",
+      "lastName": "Киселев",
+      "middleName": "Александрович",
+      "sex": "Male",
+      "birthDate": "1975-03-12",
+      "diagnoses": [
+        {
+          "code": "K25.9",
+          "title": "Язва желудка неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-09-05T14:00:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "814205",
+      "firstName": "Валентина",
+      "lastName": "Максимова",
+      "middleName": "Викторовна",
+      "sex": "Female",
+      "birthDate": "1942-10-17",
+      "diagnoses": [
+        {
+          "code": "I25.1",
+          "title": "Атеросклеротическая болезнь сердца",
+          "codingSystem": "I10",
+          "diagnosedAt": "2021-05-22T09:30:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "M81.9",
+          "title": "Остеопороз неуточненный",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-03-14T11:15:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "671238",
+      "firstName": "Олег",
+      "lastName": "Фролов",
+      "middleName": "Сергеевич",
+      "sex": "Male",
+      "birthDate": "1983-07-04",
+      "diagnoses": [
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-12-03T10:00:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "E78.5",
+          "title": "Гиперлипидемия неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-06-19T09:20:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "M54.5",
+          "title": "Дорсалгия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-11-08T15:30:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "295870",
+      "firstName": "Нина",
+      "lastName": "Тарасова",
+      "middleName": "Алексеевна",
+      "sex": "Female",
+      "birthDate": "1935-02-11",
+      "diagnoses": [
+        {
+          "code": "I50.9",
+          "title": "Сердечная недостаточность неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-01-15T08:45:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-01-15T08:45:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "N18.9",
+          "title": "Хроническая болезнь почек неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-08-27T10:30:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "H25.9",
+          "title": "Старческая катаракта неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-09-14T13:15:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "730642",
+      "firstName": "Игорь",
+      "lastName": "Данилов",
+      "middleName": "Владимирович",
+      "sex": "Male",
+      "birthDate": "1995-09-23",
+      "diagnoses": [
+        {
+          "code": "F41.9",
+          "title": "Тревожное расстройство неуточненное",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-02-28T11:00:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "468013",
+      "firstName": "Ксения",
+      "lastName": "Жукова",
+      "middleName": "Сергеевна",
+      "sex": "Female",
+      "birthDate": "2008-12-06",
+      "diagnoses": [
+        {
+          "code": "J45.9",
+          "title": "Астма неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-07-11T09:00:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "J20.9",
+          "title": "Острый бронхит неуточненный",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-01-19T14:30:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "851974",
+      "firstName": "Петр",
+      "lastName": "Борисов",
+      "middleName": "Михайлович",
+      "sex": "Male",
+      "birthDate": "1959-05-29",
+      "diagnoses": [
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2021-10-05T10:15:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I25.1",
+          "title": "Атеросклеротическая болезнь сердца",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-12-11T11:45:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "E66.9",
+          "title": "Ожирение неуточненное",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-04-07T15:20:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "306791",
+      "firstName": "Дарья",
+      "lastName": "Соловьева",
+      "middleName": "Андреевна",
+      "sex": "Female",
+      "birthDate": "2012-03-18",
+      "diagnoses": []
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "573428",
+      "firstName": "Роман",
+      "lastName": "Виноградов",
+      "middleName": "Дмитриевич",
+      "sex": "Male",
+      "birthDate": "1987-11-02",
+      "diagnoses": [
+        {
+          "code": "K29.7",
+          "title": "Гастрит неуточненный",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-05-16T09:30:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "942157",
+      "firstName": "Вера",
+      "lastName": "Ковалева",
+      "middleName": "Петровна",
+      "sex": "Female",
+      "birthDate": "1953-08-14",
+      "diagnoses": [
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-06-09T10:00:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "M17.9",
+          "title": "Гонартроз неуточненный",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-10-21T11:15:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "218560",
+      "firstName": "Юрий",
+      "lastName": "Медведев",
+      "middleName": "Анатольевич",
+      "sex": "Male",
+      "birthDate": "1963-01-25",
+      "diagnoses": [
+        {
+          "code": "J44.9",
+          "title": "Хроническая обструктивная легочная болезнь неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2021-08-14T09:45:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-04-03T10:30:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "E11.9",
+          "title": "Инсулиннезависимый сахарный диабет без осложнений",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-07-28T14:00:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "685039",
+      "firstName": "Анастасия",
+      "lastName": "Панова",
+      "middleName": "Викторовна",
+      "sex": "Female",
+      "birthDate": "2003-06-07",
+      "diagnoses": [
+        {
+          "code": "G43.9",
+          "title": "Мигрень неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-03-12T12:20:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "159276",
+      "firstName": "Геннадий",
+      "lastName": "Крылов",
+      "middleName": "Сергеевич",
+      "sex": "Male",
+      "birthDate": "1970-04-30",
+      "diagnoses": [
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-11-19T09:10:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "K76.0",
+          "title": "Жировая дегенерация печени",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-01-07T11:45:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "824510",
+      "firstName": "Зоя",
+      "lastName": "Титова",
+      "middleName": "Алексеевна",
+      "sex": "Female",
+      "birthDate": "1947-12-19",
+      "diagnoses": [
+        {
+          "code": "H25.9",
+          "title": "Старческая катаракта неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2021-07-25T08:30:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-02-08T10:00:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "M81.9",
+          "title": "Остеопороз неуточненный",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-05-30T13:30:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "473182",
+      "firstName": "Василий",
+      "lastName": "Ефимов",
+      "middleName": "Николаевич",
+      "sex": "Male",
+      "birthDate": "1940-09-03",
+      "diagnoses": [
+        {
+          "code": "I21.9",
+          "title": "Острый инфаркт миокарда неуточненный",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-03-17T09:00:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I50.9",
+          "title": "Сердечная недостаточность неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-03-17T09:00:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "N18.9",
+          "title": "Хроническая болезнь почек неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-06-22T10:15:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "J18.9",
+          "title": "Пневмония неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-11-11T14:45:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "260594",
+      "firstName": "Полина",
+      "lastName": "Кузнецова",
+      "middleName": "Дмитриевна",
+      "sex": "Female",
+      "birthDate": "2019-11-21",
+      "diagnoses": []
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "937451",
+      "firstName": "Максим",
+      "lastName": "Гусев",
+      "middleName": "Андреевич",
+      "sex": "Male",
+      "birthDate": "1993-07-16",
+      "diagnoses": [
+        {
+          "code": "F32.9",
+          "title": "Депрессивный эпизод неуточненный",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-12-04T10:30:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "581320",
+      "firstName": "Лидия",
+      "lastName": "Зайцева",
+      "middleName": "Ивановна",
+      "sex": "Female",
+      "birthDate": "1961-02-07",
+      "diagnoses": [
+        {
+          "code": "E11.9",
+          "title": "Инсулиннезависимый сахарный диабет без осложнений",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-09-23T09:15:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-02-14T11:00:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "705863",
+      "firstName": "Аркадий",
+      "lastName": "Степанов",
+      "middleName": "Владимирович",
+      "sex": "Male",
+      "birthDate": "1957-06-13",
+      "diagnoses": [
+        {
+          "code": "I25.1",
+          "title": "Атеросклеротическая болезнь сердца",
+          "codingSystem": "I10",
+          "diagnosedAt": "2021-04-19T10:45:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-01-31T13:20:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "M54.5",
+          "title": "Дорсалгия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-08-06T08:30:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "348710",
+      "firstName": "Тамара",
+      "lastName": "Никитина",
+      "middleName": "Сергеевна",
+      "sex": "Female",
+      "birthDate": "1956-08-26",
+      "diagnoses": [
+        {
+          "code": "H40.9",
+          "title": "Глаукома неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-03-08T09:00:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "692145",
+      "firstName": "Константин",
+      "lastName": "Сорокин",
+      "middleName": "Петрович",
+      "sex": "Male",
+      "birthDate": "1980-10-11",
+      "diagnoses": [
+        {
+          "code": "J45.9",
+          "title": "Астма неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-05-27T11:30:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "J20.9",
+          "title": "Острый бронхит неуточненный",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-06-16T14:15:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "179634",
+      "firstName": "Раиса",
+      "lastName": "Фомина",
+      "middleName": "Андреевна",
+      "sex": "Female",
+      "birthDate": "1944-04-18",
+      "diagnoses": [
+        {
+          "code": "I50.9",
+          "title": "Сердечная недостаточность неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2021-11-29T10:00:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-07-04T09:20:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "M81.9",
+          "title": "Остеопороз неуточненный",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-10-25T15:00:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "825370",
+      "firstName": "Леонид",
+      "lastName": "Воробьев",
+      "middleName": "Михайлович",
+      "sex": "Male",
+      "birthDate": "1936-12-28",
+      "diagnoses": [
+        {
+          "code": "I25.1",
+          "title": "Атеросклеротическая болезнь сердца",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-02-18T08:45:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I48",
+          "title": "Фибрилляция и трепетание предсердий",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-02-18T08:45:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "N18.9",
+          "title": "Хроническая болезнь почек неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-09-01T10:30:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "J18.9",
+          "title": "Пневмония неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-12-10T13:00:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "460918",
+      "firstName": "Юлия",
+      "lastName": "Мельникова",
+      "middleName": "Викторовна",
+      "sex": "Female",
+      "birthDate": "1991-09-09",
+      "diagnoses": [
+        {
+          "code": "K29.7",
+          "title": "Гастрит неуточненный",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-04-01T10:00:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "793256",
+      "firstName": "Анатолий",
+      "lastName": "Денисов",
+      "middleName": "Сергеевич",
+      "sex": "Male",
+      "birthDate": "1966-03-05",
+      "diagnoses": [
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-10-08T11:45:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "E66.9",
+          "title": "Ожирение неуточненное",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-12-17T09:15:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "306174",
+      "firstName": "Валентина",
+      "lastName": "Ершова",
+      "middleName": "Петровна",
+      "sex": "Female",
+      "birthDate": "1951-07-21",
+      "diagnoses": [
+        {
+          "code": "M17.9",
+          "title": "Гонартроз неуточненный",
+          "codingSystem": "I10",
+          "diagnosedAt": "2021-09-13T10:20:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-05-29T11:30:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "H25.9",
+          "title": "Старческая катаракта неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-08-18T14:45:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "517890",
+      "firstName": "Денис",
+      "lastName": "Королев",
+      "middleName": "Андреевич",
+      "sex": "Male",
+      "birthDate": "1999-05-14",
+      "diagnoses": [
+        {
+          "code": "F41.9",
+          "title": "Тревожное расстройство неуточненное",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-08-22T09:00:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "684201",
+      "firstName": "Алла",
+      "lastName": "Герасимова",
+      "middleName": "Владимировна",
+      "sex": "Female",
+      "birthDate": "1977-12-02",
+      "diagnoses": [
+        {
+          "code": "G43.9",
+          "title": "Мигрень неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2022-07-07T10:30:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "F32.9",
+          "title": "Депрессивный эпизод неуточненный",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-03-19T12:00:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    },
+    {
+      "sourceSystem": "LAB4_XML",
+      "externalPatientId": "250719",
+      "firstName": "Григорий",
+      "lastName": "Трофимов",
+      "middleName": "Николаевич",
+      "sex": "Male",
+      "birthDate": "1969-08-08",
+      "diagnoses": [
+        {
+          "code": "J44.9",
+          "title": "Хроническая обструктивная легочная болезнь неуточненная",
+          "codingSystem": "I10",
+          "diagnosedAt": "2021-05-11T11:15:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "I10",
+          "title": "Эссенциальная (первичная) гипертензия",
+          "codingSystem": "I10",
+          "diagnosedAt": "2023-02-20T09:45:00+03:00",
+          "diagnosisType": "U"
+        },
+        {
+          "code": "E11.9",
+          "title": "Инсулиннезависимый сахарный диабет без осложнений",
+          "codingSystem": "I10",
+          "diagnosedAt": "2024-09-29T15:30:00+03:00",
+          "diagnosisType": "U"
+        }
+      ]
+    }
+  ]
+}
