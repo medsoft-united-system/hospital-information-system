@@ -1,0 +1,652 @@
+{
+  "contractVersion": "C4-v1",
+  "fixtureSchemaVersion": 1,
+  "status": {
+    "kind": "contract-fixtures",
+    "teammateConsent": "pending",
+    "implementationReady": false
+  },
+  "sourceSystem": "LAB4_XML",
+  "sourceTimeZone": "Europe/Moscow",
+  "defaultMllpPort": 2575,
+  "limits": {
+    "maxPayloadBytes": 1048576,
+    "maxDiagnosesPerPatient": 100,
+    "tlsHandshakeTimeoutSeconds": 10,
+    "frameReadTimeoutSeconds": 30,
+    "ackTimeoutSeconds": 30
+  },
+  "source": {
+    "file": "patients.xml",
+    "originalFileName": "Лабораторная 4 данные.xml",
+    "sha256": "4f822687e72db591d0263ad0c08449da68283327812452a5a020df530fbd0ca3",
+    "sizeBytes": 43213,
+    "encoding": "UTF-8",
+    "namespace": null,
+    "patientCount": 50,
+    "diagnosisCount": 100,
+    "distinctCodeCount": 25,
+    "diagnosisCountDistribution": {
+      "0": 5,
+      "1": 13,
+      "2": 14,
+      "3": 13,
+      "4": 5
+    },
+    "sexCounts": {
+      "Male": 25,
+      "Female": 25
+    },
+    "diagnosedAtHasTimeZone": false,
+    "clinicalDateRange": {
+      "min": "2021-03-09T10:30:00+03:00",
+      "max": "2024-12-19T08:00:00+03:00"
+    }
+  },
+  "normalizedPatients": {
+    "file": "normalized-patients.json",
+    "indexBase": 0,
+    "syntheticFile": "normalized-synthetic-patients.json"
+  },
+  "wire": {
+    "encoding": "UTF-8",
+    "byteOrderMark": false,
+    "segmentTerminatorHex": "0D",
+    "frameStartHex": "0B",
+    "frameEndHex": "1C0D",
+    "messageVersion": "2.8",
+    "adtMessageType": "ADT^A28^ADT_A05",
+    "probeMessageType": "NMD^N02^NMD_N02",
+    "fixtureMessageTimestamp": "20261113120000+0000",
+    "ackMode": "original",
+    "msh15": "",
+    "msh16": ""
+  },
+  "syntheticCredential": {
+    "label": "NON_SECRET_INVALID_TOKEN_FOR_CODEC_FIXTURES_ONLY",
+    "rawValue": "lab4-fixture-access-token-not-valid",
+    "base64Value": "bGFiNC1maXh0dXJlLWFjY2Vzcy10b2tlbi1ub3QtdmFsaWQ=",
+    "validJwt": false
+  },
+  "cases": [
+    {
+      "id": "accepted-no-diagnoses",
+      "request": "adt-no-diagnoses.hl7",
+      "frame": "adt-no-diagnoses.mllp",
+      "expectation": "accepted",
+      "requestMessageControlId": "lab4-accepted-no-diagnoses-001",
+      "acknowledgementExpected": true,
+      "response": "ack-accepted-no-diagnoses.hl7",
+      "responseFrame": "ack-accepted-no-diagnoses.mllp",
+      "expectedAck": {
+        "messageType": "ACK^A28^ACK",
+        "messageControlId": "ack-accepted-no-diagnoses",
+        "code": "AA",
+        "correlationId": "lab4-accepted-no-diagnoses-001",
+        "text": "10000000-0000-4000-8000-000000000001"
+      },
+      "normalizedPatient": {
+        "file": "normalized-patients.json",
+        "index": 0,
+        "externalPatientId": "347821"
+      },
+      "precondition": "Fake auth accepts the explicitly invalid fixture credential; external identity is absent.",
+      "expectedDiagnosisCount": 0,
+      "expectedPatientUuid": "10000000-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "accepted-multiple-diagnoses",
+      "request": "adt-multiple-diagnoses.hl7",
+      "frame": "adt-multiple-diagnoses.mllp",
+      "expectation": "accepted",
+      "requestMessageControlId": "lab4-accepted-multiple-diagnoses-001",
+      "acknowledgementExpected": true,
+      "response": "ack-accepted-multiple-diagnoses.hl7",
+      "responseFrame": "ack-accepted-multiple-diagnoses.mllp",
+      "expectedAck": {
+        "messageType": "ACK^A28^ACK",
+        "messageControlId": "ack-accepted-multiple-diagnoses",
+        "code": "AA",
+        "correlationId": "lab4-accepted-multiple-diagnoses-001",
+        "text": "10000000-0000-4000-8000-000000000002"
+      },
+      "normalizedPatient": {
+        "file": "normalized-patients.json",
+        "index": 2,
+        "externalPatientId": "216734"
+      },
+      "precondition": "Fake auth accepts the explicitly invalid fixture credential; external identity is absent.",
+      "expectedDiagnosisCount": 2,
+      "expectedPatientUuid": "10000000-0000-4000-8000-000000000002"
+    },
+    {
+      "id": "accepted-escaped-synthetic",
+      "request": "adt-escaped-synthetic.hl7",
+      "frame": "adt-escaped-synthetic.mllp",
+      "expectation": "accepted",
+      "requestMessageControlId": "lab4-accepted-escaped-synthetic-001",
+      "acknowledgementExpected": true,
+      "response": "ack-accepted-escaped-synthetic.hl7",
+      "responseFrame": "ack-accepted-escaped-synthetic.mllp",
+      "expectedAck": {
+        "messageType": "ACK^A28^ACK",
+        "messageControlId": "ack-accepted-escaped-synthetic",
+        "code": "AA",
+        "correlationId": "lab4-accepted-escaped-synthetic-001",
+        "text": "10000000-0000-4000-8000-000000000003"
+      },
+      "normalizedPatient": {
+        "file": "normalized-synthetic-patients.json",
+        "index": 0,
+        "externalPatientId": "000042"
+      },
+      "precondition": "Fake auth accepts the explicitly invalid fixture credential; external identity is absent.",
+      "expectedDiagnosisCount": 2,
+      "expectedPatientUuid": "10000000-0000-4000-8000-000000000003"
+    },
+    {
+      "id": "duplicate",
+      "request": "adt-duplicate.hl7",
+      "frame": "adt-duplicate.mllp",
+      "expectation": "duplicate",
+      "requestMessageControlId": "lab4-duplicate-001",
+      "acknowledgementExpected": true,
+      "response": "ack-duplicate.hl7",
+      "responseFrame": "ack-duplicate.mllp",
+      "expectedAck": {
+        "messageType": "ACK^A28^ACK",
+        "messageControlId": "ack-duplicate",
+        "code": "AE",
+        "correlationId": "lab4-duplicate-001",
+        "text": "DUPLICATE: пациент уже импортирован"
+      },
+      "normalizedPatient": {
+        "file": "normalized-patients.json",
+        "index": 0,
+        "externalPatientId": "347821"
+      },
+      "precondition": "Fake auth accepts fixture credential; LAB4_XML/347821 was already committed.",
+      "patientMutationExpected": false
+    },
+    {
+      "id": "validation-invalid-birth-date",
+      "request": "adt-invalid-birth-date.hl7",
+      "frame": "adt-invalid-birth-date.mllp",
+      "expectation": "validation",
+      "requestMessageControlId": "lab4-invalid-birth-date-001",
+      "acknowledgementExpected": true,
+      "response": "ack-invalid-birth-date.hl7",
+      "responseFrame": "ack-invalid-birth-date.mllp",
+      "expectedAck": {
+        "messageType": "ACK^A28^ACK",
+        "messageControlId": "ack-invalid-birth-date",
+        "code": "AE",
+        "correlationId": "lab4-invalid-birth-date-001",
+        "text": "VALIDATION: недопустимая дата рождения"
+      },
+      "externalPatientId": "000043",
+      "patientMutationExpected": false,
+      "precondition": "Fake auth accepts fixture credential; external identity is absent."
+    },
+    {
+      "id": "validation-invalid-second-diagnosis",
+      "request": "adt-invalid-second-diagnosis.hl7",
+      "frame": "adt-invalid-second-diagnosis.mllp",
+      "expectation": "validation",
+      "requestMessageControlId": "lab4-invalid-second-diagnosis-001",
+      "acknowledgementExpected": true,
+      "response": "ack-invalid-second-diagnosis.hl7",
+      "responseFrame": "ack-invalid-second-diagnosis.mllp",
+      "expectedAck": {
+        "messageType": "ACK^A28^ACK",
+        "messageControlId": "ack-invalid-second-diagnosis",
+        "code": "AE",
+        "correlationId": "lab4-invalid-second-diagnosis-001",
+        "text": "VALIDATION: недопустимая дата диагноза"
+      },
+      "externalPatientId": "000044",
+      "patientMutationExpected": false,
+      "precondition": "Fake auth accepts fixture credential; identity and Z99.9 definition are absent. Roll back patient, first diagnosis, definitions and success audit."
+    },
+    {
+      "id": "auth-rejected",
+      "request": "adt-auth-rejected.hl7",
+      "frame": "adt-auth-rejected.mllp",
+      "expectation": "auth_rejected",
+      "requestMessageControlId": "lab4-auth-rejected-001",
+      "acknowledgementExpected": true,
+      "response": "ack-auth-rejected.hl7",
+      "responseFrame": "ack-auth-rejected.mllp",
+      "expectedAck": {
+        "messageType": "ACK^A28^ACK",
+        "messageControlId": "ack-auth-rejected",
+        "code": "AR",
+        "correlationId": "lab4-auth-rejected-001",
+        "text": "AUTH: доступ запрещён",
+        "errorCode": "207",
+        "errorSeverity": "E",
+        "errorDiagnostic": "Доступ запрещён"
+      },
+      "patientMutationExpected": false,
+      "precondition": "Auth validator rejects the fixture credential, as a real validator must."
+    },
+    {
+      "id": "auth-invalid-uac-base64",
+      "request": "adt-invalid-uac-base64.hl7",
+      "frame": "adt-invalid-uac-base64.mllp",
+      "expectation": "auth_rejected",
+      "requestMessageControlId": "lab4-invalid-uac-base64-001",
+      "acknowledgementExpected": true,
+      "response": "ack-invalid-uac-base64.hl7",
+      "responseFrame": "ack-invalid-uac-base64.mllp",
+      "expectedAck": {
+        "messageType": "ACK^A28^ACK",
+        "messageControlId": "ack-invalid-uac-base64",
+        "code": "AR",
+        "correlationId": "lab4-invalid-uac-base64-001",
+        "text": "AUTH: доступ запрещён",
+        "errorCode": "207",
+        "errorSeverity": "E",
+        "errorDiagnostic": "Доступ запрещён"
+      },
+      "patientMutationExpected": false
+    },
+    {
+      "id": "protocol-unsupported-version",
+      "request": "adt-unsupported-version.hl7",
+      "frame": "adt-unsupported-version.mllp",
+      "expectation": "protocol_rejected",
+      "requestMessageControlId": "lab4-unsupported-version-001",
+      "acknowledgementExpected": true,
+      "response": "ack-unsupported-version.hl7",
+      "responseFrame": "ack-unsupported-version.mllp",
+      "expectedAck": {
+        "messageType": "ACK^A28^ACK",
+        "messageControlId": "ack-unsupported-version",
+        "code": "AR",
+        "correlationId": "lab4-unsupported-version-001",
+        "text": "PROTOCOL: неподдерживаемая версия HL7"
+      },
+      "patientMutationExpected": false
+    },
+    {
+      "id": "protocol-missing-pid",
+      "request": "adt-missing-pid.hl7",
+      "frame": "adt-missing-pid.mllp",
+      "expectation": "protocol_rejected",
+      "requestMessageControlId": "lab4-missing-pid-001",
+      "acknowledgementExpected": true,
+      "response": "ack-missing-pid.hl7",
+      "responseFrame": "ack-missing-pid.mllp",
+      "expectedAck": {
+        "messageType": "ACK^A28^ACK",
+        "messageControlId": "ack-missing-pid",
+        "code": "AR",
+        "correlationId": "lab4-missing-pid-001",
+        "text": "PROTOCOL: отсутствует обязательный PID"
+      },
+      "patientMutationExpected": false,
+      "precondition": "Fake auth accepts fixture credential."
+    },
+    {
+      "id": "internal-error",
+      "request": "adt-internal-error.hl7",
+      "frame": "adt-internal-error.mllp",
+      "expectation": "internal_error",
+      "requestMessageControlId": "lab4-internal-error-001",
+      "acknowledgementExpected": true,
+      "response": "ack-internal-error.hl7",
+      "responseFrame": "ack-internal-error.mllp",
+      "expectedAck": {
+        "messageType": "ACK^A28^ACK",
+        "messageControlId": "ack-internal-error",
+        "code": "AE",
+        "correlationId": "lab4-internal-error-001",
+        "text": "INTERNAL: импорт не выполнен"
+      },
+      "normalizedPatient": {
+        "file": "normalized-patients.json",
+        "index": 0,
+        "externalPatientId": "347821"
+      },
+      "patientMutationExpected": false,
+      "precondition": "Fake auth accepts fixture credential; injected database/infrastructure failure rolls back the patient transaction."
+    },
+    {
+      "id": "probe",
+      "request": "probe.hl7",
+      "frame": "probe.mllp",
+      "expectation": "probe",
+      "requestMessageControlId": "lab4-probe-001",
+      "acknowledgementExpected": true,
+      "response": "ack-probe.hl7",
+      "responseFrame": "ack-probe.mllp",
+      "expectedAck": {
+        "messageType": "ACK^N02^ACK",
+        "messageControlId": "ack-probe",
+        "code": "AA",
+        "correlationId": "lab4-probe-001",
+        "text": "CONNECTED"
+      },
+      "patientMutationExpected": false,
+      "precondition": "Fake auth accepts fixture credential. NCK never sets system time."
+    },
+    {
+      "id": "invalid-ack-correlation",
+      "request": "adt-ack-correlation.hl7",
+      "frame": "adt-ack-correlation.mllp",
+      "expectation": "invalid_ack_correlation",
+      "requestMessageControlId": "lab4-ack-correlation-001",
+      "acknowledgementExpected": true,
+      "response": "ack-correlation-mismatch.hl7",
+      "responseFrame": "ack-correlation-mismatch.mllp",
+      "expectedAck": {
+        "messageType": "ACK^A28^ACK",
+        "messageControlId": "ack-correlation-mismatch",
+        "code": "AA",
+        "correlationId": "lab4-unrelated-999",
+        "text": "10000000-0000-4000-8000-000000000004"
+      },
+      "normalizedPatient": {
+        "file": "normalized-patients.json",
+        "index": 0,
+        "externalPatientId": "347821"
+      },
+      "expectedCorrelationId": "lab4-ack-correlation-001",
+      "clientSuccessExpected": false,
+      "clientOutcome": "unknown",
+      "precondition": "Fake server deliberately responds with another request control ID."
+    },
+    {
+      "id": "invalid-ack-result",
+      "request": "adt-ack-invalid-result.hl7",
+      "frame": "adt-ack-invalid-result.mllp",
+      "expectation": "invalid_ack_result",
+      "requestMessageControlId": "lab4-ack-invalid-result-001",
+      "acknowledgementExpected": true,
+      "response": "ack-invalid-result.hl7",
+      "responseFrame": "ack-invalid-result.mllp",
+      "expectedAck": {
+        "messageType": "ACK^A28^ACK",
+        "messageControlId": "ack-invalid-result",
+        "code": "AA",
+        "correlationId": "lab4-ack-invalid-result-001",
+        "text": "IMPORTED"
+      },
+      "normalizedPatient": {
+        "file": "normalized-patients.json",
+        "index": 0,
+        "externalPatientId": "347821"
+      },
+      "clientSuccessExpected": false,
+      "clientOutcome": "unknown",
+      "precondition": "Fake server deliberately sends AA with non-UUID MSA-3."
+    },
+    {
+      "id": "protocol-incomplete-frame",
+      "request": "malformed-frame-payload.hl7",
+      "frame": "malformed-frame-payload.mllp",
+      "expectation": "protocol_rejected",
+      "requestMessageControlId": "lab4-incomplete-frame-001",
+      "acknowledgementExpected": false,
+      "patientMutationExpected": false,
+      "framingError": "missing-terminal-CR",
+      "precondition": "Peer sends these bytes and then EOF before the final MLLP CR.",
+      "expectedTransportAction": "close-with-safe-diagnostic-without-ack"
+    }
+  ],
+  "files": {
+    ".gitattributes": {
+      "sha256": "c5ae485b30c80cb6d714b327aa9dbf3f6061fa0f3e0f1ef6e7e9c553ced92fc8",
+      "sizeBytes": 66
+    },
+    "README.md": {
+      "sha256": "c1dd0472fa9780b1be36ee64dadcb79ef115c19eca0271250d86b9f89d6d12ba",
+      "sizeBytes": 14095
+    },
+    "ack-accepted-escaped-synthetic.hl7": {
+      "sha256": "cf07ece52cdd6ac6c3016733034b203173b05f0b5751e54441378e5fcde656ca",
+      "sizeBytes": 214
+    },
+    "ack-accepted-escaped-synthetic.mllp": {
+      "sha256": "13630910510d9c64f1a5a7cfd2fa810528d102e6fbc2e7a045e7c1f480226b77",
+      "sizeBytes": 217
+    },
+    "ack-accepted-multiple-diagnoses.hl7": {
+      "sha256": "71bfb52c4a84502f84a86324913174009d08b7ca93fa1ebb23585f8d60360708",
+      "sizeBytes": 216
+    },
+    "ack-accepted-multiple-diagnoses.mllp": {
+      "sha256": "84a15e7022c56eeefa7d8967869d044df46122733fcc58248337b1f3d40151d6",
+      "sizeBytes": 219
+    },
+    "ack-accepted-no-diagnoses.hl7": {
+      "sha256": "df41433d267a1c158ffb72cd5eeb464f12f2e11cb374431ac4bc3237b2e2ce4c",
+      "sizeBytes": 204
+    },
+    "ack-accepted-no-diagnoses.mllp": {
+      "sha256": "f6c1dfa9990e6dd6b14459d2de5072ae65a2198e4c1a6b591f19ed6fb510ef9b",
+      "sizeBytes": 207
+    },
+    "ack-auth-rejected.hl7": {
+      "sha256": "e9f1c3da18f7e3a9003c51ceba9444a282b2a0ef467a98320040e756de9a7e7b",
+      "sizeBytes": 266
+    },
+    "ack-auth-rejected.mllp": {
+      "sha256": "5fcc892ebbae6a59eeb3ea9e4ebcc56d115c3488df2a629460d1ac70e73c1d4f",
+      "sizeBytes": 269
+    },
+    "ack-correlation-mismatch.hl7": {
+      "sha256": "f4ce1e5222cef3e5b1cbd4092996dacf0933ff758c3ba0255656c931c4939ee4",
+      "sizeBytes": 191
+    },
+    "ack-correlation-mismatch.mllp": {
+      "sha256": "a62906febfb0df85b7f0a16af69048e39a469c7732f0d31ac4a787459f0b4353",
+      "sizeBytes": 194
+    },
+    "ack-duplicate.hl7": {
+      "sha256": "d6383e2ec60f765b9934b1019d7f57a03011c30f3dedaad8b40ea07d64039578",
+      "sizeBytes": 201
+    },
+    "ack-duplicate.mllp": {
+      "sha256": "e734220998eaf6121e0856e08bdc8d3d88020d22929a9cd5b56537d716ea0072",
+      "sizeBytes": 204
+    },
+    "ack-internal-error.hl7": {
+      "sha256": "60c0517707e60ffe2a9ff85c8935706fbb30874e767d6510af2aeab7ebc33eff",
+      "sizeBytes": 198
+    },
+    "ack-internal-error.mllp": {
+      "sha256": "9c92685302c048ed2967722bd7c21a435b953fa129add6014fe1eb17654e3cb9",
+      "sizeBytes": 201
+    },
+    "ack-invalid-birth-date.hl7": {
+      "sha256": "e3808579cdaec67d03fbd7353f9a0384defb0a2d80e051c84e531a32853512f9",
+      "sizeBytes": 224
+    },
+    "ack-invalid-birth-date.mllp": {
+      "sha256": "a34362fd793b45c08142280635a3a0a2eb404dba8f869c89c31061425ef480f6",
+      "sizeBytes": 227
+    },
+    "ack-invalid-result.hl7": {
+      "sha256": "36c66a7423113ba8ae0632378a4531b58589df1805f22e797bba8e42701140b5",
+      "sizeBytes": 166
+    },
+    "ack-invalid-result.mllp": {
+      "sha256": "abab0cb6185a001a101acc38d77f02a4243d1d7c2cdbc2aa0b55596182836b66",
+      "sizeBytes": 169
+    },
+    "ack-invalid-second-diagnosis.hl7": {
+      "sha256": "c27efe9a378391af12be844911a40a3a7577bb083b418daddc8ec97b1d8fd34e",
+      "sizeBytes": 236
+    },
+    "ack-invalid-second-diagnosis.mllp": {
+      "sha256": "c1d17c099769227155e817a0421339e92f763e5f47b3770ffde0cba4939a7301",
+      "sizeBytes": 239
+    },
+    "ack-invalid-uac-base64.hl7": {
+      "sha256": "90e7b0238b73c06be1dcf4d56035ce27edd52095f3aff70fa7eb8e64924f352d",
+      "sizeBytes": 276
+    },
+    "ack-invalid-uac-base64.mllp": {
+      "sha256": "0ef900d7e6a9806e206fbf7688499e6a83b96357e581ecbfb9a5f6fa26e04840",
+      "sizeBytes": 279
+    },
+    "ack-missing-pid.hl7": {
+      "sha256": "4d847239a49bde24f61aa2d11afed9bd6d8d1dfac368209f41f9cf09a7f0e9a8",
+      "sizeBytes": 209
+    },
+    "ack-missing-pid.mllp": {
+      "sha256": "b9dfdc7773e27049f72f423665a1ea6572482eecff50cfb0831e75dc5bd47dee",
+      "sizeBytes": 212
+    },
+    "ack-probe.hl7": {
+      "sha256": "71a89742dc37005e02023567a3ad3a339da1535a644217e510f5a07e89f13a52",
+      "sizeBytes": 145
+    },
+    "ack-probe.mllp": {
+      "sha256": "78a2764ebb724ad2a10291b73b0605f549252485992c4dc07aa62012cd4978b4",
+      "sizeBytes": 148
+    },
+    "ack-unsupported-version.hl7": {
+      "sha256": "abf376a29ad881faeba0bc6bfc7d869ff7eabef09c1b24f38c6ece3f90570bcb",
+      "sizeBytes": 223
+    },
+    "ack-unsupported-version.mllp": {
+      "sha256": "ccf4d0a4745fbf3c9a48812130413a7076cd4e18062ff645c090d6f3edff076d",
+      "sizeBytes": 226
+    },
+    "adt-ack-correlation.hl7": {
+      "sha256": "2aa897576498925126701bba12dc0f9e540ac435f60d672a790a026ccb10407d",
+      "sizeBytes": 369
+    },
+    "adt-ack-correlation.mllp": {
+      "sha256": "de9b6b8d2563d544f7b902b6a314be0d079ab57dd63dd9f47684ff2131b7eb82",
+      "sizeBytes": 372
+    },
+    "adt-ack-invalid-result.hl7": {
+      "sha256": "5792833b083ed7532652348425de5310f163ab9ea6a4c38e7e515171c341a25e",
+      "sizeBytes": 372
+    },
+    "adt-ack-invalid-result.mllp": {
+      "sha256": "e0ee4f3190d2ae17e45392e6316d0577a9a42655a5f5b65b4151d18e6114a950",
+      "sizeBytes": 375
+    },
+    "adt-auth-rejected.hl7": {
+      "sha256": "71969f45e93f62512a96e57a253b3322db7c7a05a29dee404f77a66d9c163e2a",
+      "sizeBytes": 367
+    },
+    "adt-auth-rejected.mllp": {
+      "sha256": "c3a76d475f8290b214639378287dbd7beeb00340d518650a7bb78dec11f8f25f",
+      "sizeBytes": 370
+    },
+    "adt-duplicate.hl7": {
+      "sha256": "d1cd2a3cadcf849b3be0d4cdab5aaea714430cd8d507b58de9db14a5a6cfa660",
+      "sizeBytes": 363
+    },
+    "adt-duplicate.mllp": {
+      "sha256": "e6e79c6df405e2b60d53cd280831ce2544a8378d055d1a7ff2fb8aca718bed59",
+      "sizeBytes": 366
+    },
+    "adt-escaped-synthetic.hl7": {
+      "sha256": "f6f489e8d1533f772dd384fc6cdabb4fae0a6a74d36b2c9f9dd6400e1004c8dd",
+      "sizeBytes": 700
+    },
+    "adt-escaped-synthetic.mllp": {
+      "sha256": "364e1c84853917fe8940c7eaead0b7e54550d54a88723b76871cc9798b55beb5",
+      "sizeBytes": 703
+    },
+    "adt-internal-error.hl7": {
+      "sha256": "49b8006e2186e7cb47222f0ef2f3315b30ad94f46a1b77a2facee234a394a4c5",
+      "sizeBytes": 368
+    },
+    "adt-internal-error.mllp": {
+      "sha256": "7b4cfde41e8abca5b5d359bb3ca6df97dd6f744fdbb1804fa6c821f433f234f4",
+      "sizeBytes": 371
+    },
+    "adt-invalid-birth-date.hl7": {
+      "sha256": "8f0e3d3f41f7a11425a30de8472bb6bb7f8ee732f8b53631a6c78e5800ef4272",
+      "sizeBytes": 372
+    },
+    "adt-invalid-birth-date.mllp": {
+      "sha256": "871d2971f23a5e02180af6a82036b1892a7a01fd3b9e8247b271b0a1c67719a4",
+      "sizeBytes": 375
+    },
+    "adt-invalid-second-diagnosis.hl7": {
+      "sha256": "f4cc05e6f85f227602c6fc09abe4e798ccae26584ff31f2a2dcc621b9bb1df4b",
+      "sizeBytes": 698
+    },
+    "adt-invalid-second-diagnosis.mllp": {
+      "sha256": "e7bb3aae68470575e821588cd31959558339d611852219dde82c333d542b0aeb",
+      "sizeBytes": 701
+    },
+    "adt-invalid-uac-base64.hl7": {
+      "sha256": "d934ad4dbe45e17317d3e63c82583c3f729d693092d9251f7ced7e3cc8d8e792",
+      "sizeBytes": 340
+    },
+    "adt-invalid-uac-base64.mllp": {
+      "sha256": "0ce970f906366eb4206bde6abcc41758ff3feace0ec0fc1acc1a5668f06c318d",
+      "sizeBytes": 343
+    },
+    "adt-missing-pid.hl7": {
+      "sha256": "3f53d137265f0eaf8f6e60678ab113a9999488f5fe1d537ec3cf14668c4af161",
+      "sizeBytes": 280
+    },
+    "adt-missing-pid.mllp": {
+      "sha256": "4797c94488d3466d5703868541f7b0fbaddf692288dd6f70b2693528ff550b8b",
+      "sizeBytes": 283
+    },
+    "adt-multiple-diagnoses.hl7": {
+      "sha256": "3093ad8e312720d63f19989b0775f8418df66fd9d646035da2906c9b64f58bfa",
+      "sizeBytes": 634
+    },
+    "adt-multiple-diagnoses.mllp": {
+      "sha256": "70d3bc56e8ee3a9d0f59b66095ed3561f30b507b4af5512d134766be952150f3",
+      "sizeBytes": 637
+    },
+    "adt-no-diagnoses.hl7": {
+      "sha256": "7d8027396c851ffafaae0145cb4ab43a60788b6000ad2b9b16bc73e098f921bc",
+      "sizeBytes": 375
+    },
+    "adt-no-diagnoses.mllp": {
+      "sha256": "b470675010fcd5218edac413b708fdb0b77588655ec89276898fb49d7ad190f4",
+      "sizeBytes": 378
+    },
+    "adt-unsupported-version.hl7": {
+      "sha256": "c4e499582e260f2bd88c79a7f60e45bbf7cadfcba127bd47051a8beaf4a6ef48",
+      "sizeBytes": 373
+    },
+    "adt-unsupported-version.mllp": {
+      "sha256": "df62f84b599d58f928dfdc2edb1c6b2ec13e76457a8df229b8000e5133844eb2",
+      "sizeBytes": 376
+    },
+    "malformed-frame-payload.hl7": {
+      "sha256": "6445d14a90ea76bd205b94c8a6beeca162a866b9f36dc1650e9cc0137a28332c",
+      "sizeBytes": 370
+    },
+    "malformed-frame-payload.mllp": {
+      "sha256": "264ebf0cbeb87ab4f538dfae75e1ee89eafa12cb7e1ea2877a1448166651ce93",
+      "sizeBytes": 372
+    },
+    "normalized-patients.json": {
+      "sha256": "ad61ecda95ad9595bbbb69102b16ee1819fa221df9f5fe26b69c3aef7488315b",
+      "sizeBytes": 39087
+    },
+    "normalized-synthetic-patients.json": {
+      "sha256": "1494489b677e53c00ec6cb660ee580a8c9ae40562f174cb0938ba9d5b3f94f9f",
+      "sizeBytes": 914
+    },
+    "patients.xml": {
+      "sha256": "4f822687e72db591d0263ad0c08449da68283327812452a5a020df530fbd0ca3",
+      "sizeBytes": 43213
+    },
+    "probe.hl7": {
+      "sha256": "d8c13185793062ca4460b8ed0c9c772ecc65eb2bf004e2a36d5a9edef017a74f",
+      "sizeBytes": 266
+    },
+    "probe.mllp": {
+      "sha256": "5741d791343ab3403ee88bfd227c456edfefcfc6da8fc1ba51207d6f622ad8f1",
+      "sizeBytes": 269
+    }
+  }
+}
