@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><IsPackable>false</IsPackable><IsTestProject>true</IsTestProject></PropertyGroup>
   <ItemGroup><Using Include="Xunit" /></ItemGroup>
+  <ItemGroup Condition="'$(EnableMllpTlsTests)' != 'true'">
+    <Compile Remove="Lab4MllpTlsTests.cs" />
+    <Compile Remove="Lab4TestCertificates.cs" />
+  </ItemGroup>
   <ItemGroup>
     <None Include="../Fixtures/Lab4/**/*" Link="Fixtures/Lab4/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
