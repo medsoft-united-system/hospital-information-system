@@ -234,7 +234,9 @@ public sealed class Lab3UpgradeFromLab2Tests
         var result = new Dictionary<string, string[]>(StringComparer.Ordinal);
         foreach (var table in LegacyTables)
         {
-            var sql = "SELECT (to_jsonb(t) - 'author_kind' - 'performed_by_service_account_id' - 'actor_service_account_id')::text AS \"Value\" FROM \"" + table + "\" AS t";
+            var sql = "SELECT (to_jsonb(t) - 'author_kind' - 'performed_by_service_account_id' - 'actor_service_account_id'" +
+                " - 'added_by_service_account_id' - 'coding_system' - 'diagnosed_at_offset_minutes'" +
+                " - 'diagnosed_at_utc' - 'diagnosis_type')::text AS \"Value\" FROM \"" + table + "\" AS t";
             var rows = await db.Database.SqlQueryRaw<string>(sql).ToArrayAsync();
             result.Add(table, rows.Order(StringComparer.Ordinal).ToArray());
         }

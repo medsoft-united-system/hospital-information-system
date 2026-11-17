@@ -116,12 +116,14 @@ public sealed class PatientsAndDiagnosesApiTests(HospitalApiFactory factory) : I
     }
 
     [Theory]
-    [InlineData("A00.0", "Холера")]
-    [InlineData("A00.000", "Холера")]
-    [InlineData("A00.00", "АБ")]
-    [InlineData("A00.00", "1234567890123456789012345")]
-    public async Task CreateDiagnosis_InvalidLengths_ShouldReturnValidationProblemWithoutInsert(string code, string name)
+    [InlineData(2, 3)]
+    [InlineData(33, 3)]
+    [InlineData(6, 2)]
+    [InlineData(6, 257)]
+    public async Task CreateDiagnosis_InvalidLengths_ShouldReturnValidationProblemWithoutInsert(int codeLength, int nameLength)
     {
+        var code = new string('C', codeLength);
+        var name = new string('Н', nameLength);
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
         var count = await db.DiagnosisDefinitions.CountAsync();
@@ -130,6 +132,25 @@ public sealed class PatientsAndDiagnosesApiTests(HospitalApiFactory factory) : I
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>())!.Errors.Should().NotBeEmpty();
         (await db.DiagnosisDefinitions.CountAsync()).Should().Be(count);
+    }
+
+    [Fact]
+    public async Task CreateAndUpdateDiagnosis_MaximumLengths_ShouldPreserveExactCodeAndName()
+    {
+        var code = Guid.NewGuid().ToString("N");
+        var name = code + new string('Н', DiagnosisLimits.MaxNameLength - code.Length);
+        using var create = await _client.PostAsJsonAsync("/api/diagnoses",
+            new SaveDiagnosisRequest($" {code} ", $" {name} "));
+
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        var diagnosis = (await create.Content.ReadFromJsonAsync<DiagnosisDefinitionDto>())!;
+        diagnosis.Code.Should().Be(code);
+        diagnosis.Name.Should().Be(name);
+        using var update = await _client.PutAsJsonAsync($"/api/diagnoses/{diagnosis.Id}",
+            new SaveDiagnosisRequest(code, name));
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await _client.GetFromJsonAsync<DiagnosisDefinitionDto>($"/api/diagnoses/{diagnosis.Id}"))
+            .Should().Be(diagnosis);
     }
 
     [Fact]

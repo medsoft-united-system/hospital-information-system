@@ -22,7 +22,7 @@
   <div class="import-content">
     <p id="csv-help">Файл UTF-8 до 1 МиБ, не более 10 000 записей. Заголовок <code>Code,Name</code>, разделитель —
       запятая.
-      Код — 6 символов, название — от 3 до 24. Значения с запятой заключайте в двойные кавычки.</p>
+      Код — от 3 до 32 символов, название — от 3 до 256. Значения с запятой заключайте в двойные кавычки.</p>
     <p>Коды и названия внутри файла должны быть уникальны. Название, занятое другим кодом в справочнике, вызовет
       конфликт.
       При ошибке весь импорт отменяется.</p>
@@ -50,7 +50,7 @@
     <div class="registry-heading">
       <div>
         <h2>@(_editingId is null ? "Новый диагноз" : "Редактирование диагноза")</h2>
-        <p>Код — ровно 6 символов, название — от 3 до 24 символов. Код и название должны быть уникальны.</p>
+        <p>Код — от 3 до 32 символов, название — от 3 до 256 символов. Код и название должны быть уникальны.</p>
       </div>
       <span class="section-index">@(_editingId is null ? "НОВЫЙ" : "ПРАВКА")</span>
     </div>
@@ -60,13 +60,13 @@
         <div class="form-grid">
           <div>
             <label for="diagnosis-code">Код</label>
-            <InputText id="diagnosis-code" class="form-control" @bind-Value="_form.Code" maxlength="6"
+            <InputText id="diagnosis-code" class="form-control" @bind-Value="_form.Code" maxlength="@DiagnosisLimits.MaxCodeLength"
                        placeholder="Например, A00.00"/>
             <ValidationMessage For="() => _form.Code"/>
           </div>
           <div>
             <label for="diagnosis-name">Наименование</label>
-            <InputText id="diagnosis-name" class="form-control" @bind-Value="_form.Name" maxlength="24"
+            <InputText id="diagnosis-name" class="form-control" @bind-Value="_form.Name" maxlength="@DiagnosisLimits.MaxNameLength"
                        placeholder="Например, Холера"/>
             <ValidationMessage For="() => _form.Name"/>
           </div>
@@ -468,11 +468,13 @@
   private sealed class DiagnosisForm
   {
     [Required(ErrorMessage = "Укажите код диагноза.")]
-    [StringLength(6, MinimumLength = 6, ErrorMessage = "Код диагноза: ровно 6 символов.")]
+    [StringLength(DiagnosisLimits.MaxCodeLength, MinimumLength = DiagnosisLimits.MinCodeLength,
+      ErrorMessage = "Код диагноза должен содержать от 3 до 32 символов.")]
     public string Code { get; set; } = "";
 
     [Required(ErrorMessage = "Укажите название диагноза.")]
-    [StringLength(24, MinimumLength = 3, ErrorMessage = "Название: от 3 до 24 символов.")]
+    [StringLength(DiagnosisLimits.MaxNameLength, MinimumLength = DiagnosisLimits.MinNameLength,
+      ErrorMessage = "Название должно содержать от 3 до 256 символов.")]
     public string Name { get; set; } = "";
   }
 

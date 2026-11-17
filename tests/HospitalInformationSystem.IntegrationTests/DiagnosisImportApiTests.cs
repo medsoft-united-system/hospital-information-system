@@ -55,7 +55,7 @@ public sealed class DiagnosisImportApiTests(HospitalApiFactory factory) : IClass
     }
 
     [Theory]
-    [InlineData("Code,Name\nT10001,Первый\nBAD,Ошибка")]
+    [InlineData("Code,Name\nT10001,Первый\nAB,Ошибка")]
     [InlineData("Code,Name\nT10002,Первый\n T10002 ,Второй")]
     [InlineData("Code,Name\nT10003,Первый\nT10004, Первый ")]
     [InlineData("Code,Name\nT10005,Первый\nT10006,\"Незакрыто")]

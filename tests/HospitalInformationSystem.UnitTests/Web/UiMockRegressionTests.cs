@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 using HospitalInformationSystem.Contracts.Auth;
+using HospitalInformationSystem.Contracts.Diagnoses;
 using HospitalInformationSystem.Contracts.Security;
 using HospitalInformationSystem.Contracts.MedicalRecords;
 using HospitalInformationSystem.Web.ApiClients;
@@ -28,6 +29,23 @@ public sealed class UiMockRegressionTests
         after.Should().BeEquivalentTo(before);
         after.Count(account => account.Role == ApplicationRoles.Administrator).Should().Be(1);
         after.Should().OnlyContain(account => account.CreatedAtUtc != default && account.UpdatedAtUtc != default);
+    }
+
+    [Theory]
+    [InlineData("I10", 256)]
+    [InlineData("J45.9", 25)]
+    [InlineData("12345678901234567890123456789012", 3)]
+    public async Task CreateDiagnosis_ExtendedLimits_ShouldPreserveExactTrimmedCodeAndName(string code, int nameLength)
+    {
+        using var fixture = new Fixture(UiMockPersona.Administrator);
+        var name = new string('Н', nameLength);
+        using var response = await fixture.Http.PostAsJsonAsync("api/diagnoses",
+            new SaveDiagnosisRequest($" {code} ", $" {name} "));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var diagnosis = (await response.Content.ReadFromJsonAsync<DiagnosisDefinitionDto>())!;
+        diagnosis.Code.Should().Be(code);
+        diagnosis.Name.Should().Be(name);
     }
 
     [Fact]
