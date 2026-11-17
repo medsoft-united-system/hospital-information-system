@@ -15,7 +15,8 @@ public sealed class ServiceAccountsGatewayTests
     [Theory]
     [InlineData(null, HttpStatusCode.Unauthorized)]
     [InlineData(ApplicationRoles.MedicalWorker, HttpStatusCode.Forbidden)]
-    [InlineData("LIS", HttpStatusCode.Forbidden)]
+    [InlineData(ServiceAccountRoles.Lis, HttpStatusCode.Forbidden)]
+    [InlineData(ServiceAccountRoles.Hl7Import, HttpStatusCode.Forbidden)]
     public async Task EveryOperation_RejectsNonAdministratorBeforeHttp(string? role, HttpStatusCode status)
     {
         var session = new SessionState();
@@ -35,20 +36,26 @@ public sealed class ServiceAccountsGatewayTests
             (await operation.Should().ThrowAsync<ApiException>()).Which.StatusCode.Should().Be(status);
     }
 
-    [Fact]
-    public async Task UiMock_AdminLifecycle_PreservesIdentityAndKeepsKeysOutOfLists()
+    [Theory]
+    [InlineData(ServiceAccountRoles.Lis)]
+    [InlineData(ServiceAccountRoles.Hl7Import)]
+    public async Task UiMock_AdminLifecycle_PreservesIdentityAndKeepsKeysOutOfLists(string role)
     {
         var session = new SessionState();
         var state = new UiMockState(session);
         state.SwitchPersona(UiMockPersona.Administrator);
         using var http = new HttpClient(new UiMockHttpMessageHandler(state)) { BaseAddress = new Uri("https://ui-mock.invalid/") };
         var gateway = new ServiceAccountsGateway(new ServiceAccountsApiClient(http), session);
-        var created = await gateway.CreateAsync(new CreateServiceAccountRequest("Новая лаборатория"), CancellationToken.None);
+        var created = await gateway.CreateAsync(new CreateServiceAccountRequest("Новая лаборатория", role), CancellationToken.None);
         var renamed = await gateway.UpdateAsync(created.Account.Id, new UpdateServiceAccountRequest("Основная лаборатория", created.Account.Version), CancellationToken.None);
         var disabled = await gateway.SetActiveAsync(renamed.Id, new SetServiceAccountActiveRequest(false, renamed.Version), CancellationToken.None);
         var rotated = await gateway.RotateKeyAsync(disabled.Account.Id, new RotateServiceAccountKeyRequest(disabled.Account.Version), CancellationToken.None);
         (await gateway.GetAsync(rotated.Account.Id, CancellationToken.None)).Should().Be(rotated.Account);
         rotated.Account.Id.Should().Be(created.Account.Id);
+        created.Account.Role.Should().Be(role);
+        renamed.Role.Should().Be(role);
+        disabled.Account.Role.Should().Be(role);
+        rotated.Account.Role.Should().Be(role);
         rotated.Account.IsActive.Should().BeFalse();
         rotated.Account.Name.Should().Be("Основная лаборатория");
         rotated.ApiKey.Should().NotBe(created.ApiKey);
@@ -65,6 +72,41 @@ public sealed class ServiceAccountsGatewayTests
         state.Reset();
         state.SwitchPersona(UiMockPersona.Administrator);
         (await gateway.ListAsync(CancellationToken.None)).Should().NotContain(x => x.Id == created.Account.Id);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("Hl7Import")]
+    [InlineData("Administrator")]
+    public async Task UiMock_CreateRejectsUnsupportedRoleWithoutCreatingAccount(string? role)
+    {
+        var session = new SessionState();
+        var state = new UiMockState(session);
+        state.SwitchPersona(UiMockPersona.Administrator);
+        using var http = new HttpClient(new UiMockHttpMessageHandler(state)) { BaseAddress = new Uri("https://ui-mock.invalid/") };
+        var api = new ServiceAccountsApiClient(http);
+        var before = await api.ListAsync(CancellationToken.None);
+
+        using var response = await http.PostAsJsonAsync("api/service-accounts", new { name = "Импорт пациентов", role });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await api.ListAsync(CancellationToken.None)).Should().Equal(before);
+    }
+
+    [Fact]
+    public async Task UiMock_CreateWithOmittedRoleUsesLisDefault()
+    {
+        var session = new SessionState();
+        var state = new UiMockState(session);
+        state.SwitchPersona(UiMockPersona.Administrator);
+        using var http = new HttpClient(new UiMockHttpMessageHandler(state)) { BaseAddress = new Uri("https://ui-mock.invalid/") };
+
+        using var response = await http.PostAsJsonAsync("api/service-accounts", new { name = "Совместимая лаборатория" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var saved = await response.Content.ReadFromJsonAsync<ServiceAccountKeyResultDto>();
+        saved!.Account.Role.Should().Be(ServiceAccountRoles.Lis);
     }
 
     private sealed class RejectHandler : HttpMessageHandler

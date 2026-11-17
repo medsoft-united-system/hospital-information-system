@@ -37,15 +37,16 @@ public sealed class ServiceAccountService(HospitalDbContext db, TimeProvider tim
     {
         if (request is null) throw InvalidRequest();
         var name = ServiceAccountRules.NormalizeName(request.Name);
+        var role = ParseRole(request.Role);
         await using var transaction = db.Database.CurrentTransaction is null
             ? await db.Database.BeginTransactionAsync(cancellationToken) : null;
         await RequireUniqueNameAsync(name, null, cancellationToken);
         var id = Guid.NewGuid();
         var material = keys.Generate(id);
-        var account = ServiceAccountFactory.Create(id, name, material.Hash, timeProvider.GetUtcNow());
+        var account = ServiceAccountFactory.Create(id, name, material.Hash, timeProvider.GetUtcNow(), role);
         var row = account.ToDbo();
         db.ServiceAccounts.Add(row);
-        audit.Append(AuditEventType.AccountCreated, "Создан сервисный аккаунт LIS.",
+        audit.Append(AuditEventType.AccountCreated, $"Создан сервисный аккаунт {request.Role}.",
             Metadata(id, "service-account-created", 0));
         await db.SaveChangesAsync(cancellationToken);
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
@@ -66,7 +67,8 @@ public sealed class ServiceAccountService(HospitalDbContext db, TimeProvider tim
         if (DomainService.Rename(account, name, timeProvider.GetUtcNow()))
         {
             account.UpdateDbo(row);
-            audit.Append(AuditEventType.AccountChanged, "Изменено имя сервисного аккаунта LIS.",
+            var role = ServiceAccountDtoMapper.ToRole(row.Role);
+            audit.Append(AuditEventType.AccountChanged, $"Изменено имя сервисного аккаунта {role}.",
                 Metadata(id, "service-account-renamed", 0));
             await db.SaveChangesAsync(cancellationToken);
         }
@@ -90,8 +92,9 @@ public sealed class ServiceAccountService(HospitalDbContext db, TimeProvider tim
             account.UpdateDbo(row);
             if (!request.IsActive)
                 revoked = await sessions.RevokeAllAsync(id, now, "service-account-deactivated", cancellationToken);
-            audit.Append(AuditEventType.AccountChanged, request.IsActive ? "Активирован сервисный аккаунт LIS." :
-                    "Отключён сервисный аккаунт LIS.",
+            var role = ServiceAccountDtoMapper.ToRole(row.Role);
+            audit.Append(AuditEventType.AccountChanged, request.IsActive ? $"Активирован сервисный аккаунт {role}." :
+                    $"Отключён сервисный аккаунт {role}.",
                 Metadata(id, request.IsActive ? "service-account-activated" : "service-account-deactivated", revoked,
                     request.IsActive ? null : "service-account-deactivated"));
             await db.SaveChangesAsync(cancellationToken);
@@ -114,7 +117,8 @@ public sealed class ServiceAccountService(HospitalDbContext db, TimeProvider tim
         DomainService.RotateKey(account, material.Hash, now);
         account.UpdateDbo(row);
         var revoked = await sessions.RevokeAllAsync(id, now, "service-key-rotated", cancellationToken);
-        audit.Append(AuditEventType.AccountChanged, "Заменён API key сервисного аккаунта LIS.",
+        var role = ServiceAccountDtoMapper.ToRole(row.Role);
+        audit.Append(AuditEventType.AccountChanged, $"Заменён API key сервисного аккаунта {role}.",
             Metadata(id, "service-key-rotated", revoked, "service-key-rotated"));
         await db.SaveChangesAsync(cancellationToken);
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
@@ -161,6 +165,13 @@ public sealed class ServiceAccountService(HospitalDbContext db, TimeProvider tim
     {
         Action = action, TargetId = id, ServiceAccountId = id,
         RevokedServiceSessionCount = revoked, RevokeReason = reason
+    };
+
+    private static ServiceAccountRole ParseRole(string? role) => role switch
+    {
+        ServiceAccountRoles.Lis => ServiceAccountRole.Lis,
+        ServiceAccountRoles.Hl7Import => ServiceAccountRole.Hl7Import,
+        _ => throw new DomainValidationException("Неизвестная роль сервисного аккаунта.")
     };
 
     private static void RequireId(Guid id)

@@ -10,6 +10,7 @@ using HospitalInformationSystem.Domain.ServiceAccounts;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
 using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -43,7 +44,7 @@ public sealed partial class ServiceTokenSessionService(HospitalDbContext db, Jwt
         var now = Timestamp(timeProvider.GetUtcNow());
         var expires = DateTimeOffset.FromUnixTimeSeconds(now.ToUnixTimeSeconds()).AddDays(options.Value.RefreshTokenDays);
         var result = AddSession(account!, Guid.NewGuid(), now, expires, out _);
-        audit.Append(AuditEventType.ServiceLogin, "Сервисный аккаунт LIS получил сессию.",
+        audit.Append(AuditEventType.ServiceLogin, $"Сервисный аккаунт {ServiceAccountRoleStorage.Write(account!.Role)} получил сессию.",
             Metadata(account!.Id, "service-token-issued", "success"), VerifiedActor(account));
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
@@ -78,7 +79,7 @@ public sealed partial class ServiceTokenSessionService(HospitalDbContext db, Jwt
         {
             var reason = previous.ConsumedAtUtc is not null ? "service-refresh-reuse" : "service-refresh-rejected";
             var revoked = await RevokeFamilyAsync(account.Id, previous.FamilyId, now, reason, cancellationToken);
-            audit.Append(AuditEventType.LoginFailed, "Отказано в обновлении сервисной сессии LIS.",
+            audit.Append(AuditEventType.LoginFailed, "Отказано в обновлении сервисной сессии.",
                 Metadata(account.Id, reason, "failure") with
                 { RevokeReason = reason, RevokedServiceSessionCount = revoked }, AnonymousActor());
             await db.SaveChangesAsync(cancellationToken);
@@ -86,7 +87,7 @@ public sealed partial class ServiceTokenSessionService(HospitalDbContext db, Jwt
             return null;
         }
         var result = AddSession(account, previous.FamilyId, now, previous.ExpiresAtUtc, out var replacement);
-        audit.Append(AuditEventType.SessionRefreshed, "Обновлена сервисная сессия LIS.",
+        audit.Append(AuditEventType.SessionRefreshed, $"Обновлена сервисная сессия {ServiceAccountRoleStorage.Write(account.Role)}.",
             Metadata(account.Id, "service-session-refreshed", "success"), VerifiedActor(account));
         await db.SaveChangesAsync(cancellationToken);
         var changed = await db.ServiceRefreshSessions.Where(row => row.Id == previous.Id &&
@@ -116,7 +117,7 @@ public sealed partial class ServiceTokenSessionService(HospitalDbContext db, Jwt
         [
             new(ServiceAuthenticationDefaults.Claims.Subject, account.Id.ToString("D")),
             new(ServiceAuthenticationDefaults.Claims.AccountKind, ServiceAuthenticationDefaults.AccountKind),
-            new(ServiceAuthenticationDefaults.Claims.Role, ServiceAuthenticationDefaults.Role),
+            new(ServiceAuthenticationDefaults.Claims.Role, ServiceAccountRoleStorage.Write(account.Role)),
             new(ServiceAuthenticationDefaults.Claims.AuthenticationVersion,
                 account.AuthenticationVersion.ToString(CultureInfo.InvariantCulture)),
             new(ServiceAuthenticationDefaults.Claims.SessionId, familyId.ToString("D")),
@@ -148,7 +149,7 @@ public sealed partial class ServiceTokenSessionService(HospitalDbContext db, Jwt
 
     private async Task<ServiceTokenPairDto?> RejectAsync(string action, CancellationToken cancellationToken)
     {
-        audit.Append(AuditEventType.LoginFailed, "Не удалось подтвердить сервисные учётные данные LIS.",
+        audit.Append(AuditEventType.LoginFailed, "Не удалось подтвердить сервисные учётные данные.",
             new AuditMetadata { Action = action, Outcome = "failure" }, AnonymousActor());
         await db.SaveChangesAsync(cancellationToken);
         return null;
@@ -170,7 +171,7 @@ public sealed partial class ServiceTokenSessionService(HospitalDbContext db, Jwt
     { Action = action, TargetId = id, ServiceAccountId = id, Outcome = outcome };
 
     private static bool Eligible(ServiceAccountDbo account) => account.IsActive &&
-        account.Role == ServiceAccountRole.Lis && account.AuthenticationVersion > 0;
+        account.Role is ServiceAccountRole.Lis or ServiceAccountRole.Hl7Import && account.AuthenticationVersion > 0;
 
     private static DateTimeOffset Timestamp(DateTimeOffset timestamp)
     {

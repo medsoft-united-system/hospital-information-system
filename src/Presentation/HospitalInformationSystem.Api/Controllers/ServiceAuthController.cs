@@ -1,5 +1,9 @@
 using HospitalInformationSystem.Api.Security;
-using HospitalInformationSystem.Application.Abstractions;
+using System.Security.Claims;
+using HospitalInformationSystem.Contracts.Auth;
+using HospitalInformationSystem.Contracts.Hl7Import;
+using HospitalInformationSystem.Contracts.ServiceAccounts;
+using HospitalInformationSystem.Domain.ServiceAccounts;
 using HospitalInformationSystem.Contracts.ServiceAuth;
 using HospitalInformationSystem.Infrastructure.ServiceAccounts.Tokens;
 using Microsoft.AspNetCore.Authorization;
@@ -10,8 +14,7 @@ namespace HospitalInformationSystem.Api.Controllers;
 
 [ApiController]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-public sealed class ServiceAuthController(ServiceTokenSessionService sessions, ServiceCredentialReader reader,
-    ICurrentServiceAccount current) : ControllerBase
+public sealed class ServiceAuthController(ServiceTokenSessionService sessions, ServiceCredentialReader reader) : ControllerBase
 {
     [HttpPost("api/service-auth/token")]
     [AllowAnonymous]
@@ -44,13 +47,24 @@ public sealed class ServiceAuthController(ServiceTokenSessionService sessions, S
     }
 
     [HttpGet("api/testConnection")]
-    [Authorize(AuthenticationSchemes = ServiceAuthenticationDefaults.Scheme,
-        Policy = ServiceAuthenticationDefaults.Policies.ConnectionProbe)]
-    public ActionResult<ServiceConnectionStatusDto> TestConnection()
+    [Authorize(Policy = ServiceAuthenticationDefaults.Policies.ConnectionProbe)]
+    public ActionResult TestConnection()
     {
         if (Request.QueryString.HasValue) throw ServiceAuthProtocol.Error(400);
-        var identity = current.RequireIdentity();
-        return Ok(new ServiceConnectionStatusDto("connected", identity.Id,
-            ServiceAuthenticationDefaults.Role, ServiceAuthenticationDefaults.FhirVersion));
+        var service = ServiceAccountPrincipal.TryGetIdentity(User);
+        if (service is not null)
+            return service.Role == ServiceAccountRole.Lis
+                ? Ok(new ServiceConnectionStatusDto("connected", service.Id,
+                    ServiceAccountRoles.Lis, ServiceAuthenticationDefaults.FhirVersion))
+                : Ok(new Hl7ServiceConnectionStatusDto("connected", service.Id,
+                    ServiceAccountRoles.Hl7Import, Hl7ImportProtocol.Version));
+
+        var subjects = User.FindAll(SecurityTokenClaimTypes.Subject).Take(2).ToArray();
+        var roles = User.FindAll(SecurityTokenClaimTypes.AccountRole).Take(2).ToArray();
+        if (subjects.Length != 1 || !Guid.TryParseExact(subjects[0].Value, "D", out var accountId) ||
+            accountId == Guid.Empty || roles.Length != 1 ||
+            roles[0].Value is not (ApplicationRoles.Administrator or ApplicationRoles.MedicalWorker))
+            throw ServiceAuthProtocol.Error(403);
+        return Ok(new HumanConnectionStatusDto("connected", accountId, roles[0].Value, "human"));
     }
 }

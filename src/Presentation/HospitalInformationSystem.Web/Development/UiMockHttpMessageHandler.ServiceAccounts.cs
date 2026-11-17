@@ -14,12 +14,13 @@ public sealed partial class UiMockHttpMessageHandler
             if (request.Method != HttpMethod.Post) return Error(HttpStatusCode.MethodNotAllowed, "Метод недоступен.");
             var input = Read<CreateServiceAccountRequest>(body);
             if (!ServiceAccountNameRules.IsValid(input.Name)) return BadRequest("Имя должно содержать 3–64 символа.");
+            if (!ServiceAccountRoles.IsSupported(input.Role)) return BadRequest("Выберите роль LIS или HL7 Import.");
             var name = input.Name.Trim();
             if (state.ServiceAccounts.Values.Any(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase)))
                 return Error(HttpStatusCode.Conflict, "Имя занято.");
             var id = Guid.NewGuid();
             var at = DateTimeOffset.UtcNow;
-            var account = new ServiceAccountDto(id, name, "LIS", true, at, at, 1, $"msa_{id:N}.");
+            var account = new ServiceAccountDto(id, name, input.Role, true, at, at, 1, $"msa_{id:N}.");
             state.ServiceAccounts.Add(id, account);
             state.AddAudit("AccountCreated", "Создан демонстрационный сервисный аккаунт.", id);
             var response = Json(new ServiceAccountKeyResultDto(account, MockServiceKey(account), 0), HttpStatusCode.Created);

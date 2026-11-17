@@ -107,12 +107,13 @@ public sealed class ServiceAuthorizationTests(ServiceAuthenticationApiFactory fa
     }
 
     [Fact]
-    public async Task HumanJwt_ShouldRemainUsableOnlyForHumanApiAndKeepHumanLoginCsrfProtection()
+    public async Task HumanJwt_ShouldUseTheSharedProbeAndKeepFhirAndLoginCsrfProtection()
     {
         using var admin = await factory.AdministratorAsync();
         (await admin.GetAsync("/api/auth/session")).StatusCode.Should().Be(HttpStatusCode.OK);
         using var probe = await admin.GetAsync("/api/testConnection");
-        await ServiceAuthenticationApiTests.ErrorAsync(probe, HttpStatusCode.Unauthorized, ServiceAuthErrorCodes.Unauthorized);
+        probe.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await probe.Content.ReadFromJsonAsync<HumanConnectionStatusDto>())!.Role.Should().Be(ApplicationRoles.Administrator);
         using var fhir = await admin.GetAsync("/fhir/ServiceRequest");
         await FhirAsync<OperationOutcome>(fhir, HttpStatusCode.Unauthorized);
         using var anonymous = factory.CreateMachineClient();

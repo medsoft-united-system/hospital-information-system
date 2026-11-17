@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Claims;
 using HospitalInformationSystem.Contracts.ServiceAuth;
+using HospitalInformationSystem.Application.ServiceAccounts;
 using HospitalInformationSystem.Domain.ServiceAccounts;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,9 +15,10 @@ public sealed partial class ServiceTokenSessionService
         if (identities is not { Length: 1 } ||
             identities[0].AuthenticationType != ServiceAuthenticationDefaults.Scheme)
             return false;
+        var service = ServiceAccountIdentityReader.TryRead(principal);
+        if (service is null) return false;
         var identity = identities[0];
         if (Single(identity, ServiceAuthenticationDefaults.Claims.AccountKind) != ServiceAuthenticationDefaults.AccountKind ||
-            Single(identity, ServiceAuthenticationDefaults.Claims.Role) != ServiceAuthenticationDefaults.Role ||
             !Identifier(identity, ServiceAuthenticationDefaults.Claims.Subject, out var id) ||
             !Identifier(identity, ServiceAuthenticationDefaults.Claims.SessionId, out var familyId) ||
             !Identifier(identity, ServiceAuthenticationDefaults.Claims.TokenId, out var sessionId) ||
@@ -44,7 +46,7 @@ public sealed partial class ServiceTokenSessionService
                 session.CreatedAtUtc <= now && session.CreatedAtUtc >= issuedAt && session.CreatedAtUtc < nextIssuedSecond &&
                 session.ExpiresAtUtc > now && session.ExpiresAtUtc >= expiresAt &&
                 db.ServiceAccounts.Any(account => account.Id == id && account.IsActive &&
-                    account.Role == ServiceAccountRole.Lis && account.AuthenticationVersion == version) &&
+                    account.Role == service.Role && account.AuthenticationVersion == version) &&
                 !db.ServiceRefreshSessions.Any(row => row.ServiceAccountId == id && row.FamilyId == familyId &&
                                                      row.RevokedAtUtc != null), cancellationToken);
     }
