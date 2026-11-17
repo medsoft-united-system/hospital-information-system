@@ -149,7 +149,9 @@ else
             <tr>
               <th scope="col">Код</th>
               <th scope="col">Наименование</th>
-              <th scope="col">Добавлен</th>
+              <th scope="col">Дата диагноза</th>
+              <th scope="col">Внесён в ЭМК</th>
+              <th scope="col">Источник</th>
               @if (IsEditingRecord)
               {
                 <th scope="col" class="actions-cell">Действия</th>
@@ -162,7 +164,9 @@ else
               <tr @key="diagnosis.Id">
                 <td data-label="Код"><code>@diagnosis.Code</code></td>
                 <td data-label="Наименование">@diagnosis.Name</td>
-                <td data-label="Добавлен">@FormatLocal(diagnosis.AddedAtUtc)</td>
+                <td data-label="Дата диагноза">@FormatDiagnosedAt(diagnosis)</td>
+                <td data-label="Внесён в ЭМК">@FormatLocalWithOffset(diagnosis.AddedAtUtc)</td>
+                <td data-label="Источник">@DiagnosisSource(diagnosis)</td>
                 @if (IsEditingRecord)
                 {
                   <td class="actions-cell">
@@ -323,7 +327,7 @@ else
                   <td data-label="Версия">@item.Version</td>
                   <td data-label="Время">@FormatLocal(item.OccurredAtUtc)</td>
                   <td data-label="Действие">@EventTitle(item.EventType)</td>
-                  <td data-label="Автор">@item.PerformedByName<small class="mr-author-position">@(item.AuthorKind == MedicalRecordAuthorKind.ServiceAccount ? "Сервисный аккаунт LIS" : item.PerformedByPosition)</small></td>
+                  <td data-label="Автор">@item.PerformedByName<small class="mr-author-position">@HistoryAuthorPosition(item)</small></td>
                   <td data-label="Данные события">@DescribeEvent(item)</td>
                 </tr>
               }
@@ -377,7 +381,11 @@ else
                   <ul class="mr-snapshot-list">
                     @foreach (var diagnosis in _snapshot.Diagnoses)
                     {
-                      <li @key="diagnosis.Id"><code>@diagnosis.Code</code> @diagnosis.Name</li>
+                      <li @key="diagnosis.Id">
+                        <code>@diagnosis.Code</code> @diagnosis.Name
+                        <small class="mr-author-position">Дата диагноза @FormatDiagnosedAt(diagnosis)</small>
+                        <small class="mr-author-position">Внесён в ЭМК @FormatLocalWithOffset(diagnosis.AddedAtUtc) · @DiagnosisSource(diagnosis)</small>
+                      </li>
                     }
                   </ul>
                 }
@@ -1071,6 +1079,35 @@ else
   private static string FormatLocal(DateTimeOffset value) =>
     value.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss", CultureInfo.InvariantCulture);
 
+  private static string FormatLocalWithOffset(DateTimeOffset value) =>
+    value.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss zzz", CultureInfo.InvariantCulture);
+
+  private static string FormatDiagnosedAt(MedicalRecordDiagnosisDto diagnosis) =>
+    diagnosis.DiagnosedAtUtc is { } diagnosedAt && diagnosis.DiagnosedAtOffsetMinutes is { } offsetMinutes
+      ? FormatClinicalDate(diagnosedAt, offsetMinutes)
+      : "Не указана";
+
+  private static string FormatClinicalDate(DateTimeOffset diagnosedAt, int offsetMinutes)
+  {
+    try
+    {
+      return diagnosedAt.ToOffset(TimeSpan.FromMinutes(offsetMinutes))
+        .ToString("dd.MM.yyyy HH:mm:ss zzz", CultureInfo.InvariantCulture);
+    }
+    catch (ArgumentException)
+    {
+      return "Не указана";
+    }
+  }
+
+  private static string DiagnosisSource(MedicalRecordDiagnosisDto diagnosis) =>
+    diagnosis.AddedByServiceAccountId is not null ? "Импорт HL7" : "Медработник";
+
+  private static string HistoryAuthorPosition(MedicalRecordHistoryEventDto item) =>
+    item.AuthorKind == MedicalRecordAuthorKind.ServiceAccount && string.IsNullOrWhiteSpace(item.PerformedByPosition)
+      ? "Сервисный аккаунт"
+      : item.PerformedByPosition;
+
   private static string OffsetLabel
   {
     get
@@ -1105,7 +1142,7 @@ else
       return item.EventType switch
       {
         "MedicalRecordCreated" => "Электронная медицинская карта открыта.",
-        "DiagnosisAdded" or "DiagnosisRemoved" => $"{Text(root, "code")} · {Text(root, "name")}",
+        "DiagnosisAdded" or "DiagnosisRemoved" => DescribeDiagnosisEvent(root),
         "PrescriptionAdded" => HasValue(root, "replacesPrescriptionId")
           ? $"{Text(root, "text")} (замена предыдущего назначения)"
           : Text(root, "text"),
@@ -1119,6 +1156,17 @@ else
     {
       return item.PayloadJson;
     }
+  }
+
+  private static string DescribeDiagnosisEvent(JsonElement root)
+  {
+    var description = $"{Text(root, "code")} · {Text(root, "name")}";
+    if (root.TryGetProperty("diagnosedAtUtc", out var date) && date.ValueKind == JsonValueKind.String &&
+        date.TryGetDateTimeOffset(out var diagnosedAt) &&
+        root.TryGetProperty("diagnosedAtOffsetMinutes", out var offset) && offset.ValueKind == JsonValueKind.Number &&
+        offset.TryGetInt32(out var offsetMinutes))
+      return $"{description} · Дата диагноза {FormatClinicalDate(diagnosedAt, offsetMinutes)}";
+    return description;
   }
 
   private static string Text(JsonElement root, string property) =>

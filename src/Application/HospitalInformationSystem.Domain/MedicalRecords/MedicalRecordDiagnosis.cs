@@ -8,7 +8,12 @@ public sealed class MedicalRecordDiagnosis
     public required string DiagnosisCodeSnapshot { get; init; }
     public required string DiagnosisNameSnapshot { get; init; }
     public DateTimeOffset AddedAtUtc { get; init; }
-    public Guid AddedByMedicalWorkerId { get; init; }
+    public Guid? AddedByMedicalWorkerId { get; init; }
+    public Guid? AddedByServiceAccountId { get; init; }
+    public DateTimeOffset? DiagnosedAtUtc { get; init; }
+    public int? DiagnosedAtOffsetMinutes { get; init; }
+    public string? CodingSystem { get; init; }
+    public string? DiagnosisType { get; init; }
     public DateTimeOffset? RemovedAtUtc { get; set; }
     public Guid? RemovedByMedicalWorkerId { get; set; }
 }

@@ -350,8 +350,8 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasMaxLength(6)
-                        .HasColumnType("character varying(6)")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
                         .HasColumnName("code");
 
                     b.Property<DateTimeOffset>("CreatedAtUtc")
@@ -360,8 +360,8 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(24)
-                        .HasColumnType("character varying(24)")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
                         .HasColumnName("name");
 
                     b.Property<DateTimeOffset>("UpdatedAtUtc")
@@ -386,9 +386,9 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
 
                     b.ToTable("diagnosis_definitions", null, t =>
                         {
-                            t.HasCheckConstraint("ck_diagnosis_definitions_code", "char_length(btrim(code)) = 6");
+                            t.HasCheckConstraint("ck_diagnosis_definitions_code", "char_length(btrim(code)) BETWEEN 3 AND 32");
 
-                            t.HasCheckConstraint("ck_diagnosis_definitions_name", "char_length(btrim(name)) BETWEEN 3 AND 24");
+                            t.HasCheckConstraint("ck_diagnosis_definitions_name", "char_length(btrim(name)) BETWEEN 3 AND 256");
                         });
                 });
 
@@ -628,14 +628,31 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("added_at_utc");
 
-                    b.Property<Guid>("AddedByMedicalWorkerId")
+                    b.Property<Guid?>("AddedByMedicalWorkerId")
                         .HasColumnType("uuid")
                         .HasColumnName("added_by_medical_worker_id");
 
+                    b.Property<Guid?>("AddedByServiceAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("added_by_service_account_id");
+
+                    b.Property<string>("CodingSystem")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("coding_system");
+
+                    b.Property<int?>("DiagnosedAtOffsetMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("diagnosed_at_offset_minutes");
+
+                    b.Property<DateTimeOffset?>("DiagnosedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("diagnosed_at_utc");
+
                     b.Property<string>("DiagnosisCodeSnapshot")
                         .IsRequired()
-                        .HasMaxLength(6)
-                        .HasColumnType("character varying(6)")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
                         .HasColumnName("diagnosis_code_snapshot");
 
                     b.Property<Guid?>("DiagnosisDefinitionId")
@@ -644,9 +661,14 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("DiagnosisNameSnapshot")
                         .IsRequired()
-                        .HasMaxLength(24)
-                        .HasColumnType("character varying(24)")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
                         .HasColumnName("diagnosis_name_snapshot");
+
+                    b.Property<string>("DiagnosisType")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("diagnosis_type");
 
                     b.Property<Guid>("MedicalRecordId")
                         .HasColumnType("uuid")
@@ -664,6 +686,8 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("AddedByMedicalWorkerId");
 
+                    b.HasIndex("AddedByServiceAccountId");
+
                     b.HasIndex("DiagnosisDefinitionId");
 
                     b.HasIndex("MedicalRecordId");
@@ -672,11 +696,21 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
 
                     b.ToTable("medical_record_diagnoses", null, t =>
                         {
-                            t.HasCheckConstraint("ck_record_diagnoses_code", "char_length(diagnosis_code_snapshot) = 6");
+                            t.HasCheckConstraint("ck_record_diagnoses_author", "(added_by_medical_worker_id IS NOT NULL AND added_by_service_account_id IS NULL) OR (added_by_medical_worker_id IS NULL AND added_by_service_account_id IS NOT NULL)");
 
-                            t.HasCheckConstraint("ck_record_diagnoses_name", "char_length(btrim(diagnosis_name_snapshot)) BETWEEN 3 AND 24");
+                            t.HasCheckConstraint("ck_record_diagnoses_clinical_time", "(diagnosed_at_utc IS NULL AND diagnosed_at_offset_minutes IS NULL) OR (diagnosed_at_utc IS NOT NULL AND diagnosed_at_offset_minutes IS NOT NULL AND diagnosed_at_offset_minutes BETWEEN -840 AND 840)");
+
+                            t.HasCheckConstraint("ck_record_diagnoses_code", "char_length(btrim(diagnosis_code_snapshot)) BETWEEN 3 AND 32");
+
+                            t.HasCheckConstraint("ck_record_diagnoses_coding_system", "coding_system IS NULL OR char_length(btrim(coding_system)) BETWEEN 1 AND 32");
+
+                            t.HasCheckConstraint("ck_record_diagnoses_diagnosis_type", "diagnosis_type IS NULL OR char_length(btrim(diagnosis_type)) BETWEEN 1 AND 32");
+
+                            t.HasCheckConstraint("ck_record_diagnoses_name", "char_length(btrim(diagnosis_name_snapshot)) BETWEEN 3 AND 256");
 
                             t.HasCheckConstraint("ck_record_diagnoses_removal", "(removed_at_utc IS NULL) = (removed_by_medical_worker_id IS NULL)");
+
+                            t.HasCheckConstraint("ck_record_diagnoses_service_details", "added_by_service_account_id IS NULL OR (diagnosed_at_utc IS NOT NULL AND coding_system IS NOT NULL AND diagnosis_type IS NOT NULL)");
                         });
                 });
 
@@ -753,7 +787,7 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
 
                     b.ToTable("medical_record_history_events", null, t =>
                         {
-                            t.HasCheckConstraint("ck_record_history_author", "(author_kind = 'MedicalWorker' AND performed_by_medical_worker_id IS NOT NULL AND performed_by_service_account_id IS NULL AND event_type <> 'LaboratoryAnalysisResultRecorded') OR (author_kind = 'ServiceAccount' AND performed_by_medical_worker_id IS NULL AND performed_by_service_account_id IS NOT NULL AND event_type = 'LaboratoryAnalysisResultRecorded')");
+                            t.HasCheckConstraint("ck_record_history_author", "(author_kind = 'MedicalWorker' AND performed_by_medical_worker_id IS NOT NULL AND performed_by_service_account_id IS NULL AND event_type <> 'LaboratoryAnalysisResultRecorded') OR (author_kind = 'ServiceAccount' AND performed_by_medical_worker_id IS NULL AND performed_by_service_account_id IS NOT NULL AND event_type IN ('MedicalRecordCreated', 'DiagnosisAdded', 'LaboratoryAnalysisResultRecorded'))");
 
                             t.HasCheckConstraint("ck_record_history_type", "event_type IN ('MedicalRecordCreated', 'DiagnosisAdded', 'DiagnosisRemoved', 'PrescriptionAdded', 'PrescriptionCancelled', 'LaboratoryAnalysisRequested', 'LaboratoryAnalysisResultRecorded')");
 
@@ -888,6 +922,39 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_patients_middle_name", "middle_name IS NULL OR char_length(btrim(middle_name)) BETWEEN 1 AND 64");
 
                             t.HasCheckConstraint("ck_patients_sex", "sex IN (0, 1, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.PatientExternalIdentifierDbo", b =>
+                {
+                    b.Property<string>("SourceSystem")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("source_system");
+
+                    b.Property<string>("ExternalPatientId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("external_patient_id");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("patient_id");
+
+                    b.HasKey("SourceSystem", "ExternalPatientId")
+                        .HasName("pk_patient_external_identifiers");
+
+                    b.HasIndex("PatientId");
+
+                    b.ToTable("patient_external_identifiers", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_patient_external_identifiers_external_id", "char_length(external_patient_id) BETWEEN 1 AND 128 AND external_patient_id = btrim(external_patient_id)");
+
+                            t.HasCheckConstraint("ck_patient_external_identifiers_source", "char_length(source_system) BETWEEN 1 AND 64 AND source_system = btrim(source_system)");
                         });
                 });
 
@@ -1389,8 +1456,12 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                     b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalWorkerDbo", null)
                         .WithMany()
                         .HasForeignKey("AddedByMedicalWorkerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.ServiceAccountDbo", null)
+                        .WithMany()
+                        .HasForeignKey("AddedByServiceAccountId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.DiagnosisDefinitionDbo", null)
                         .WithMany()
@@ -1426,6 +1497,15 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("PerformedByServiceAccountId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.PatientExternalIdentifierDbo", b =>
+                {
+                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.PatientDbo", null)
+                        .WithMany()
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.PrescriptionDbo", b =>

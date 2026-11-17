@@ -76,7 +76,8 @@ public sealed class TrackedSecurityChanges(HospitalDbContext db, TimeProvider ti
                 new AuditMetadata
                 {
                     Action = history.EventType, TargetId = history.MedicalRecordId,
-                    RecordEntryId = history.EntityId, MedicalWorkerId = history.PerformedByMedicalWorkerId
+                    RecordEntryId = history.EntityId, MedicalWorkerId = history.PerformedByMedicalWorkerId,
+                    ServiceAccountId = history.PerformedByServiceAccountId
                 }));
         }
     }

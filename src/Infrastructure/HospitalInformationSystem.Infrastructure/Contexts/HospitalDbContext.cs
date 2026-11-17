@@ -12,11 +12,12 @@ using Npgsql;
 namespace HospitalInformationSystem.Infrastructure.Contexts;
 
 public sealed partial class HospitalDbContext(DbContextOptions<HospitalDbContext> options, TimeProvider? timeProvider = null,
-    IAuditActorAccessor? auditActorAccessor = null)
+    IAuditActorAccessor? auditActorAccessor = null, ImportAuditContext? importAuditContext = null)
     : IdentityDbContext<HospitalUser, IdentityRole<Guid>, Guid>(options), IUnitOfWork
 {
     public DbSet<MedicalWorkerDbo> MedicalWorkers => Set<MedicalWorkerDbo>();
     public DbSet<PatientDbo> Patients => Set<PatientDbo>();
+    public DbSet<PatientExternalIdentifierDbo> PatientExternalIdentifiers => Set<PatientExternalIdentifierDbo>();
     public DbSet<DiagnosisDefinitionDbo> DiagnosisDefinitions => Set<DiagnosisDefinitionDbo>();
     public DbSet<MedicalRecordDbo> MedicalRecords => Set<MedicalRecordDbo>();
     public DbSet<MedicalRecordDiagnosisDbo> MedicalRecordDiagnoses => Set<MedicalRecordDiagnosisDbo>();
@@ -43,7 +44,7 @@ public sealed partial class HospitalDbContext(DbContextOptions<HospitalDbContext
     {
         RejectHistoryChanges();
         var securityChanges = new TrackedSecurityChanges(this, timeProvider ?? TimeProvider.System,
-            auditActorAccessor ?? new SystemAuditActorAccessor());
+            importAuditContext is { IsActive: true } ? importAuditContext : auditActorAccessor ?? new SystemAuditActorAccessor());
         await using var transaction = securityChanges.HasChanges() && Database.CurrentTransaction is null
             ? await Database.BeginTransactionAsync(cancellationToken) : null;
         try
@@ -80,6 +81,21 @@ public sealed partial class HospitalDbContext(DbContextOptions<HospitalDbContext
 
     private void RejectHistoryChanges()
     {
+        if (ChangeTracker.Entries<PatientExternalIdentifierDbo>()
+            .Any(entry => entry.State is EntityState.Modified or EntityState.Deleted))
+            throw new InvalidOperationException("Сохранённые внешние идентификаторы пациентов неизменяемы.");
+
+        var immutableDiagnosisProperties = new[]
+        {
+            nameof(MedicalRecordDiagnosisDbo.MedicalRecordId), nameof(MedicalRecordDiagnosisDbo.DiagnosisCodeSnapshot),
+            nameof(MedicalRecordDiagnosisDbo.DiagnosisNameSnapshot), nameof(MedicalRecordDiagnosisDbo.AddedAtUtc),
+            nameof(MedicalRecordDiagnosisDbo.AddedByMedicalWorkerId), nameof(MedicalRecordDiagnosisDbo.AddedByServiceAccountId),
+            nameof(MedicalRecordDiagnosisDbo.DiagnosedAtUtc), nameof(MedicalRecordDiagnosisDbo.DiagnosedAtOffsetMinutes),
+            nameof(MedicalRecordDiagnosisDbo.CodingSystem), nameof(MedicalRecordDiagnosisDbo.DiagnosisType)
+        };
+        if (ChangeTracker.Entries<MedicalRecordDiagnosisDbo>().Any(entry => entry.State == EntityState.Modified &&
+            immutableDiagnosisProperties.Any(name => entry.Property(name).IsModified)))
+            throw new InvalidOperationException("Исходные данные сохранённого диагноза неизменяемы.");
         if (ChangeTracker.Entries<AuditEventDbo>()
             .Any(entry => entry.State is EntityState.Modified or EntityState.Deleted))
             throw new InvalidOperationException("Сохранённые события аудита нельзя изменять или удалять.");

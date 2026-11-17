@@ -12,6 +12,7 @@ public static partial class DependencyInjection
     {
         services.TryAddSingleton<IAuditActorAccessor, SystemAuditActorAccessor>();
         services.AddSingleton<AuditEventFactory>();
+        services.AddScoped<ImportAuditContext>();
         services.AddScoped<IAuditWriter, AuditWriter>();
         services.AddScoped<IAuditQueryService, AuditQueryService>();
     }

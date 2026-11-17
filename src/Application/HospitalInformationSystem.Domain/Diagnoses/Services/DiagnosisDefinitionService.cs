@@ -10,10 +10,12 @@ public static class DiagnosisDefinitionService
         var validName = name?.Trim();
         TextValidation.RejectNullCharacter(validCode, "Код диагноза");
         TextValidation.RejectNullCharacter(validName, "Название диагноза");
-        if (validCode?.Length != 6)
-            throw new DomainValidationException("Код диагноза: требуется ровно 6 символов.");
-        if (validName is null || validName.Length is < 3 or > 24)
-            throw new DomainValidationException("Название диагноза: требуется от 3 до 24 символов.");
+        if (validCode is null || validCode.Length is < DiagnosisTextLimits.MinCodeLength or > DiagnosisTextLimits.MaxCodeLength)
+            throw new DomainValidationException(
+                $"Код диагноза должен содержать от {DiagnosisTextLimits.MinCodeLength} до {DiagnosisTextLimits.MaxCodeLength} символов.");
+        if (validName is null || validName.Length is < DiagnosisTextLimits.MinNameLength or > DiagnosisTextLimits.MaxNameLength)
+            throw new DomainValidationException(
+                $"Название диагноза должно содержать от {DiagnosisTextLimits.MinNameLength} до {DiagnosisTextLimits.MaxNameLength} символов.");
         diagnosis.Code = validCode;
         diagnosis.Name = validName;
         diagnosis.UpdatedAtUtc = now.ToUniversalTime();

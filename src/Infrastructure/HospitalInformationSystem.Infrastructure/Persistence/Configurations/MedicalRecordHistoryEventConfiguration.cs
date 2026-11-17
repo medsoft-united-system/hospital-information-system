@@ -16,7 +16,7 @@ public sealed class MedicalRecordHistoryEventConfiguration : IEntityTypeConfigur
                 "event_type IN ('MedicalRecordCreated', 'DiagnosisAdded', 'DiagnosisRemoved', 'PrescriptionAdded', 'PrescriptionCancelled', 'LaboratoryAnalysisRequested', 'LaboratoryAnalysisResultRecorded')");
             table.HasCheckConstraint("ck_record_history_author",
                 "(author_kind = 'MedicalWorker' AND performed_by_medical_worker_id IS NOT NULL AND performed_by_service_account_id IS NULL AND event_type <> 'LaboratoryAnalysisResultRecorded') OR " +
-                "(author_kind = 'ServiceAccount' AND performed_by_medical_worker_id IS NULL AND performed_by_service_account_id IS NOT NULL AND event_type = 'LaboratoryAnalysisResultRecorded')");
+                "(author_kind = 'ServiceAccount' AND performed_by_medical_worker_id IS NULL AND performed_by_service_account_id IS NOT NULL AND event_type IN ('MedicalRecordCreated', 'DiagnosisAdded', 'LaboratoryAnalysisResultRecorded'))");
         });
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();

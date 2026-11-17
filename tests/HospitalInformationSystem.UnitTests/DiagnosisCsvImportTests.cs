@@ -62,8 +62,8 @@ public sealed class DiagnosisCsvImportTests
     [Theory]
     [InlineData("A00.00,Боль\n A00.00 ,Другое", "повтор кода")]
     [InlineData("A00.00,Боль\nB00.00, Боль ", "повтор названия")]
-    [InlineData("A00.00,Боль\nSHORT,Другое", "ровно 6")]
-    [InlineData("A00.00,Боль\nB00.00,Аб", "от 3 до 24")]
+    [InlineData("A00.00,Боль\nAB,Другое", "от 3 до 32")]
+    [InlineData("A00.00,Боль\nB00.00,Аб", "от 3 до 256")]
     public async Task Import_InvalidRows_ShouldNotReachRepository(string data, string expected)
     {
         var repository = new Mock<IDiagnosisRepository>(MockBehavior.Strict);
@@ -78,10 +78,13 @@ public sealed class DiagnosisCsvImportTests
         unitOfWork.VerifyNoOtherCalls();
     }
 
-    [Fact]
-    public async Task Import_IdenticalRows_ShouldNotUpdateOrSave()
+    [Theory]
+    [InlineData("A00.00", 14)]
+    [InlineData("I10", 256)]
+    [InlineData("J45.9", 25)]
+    public async Task Import_IdenticalRows_ShouldNotUpdateOrSave(string code, int nameLength)
     {
-        var diagnosis = DiagnosisDefinitionFactory.Create("A00.00", "Первый диагноз", DateTimeOffset.UtcNow);
+        var diagnosis = DiagnosisDefinitionFactory.Create(code, new string('Н', nameLength), DateTimeOffset.UtcNow);
         var repository = new Mock<IDiagnosisRepository>(MockBehavior.Strict);
         repository.Setup(x => x.FindImportMatchesAsync(
                 It.Is<IReadOnlyCollection<string>>(codes => codes.SequenceEqual(new[] { diagnosis.Code })),
