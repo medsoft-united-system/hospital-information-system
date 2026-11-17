@@ -92,7 +92,7 @@ public sealed class ApiInputValidationTests(HospitalApiFactory factory) : IClass
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/diagnoses")
         {
-            Content = JsonContent.Create(new { code = "BAD", name = "Диагноз" })
+            Content = JsonContent.Create(new { code = "B", name = "Диагноз" })
         };
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(accept));
         var response = await _client.SendAsync(request);

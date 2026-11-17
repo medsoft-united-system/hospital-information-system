@@ -14,15 +14,39 @@ public sealed class DiagnosisDefinitionTests
 
     [Theory]
     [InlineData(null, "Холера")]
-    [InlineData("A00.0", "Холера")]
-    [InlineData("A00.000", "Холера")]
+    [InlineData("AB", "Холера")]
+    [InlineData("123456789012345678901234567890123", "Холера")]
     [InlineData("A00.00", null)]
     [InlineData("A00.00", "АБ")]
-    [InlineData("A00.00", "1234567890123456789012345")]
     public void Create_InvalidCodeOrName_ShouldRejectInput(string? code, string? name)
     {
         var act = () => DiagnosisDefinitionFactory.Create(code!, name!, Now);
         act.Should().Throw<DomainValidationException>();
+    }
+
+    [Fact]
+    public void Create_NameAboveMaximum_ShouldRejectInput()
+    {
+        var act = () => DiagnosisDefinitionFactory.Create("I10", new string('Н', 257), Now);
+
+        act.Should().Throw<DomainValidationException>();
+    }
+
+    [Theory]
+    [InlineData("I10", 3)]
+    [InlineData("I48", 256)]
+    [InlineData("J45.9", 25)]
+    [InlineData("I10.00", 24)]
+    [InlineData("local-code/value", 32)]
+    [InlineData("12345678901234567890123456789012", 256)]
+    public void Create_ValidLimits_ShouldPreserveExactCodeAndTrimOuterWhitespace(string code, int nameLength)
+    {
+        var name = new string('Н', nameLength);
+
+        var diagnosis = DiagnosisDefinitionFactory.Create($" {code} ", $" {name} ", Now);
+
+        diagnosis.Code.Should().Be(code);
+        diagnosis.Name.Should().Be(name);
     }
 
     [Fact]

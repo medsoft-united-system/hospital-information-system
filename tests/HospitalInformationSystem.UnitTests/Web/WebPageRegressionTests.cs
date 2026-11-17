@@ -46,6 +46,39 @@ public sealed class WebPageRegressionTests
     }
 
     [Fact]
+    public void Imported_diagnosis_displays_clinical_seconds_and_original_offset_separately_from_import_time()
+    {
+        var diagnosis = new MedicalRecordDiagnosisDto(Guid.NewGuid(), "I10", "Гипертензия",
+            new DateTimeOffset(2026, 11, 17, 12, 34, 56, TimeSpan.Zero), null, Guid.NewGuid(),
+            new DateTimeOffset(2023, 4, 5, 6, 7, 8, TimeSpan.Zero), 180, "I10", "U^Unspecified^99MEDSOFT");
+        var format = typeof(MedicalRecord).GetMethod("FormatDiagnosedAt", BindingFlags.Static | BindingFlags.NonPublic)!;
+        var source = typeof(MedicalRecord).GetMethod("DiagnosisSource", BindingFlags.Static | BindingFlags.NonPublic)!;
+
+        format.Invoke(null, [diagnosis]).Should().Be("05.04.2023 09:07:08 +03:00");
+        source.Invoke(null, [diagnosis]).Should().Be("Импорт HL7");
+        format.Invoke(null, [diagnosis with { DiagnosedAtUtc = null, DiagnosedAtOffsetMinutes = null }])
+            .Should().Be("Не указана");
+    }
+
+    [Fact]
+    public void Imported_diagnosis_history_preserves_service_position_and_clinical_date()
+    {
+        var item = new MedicalRecordHistoryEventDto(2, DateTimeOffset.UtcNow, null, "Importer", "HL7 Import",
+            "DiagnosisAdded", Guid.NewGuid(), """
+            {"code":"I10","name":"Гипертензия","diagnosedAtUtc":"2023-04-05T06:07:08Z","diagnosedAtOffsetMinutes":180}
+            """)
+        {
+            AuthorKind = MedicalRecordAuthorKind.ServiceAccount,
+            PerformedByServiceAccountId = Guid.NewGuid()
+        };
+        var describe = typeof(MedicalRecord).GetMethod("DescribeEvent", BindingFlags.Static | BindingFlags.NonPublic)!;
+        var position = typeof(MedicalRecord).GetMethod("HistoryAuthorPosition", BindingFlags.Static | BindingFlags.NonPublic)!;
+
+        describe.Invoke(null, [item]).Should().Be("I10 · Гипертензия · Дата диагноза 05.04.2023 09:07:08 +03:00");
+        position.Invoke(null, [item]).Should().Be("HL7 Import");
+    }
+
+    [Fact]
     public async Task Failed_list_refresh_does_not_bring_back_a_deleted_patient()
     {
         var patient = new PatientDto(Guid.NewGuid(), "Иван", "Иванов", null, new DateOnly(2000, 1, 1),

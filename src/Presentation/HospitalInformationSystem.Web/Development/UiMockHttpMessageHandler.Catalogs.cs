@@ -114,7 +114,7 @@ public sealed partial class UiMockHttpMessageHandler
             if (request.Method == HttpMethod.Get) return Json(state.Diagnoses.Values.ToArray());
             if (request.Method != HttpMethod.Post) return NotFound();
             var input = Read<SaveDiagnosisRequest>(body);
-            if (!ValidDiagnosis(input)) return BadRequest("Код должен содержать 6 символов, наименование — 3–24.");
+            if (!ValidDiagnosis(input)) return BadRequest("Код должен содержать 3–32 символа, наименование — 3–256.");
             if (DuplicateDiagnosis(input, null)) return Error(HttpStatusCode.Conflict, "Код или наименование уже существует.");
             var diagnosis = new DiagnosisDefinitionDto(Guid.NewGuid(), input.Code.Trim(), input.Name.Trim());
             state.Diagnoses[diagnosis.Id] = diagnosis;
@@ -129,7 +129,7 @@ public sealed partial class UiMockHttpMessageHandler
         }
         if (request.Method != HttpMethod.Put) return NotFound();
         var update = Read<SaveDiagnosisRequest>(body);
-        if (!ValidDiagnosis(update)) return BadRequest("Код должен содержать 6 символов, наименование — 3–24.");
+        if (!ValidDiagnosis(update)) return BadRequest("Код должен содержать 3–32 символа, наименование — 3–256.");
         if (DuplicateDiagnosis(update, current.Id)) return Error(HttpStatusCode.Conflict, "Код или наименование уже существует.");
         var updated = current with { Code = update.Code.Trim(), Name = update.Name.Trim() };
         state.Diagnoses[current.Id] = updated;
@@ -186,8 +186,8 @@ public sealed partial class UiMockHttpMessageHandler
         && ValidText(input.LastName, 1, 64) && (input.MiddleName is null || input.MiddleName.Length <= 64)
         && input.BirthDate != default && Enum.IsDefined(input.Sex)
         && (input.Comment is null || input.Comment.Length <= 32);
-    private static bool ValidDiagnosis(SaveDiagnosisRequest input) => ValidText(input.Code, 6, 6)
-        && ValidText(input.Name, 3, 24);
+    private static bool ValidDiagnosis(SaveDiagnosisRequest input) => ValidText(input.Code, DiagnosisLimits.MinCodeLength, DiagnosisLimits.MaxCodeLength)
+        && ValidText(input.Name, DiagnosisLimits.MinNameLength, DiagnosisLimits.MaxNameLength);
 
     private static List<string[]>? ParseCsv(string text)
     {

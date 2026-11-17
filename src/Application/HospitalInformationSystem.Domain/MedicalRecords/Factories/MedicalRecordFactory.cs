@@ -21,4 +21,21 @@ public static class MedicalRecordFactory
             HistoryEvents = Array.AsReadOnly([created])
         };
     }
+
+    public static MedicalRecord CreateForService(Guid patientId, Guid serviceAccountId, string serviceAccountName,
+        DateTimeOffset now)
+    {
+        if (patientId == Guid.Empty)
+            throw new DomainValidationException("Не указан пациент.");
+        var id = Guid.NewGuid();
+        var at = now.ToUniversalTime();
+        var created = MedicalRecordHistoryEventFactory.CreateForService(id, 1,
+            MedicalRecordEventType.MedicalRecordCreated, id, new MedicalRecordCreatedPayload(patientId),
+            serviceAccountId, serviceAccountName, at);
+        return new MedicalRecord
+        {
+            Id = id, PatientId = patientId, CreatedAtUtc = at, Version = 1,
+            HistoryEvents = Array.AsReadOnly([created])
+        };
+    }
 }

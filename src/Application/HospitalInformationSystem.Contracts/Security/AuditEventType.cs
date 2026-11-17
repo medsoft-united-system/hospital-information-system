@@ -22,5 +22,6 @@ public enum AuditEventType
     AdministratorSetup,
     UserLogout,
     SessionRefreshed,
-    ServiceLogin
+    ServiceLogin,
+    Hl7PatientImported
 }

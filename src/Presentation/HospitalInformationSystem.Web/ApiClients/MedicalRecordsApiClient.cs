@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
+using HospitalInformationSystem.Contracts.Diagnoses;
 using HospitalInformationSystem.Contracts.MedicalRecords;
 
 namespace HospitalInformationSystem.Web.ApiClients;
@@ -17,13 +18,19 @@ public sealed class MedicalRecordsApiClient(HttpClient http)
             return null;
         }
 
-        return await ApiResponseReader.ReadAsync<MedicalRecordDto>(response, cancellationToken);
+        var record = await ApiResponseReader.ReadAsync<MedicalRecordDto>(response, cancellationToken);
+        ValidateDiagnoses(record.Diagnoses);
+        return record;
     }
 
-    public Task<MedicalRecordDto> CreateAsync(Guid patientId,
-        CancellationToken cancellationToken) =>
-        http.SendJsonAsync<MedicalRecordDto>(HttpMethod.Post, $"api/patients/{patientId}/medical-record",
-            null, null, cancellationToken);
+    public async Task<MedicalRecordDto> CreateAsync(Guid patientId,
+        CancellationToken cancellationToken)
+    {
+        var record = await http.SendJsonAsync<MedicalRecordDto>(HttpMethod.Post,
+            $"api/patients/{patientId}/medical-record", null, null, cancellationToken);
+        ValidateDiagnoses(record.Diagnoses);
+        return record;
+    }
 
     public Task AddDiagnosisAsync(Guid recordId, Guid diagnosisId,
         CancellationToken cancellationToken) =>
@@ -84,7 +91,23 @@ public sealed class MedicalRecordsApiClient(HttpClient http)
         var query = Uri.EscapeDataString(at.ToString("o", CultureInfo.InvariantCulture));
         using var response = await http.GetAsync($"api/medical-records/{recordId}/snapshot?at={query}",
             cancellationToken);
-        return await ApiResponseReader.ReadAsync<MedicalRecordSnapshotDto>(response, cancellationToken);
+        var snapshot = await ApiResponseReader.ReadAsync<MedicalRecordSnapshotDto>(response, cancellationToken);
+        ValidateDiagnoses(snapshot.Diagnoses);
+        return snapshot;
     }
 
+    private static void ValidateDiagnoses(IReadOnlyCollection<MedicalRecordDiagnosisDto> diagnoses)
+    {
+        foreach (var diagnosis in diagnoses)
+        {
+            if (diagnosis is null || diagnosis.Id == Guid.Empty ||
+                diagnosis.Code.Length is < DiagnosisLimits.MinCodeLength or > DiagnosisLimits.MaxCodeLength ||
+                diagnosis.Name.Length is < DiagnosisLimits.MinNameLength or > DiagnosisLimits.MaxNameLength ||
+                diagnosis.AddedByMedicalWorkerId == Guid.Empty || diagnosis.AddedByServiceAccountId == Guid.Empty ||
+                (diagnosis.AddedByMedicalWorkerId is null) == (diagnosis.AddedByServiceAccountId is null) ||
+                (diagnosis.DiagnosedAtUtc is null) != (diagnosis.DiagnosedAtOffsetMinutes is null) ||
+                diagnosis.DiagnosedAtOffsetMinutes is < -840 or > 840)
+                throw new ApiException("Сервер вернул некорректный ответ. Обновите карту, чтобы проверить диагнозы.");
+        }
+    }
 }

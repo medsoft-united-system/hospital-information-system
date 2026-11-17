@@ -17,7 +17,27 @@ public static partial class MedicalRecordService
         record.Diagnoses = record.Diagnoses.Append(diagnosis).ToList().AsReadOnly();
         AppendEvent(record, MedicalRecordEventType.DiagnosisAdded, diagnosis.Id,
             new DiagnosisAddedPayload(diagnosis.Id, diagnosisDefinitionId, diagnosis.DiagnosisCodeSnapshot,
-                diagnosis.DiagnosisNameSnapshot), author, at);
+                diagnosis.DiagnosisNameSnapshot, AddedByMedicalWorkerId: author.Id), author, at);
+        return diagnosis;
+    }
+
+    public static MedicalRecordDiagnosis AddImportedDiagnosis(MedicalRecord record, Guid diagnosisDefinitionId,
+        string sourceCode, string sourceTitle, string codingSystem, DateTimeOffset diagnosedAt,
+        string diagnosisType, Guid serviceAccountId, string serviceAccountName, DateTimeOffset now)
+    {
+        MedicalRecordHistoryEventFactory.ValidateServiceAuthor(serviceAccountId, serviceAccountName);
+        var at = EventTime(record, now);
+        var diagnosis = MedicalRecordDiagnosisFactory.CreateForService(record.Id, diagnosisDefinitionId,
+            sourceCode, sourceTitle, codingSystem, diagnosedAt, diagnosisType, serviceAccountId, at);
+        var historyEvent = MedicalRecordHistoryEventFactory.CreateForService(record.Id, checked(record.Version + 1),
+            MedicalRecordEventType.DiagnosisAdded, diagnosis.Id,
+            new DiagnosisAddedPayload(diagnosis.Id, diagnosisDefinitionId, diagnosis.DiagnosisCodeSnapshot,
+                diagnosis.DiagnosisNameSnapshot, diagnosis.DiagnosedAtUtc, diagnosis.DiagnosedAtOffsetMinutes,
+                diagnosis.CodingSystem, diagnosis.DiagnosisType, AddedByServiceAccountId: serviceAccountId),
+            serviceAccountId, serviceAccountName, at);
+        record.Diagnoses = record.Diagnoses.Append(diagnosis).ToList().AsReadOnly();
+        record.HistoryEvents = record.HistoryEvents.Append(historyEvent).ToList().AsReadOnly();
+        record.Version = historyEvent.Version;
         return diagnosis;
     }
 

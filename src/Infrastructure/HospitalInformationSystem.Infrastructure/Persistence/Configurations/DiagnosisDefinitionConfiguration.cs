@@ -1,3 +1,4 @@
+using HospitalInformationSystem.Contracts.Diagnoses;
 using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -10,13 +11,15 @@ public sealed class DiagnosisDefinitionConfiguration : IEntityTypeConfiguration<
     {
         builder.ToTable("diagnosis_definitions", table =>
         {
-            table.HasCheckConstraint("ck_diagnosis_definitions_code", "char_length(btrim(code)) = 6");
-            table.HasCheckConstraint("ck_diagnosis_definitions_name", "char_length(btrim(name)) BETWEEN 3 AND 24");
+            table.HasCheckConstraint("ck_diagnosis_definitions_code",
+                $"char_length(btrim(code)) BETWEEN {DiagnosisLimits.MinCodeLength} AND {DiagnosisLimits.MaxCodeLength}");
+            table.HasCheckConstraint("ck_diagnosis_definitions_name",
+                $"char_length(btrim(name)) BETWEEN {DiagnosisLimits.MinNameLength} AND {DiagnosisLimits.MaxNameLength}");
         });
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
-        builder.Property(x => x.Code).HasColumnName("code").HasMaxLength(6).IsRequired();
-        builder.Property(x => x.Name).HasColumnName("name").HasMaxLength(24).IsRequired();
+        builder.Property(x => x.Code).HasColumnName("code").HasMaxLength(DiagnosisLimits.MaxCodeLength).IsRequired();
+        builder.Property(x => x.Name).HasColumnName("name").HasMaxLength(DiagnosisLimits.MaxNameLength).IsRequired();
         builder.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc");
         builder.Property<uint>("xmin").IsRowVersion();

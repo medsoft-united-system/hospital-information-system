@@ -188,7 +188,7 @@ public sealed class LaboratoryAnalysisPersistenceTests(HospitalApiFactory factor
         {
             case "both": history.PerformedByMedicalWorkerId = state.Doctor.Id; break;
             case "none": history.PerformedByServiceAccountId = null; break;
-            case "service-human-event": history.EventType = "DiagnosisAdded"; break;
+            case "service-human-event": history.EventType = "DiagnosisRemoved"; break;
             case "human-result":
                 history.AuthorKind = MedicalRecordAuthorKind.MedicalWorker;
                 history.PerformedByMedicalWorkerId = state.Doctor.Id;

@@ -41,8 +41,9 @@ public static class MedicalRecordSnapshotReplay
             Require(item.OccurredAtUtc >= previousTime, "время события меньше времени предыдущего");
             Require(version != 0 || item.EventType == MedicalRecordEventType.MedicalRecordCreated,
                 "первое событие должно создавать карту");
-            var humanAuthor = item.EventType == MedicalRecordEventType.LaboratoryAnalysisResultRecorded
+            var humanAuthor = item.AuthorKind == DomainAuthorKind.ServiceAccount
                 ? (Guid?)null : RequireHumanAuthor(item);
+            var serviceAuthor = humanAuthor is null ? RequireServiceAuthor(item) : (Guid?)null;
 
             switch (item.EventType)
             {
@@ -60,14 +61,26 @@ public static class MedicalRecordSnapshotReplay
                 {
                     var payload = Read<DiagnosisAddedPayload>(item);
                     RequireEntityId(item, payload.MedicalRecordDiagnosisId);
-                    Require(payload.DiagnosisDefinitionId != Guid.Empty && !string.IsNullOrWhiteSpace(payload.Code)
-                                                                        && !string.IsNullOrWhiteSpace(payload.Name),
+                    Require(payload.DiagnosisDefinitionId != Guid.Empty &&
+                            MedicalRecordDiagnosisRules.IsValidCode(payload.Code) &&
+                            MedicalRecordDiagnosisRules.IsValidName(payload.Name),
                         "неполные данные добавленного диагноза");
+                    Require(MedicalRecordDiagnosisRules.IsValidClinicalTime(payload.DiagnosedAtUtc,
+                            payload.DiagnosedAtOffsetMinutes),
+                        "некорректное клиническое время диагноза");
+                    Require((payload.CodingSystem is null || MedicalRecordDiagnosisRules.IsValidMetadata(payload.CodingSystem)) &&
+                            (payload.DiagnosisType is null || MedicalRecordDiagnosisRules.IsValidMetadata(payload.DiagnosisType)),
+                        "некорректная система кодирования или тип диагноза");
+                    RequireDiagnosisAuthor(item, payload);
+                    Require(serviceAuthor is null || (payload.DiagnosedAtUtc is not null &&
+                            payload.CodingSystem is not null && payload.DiagnosisType is not null),
+                        "неполные данные импортированного диагноза");
                     Require(diagnosisIds.Add(payload.MedicalRecordDiagnosisId),
                         "повторное добавление той же записи диагноза");
                     diagnoses.Add(payload.MedicalRecordDiagnosisId, new MedicalRecordDiagnosisDto(
                         payload.MedicalRecordDiagnosisId, payload.Code, payload.Name, item.OccurredAtUtc,
-                        humanAuthor!.Value));
+                        humanAuthor, serviceAuthor, payload.DiagnosedAtUtc, payload.DiagnosedAtOffsetMinutes,
+                        payload.CodingSystem, payload.DiagnosisType));
                     break;
                 }
                 case MedicalRecordEventType.DiagnosisRemoved:
@@ -138,7 +151,6 @@ public static class MedicalRecordSnapshotReplay
                 }
                 case MedicalRecordEventType.LaboratoryAnalysisResultRecorded:
                 {
-                    var serviceAuthor = RequireServiceAuthor(item);
                     var payload = Read<LaboratoryAnalysisResultRecordedPayload>(item);
                     RequireEntityId(item, payload.LaboratoryAnalysisResultId);
                     Require(laboratoryRequests.TryGetValue(payload.LaboratoryAnalysisRequestId, out var request),
@@ -208,7 +220,8 @@ public static class MedicalRecordSnapshotReplay
     {
         Require(item.AuthorKind == DomainAuthorKind.MedicalWorker &&
                 item.PerformedByMedicalWorkerId is { } id && id != Guid.Empty &&
-                item.PerformedByServiceAccountId is null,
+                item.PerformedByServiceAccountId is null &&
+                item.EventType != MedicalRecordEventType.LaboratoryAnalysisResultRecorded,
             "человеческое событие должно иметь одного автора-медработника");
         return item.PerformedByMedicalWorkerId.GetValueOrDefault();
     }
@@ -217,9 +230,21 @@ public static class MedicalRecordSnapshotReplay
     {
         Require(item.AuthorKind == DomainAuthorKind.ServiceAccount &&
                 item.PerformedByServiceAccountId is { } id && id != Guid.Empty &&
-                item.PerformedByMedicalWorkerId is null,
-            "результат анализа должен иметь одного сервисного автора");
+                item.PerformedByMedicalWorkerId is null &&
+                item.EventType is MedicalRecordEventType.MedicalRecordCreated or MedicalRecordEventType.DiagnosisAdded or
+                    MedicalRecordEventType.LaboratoryAnalysisResultRecorded,
+            "событие должно иметь одного сервисного автора допустимого типа");
         return item.PerformedByServiceAccountId.GetValueOrDefault();
+    }
+
+    private static void RequireDiagnosisAuthor(MedicalRecordHistoryEvent item, DiagnosisAddedPayload payload)
+    {
+        if (item.AuthorKind == DomainAuthorKind.MedicalWorker && payload.AddedByMedicalWorkerId is null &&
+            payload.AddedByServiceAccountId is null)
+            return;
+        Require(payload.AddedByMedicalWorkerId == item.PerformedByMedicalWorkerId &&
+                payload.AddedByServiceAccountId == item.PerformedByServiceAccountId,
+            "автор диагноза не совпадает с автором события");
     }
 
     private static void Require(bool condition, string detail)

@@ -44,6 +44,14 @@ public sealed class AuditEventFactory(TimeProvider timeProvider)
         OptionalText(metadata.AttemptedUserName, 128, "введённый логин");
         OptionalText(metadata.RemoteIp, 64, "IP-адрес");
         OptionalText(metadata.Outcome, 64, "результат операции");
+        OptionalText(metadata.SourceSystem, 64, "внешняя система");
+        OptionalText(metadata.ExternalPatientId, 128, "внешний идентификатор пациента");
+        OptionalText(metadata.ClientCertificateSha256, 64, "отпечаток сертификата");
+        OptionalText(metadata.ClientCertificateSubject, 2048, "субъект сертификата");
+        OptionalText(metadata.ClientCertificateIssuer, 2048, "издатель сертификата");
+        OptionalText(metadata.ClientCertificateSerialNumber, 128, "серийный номер сертификата");
+        if (metadata.DiagnosisCount < 0)
+            throw new DomainValidationException("Число диагнозов не может быть отрицательным.");
         if (metadata.RevokedRefreshTokenCount < 0 || metadata.RevokedServiceSessionCount < 0)
             throw new DomainValidationException("Число отозванных сессий не может быть отрицательным.");
     }
