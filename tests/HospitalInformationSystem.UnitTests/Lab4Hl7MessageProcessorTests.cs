@@ -287,6 +287,29 @@ public sealed class Lab4Hl7MessageProcessorTests
         if (phase == "authentication") _sender.VerifyNoOtherCalls();
     }
 
+    [Theory]
+    [InlineData("ADT^A28^ADT_A05^UNSUPPORTED")]
+    [InlineData("ADT^A28^ADT_A05&UNSUPPORTED")]
+    public async Task UnsupportedMessageStructure_ShouldReturnCorrelatedProtocolAck(string messageType)
+    {
+        var payload = Encoding.UTF8.GetBytes(
+            $"MSH|^~\\&|MEDSOFT_IMPORT|LAB4_XML|HIS|MEDSOFT|20261117123456+0000||{messageType}|correlation-001|P|2.8||||||UNICODE UTF-8\r");
+        var processor = new Hl7MessageProcessor(new Hl7MessageCodec(_clock.Object),
+            _tokens.Object, _sender.Object, _clock.Object);
+
+        var response = await processor.ProcessAsync(payload, Certificate, null, CancellationToken.None);
+
+        response.Should().NotBeNull();
+        var segments = Encoding.UTF8.GetString(response!).Split('\r', StringSplitOptions.RemoveEmptyEntries);
+        segments[0].Split('|')[8].Should().Be("ACK^A28^ACK");
+        var msa = segments.Single(segment => segment.StartsWith("MSA|", StringComparison.Ordinal)).Split('|');
+        msa[1].Should().Be("AR");
+        msa[2].Should().Be("correlation-001");
+        msa[3].Should().StartWith("PROTOCOL:");
+        _tokens.VerifyNoOtherCalls();
+        _sender.VerifyNoOtherCalls();
+    }
+
     [Fact]
     public void Registration_ShouldResolveScopedProcessorAndSingletonCodec()
     {

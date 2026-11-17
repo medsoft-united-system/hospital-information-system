@@ -310,6 +310,24 @@ public sealed class Lab4Hl7MessageCodecTests
     }
 
     [Theory]
+    [InlineData("ADT^A28^ADT_A05^UNSUPPORTED")]
+    [InlineData("ADT^A28^ADT_A05&UNSUPPORTED")]
+    public void Decode_UnsupportedMessageStructure_ShouldRetainReadableCorrelation(string messageType)
+    {
+        var payload = Field(Text("adt-no-diagnoses.hl7"), "MSH", 9, messageType);
+
+        var exception = Failure(Utf8.GetBytes(payload));
+
+        exception.Kind.Should().Be(Hl7FailureKind.Protocol);
+        exception.Header.Should().NotBeNull();
+        exception.Header!.ControlId.Should().Be("lab4-accepted-no-diagnoses-001");
+        exception.Header.MessageType.Should().Be("ADT");
+        exception.Header.TriggerEvent.Should().Be("A28");
+        var readEnvelope = () => _codec.DecodeEnvelope(Utf8.GetBytes(payload));
+        readEnvelope.Should().Throw<Hl7DecodeException>().Which.Header.Should().NotBeNull();
+    }
+
+    [Theory]
     [InlineData("bom")]
     [InlineData("line-feed")]
     [InlineData("missing-final-cr")]

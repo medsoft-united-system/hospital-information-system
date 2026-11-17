@@ -55,13 +55,25 @@ internal static class Hl7WireReader
 
     private static Hl7MessageHeader Header(string[] msh)
     {
-        var type = Hl7Text.Components(Field(msh, 8), 3);
+        var rawType = Hl7Text.Split(Field(msh, 8), '^');
+        var messageType = Hl7Text.Atom(rawType[0]);
+        var trigger = rawType.Length > 1 ? Hl7Text.Atom(rawType[1]) : "";
+        var structure = "";
+        var structureValid = rawType.Skip(3).All(component => component.Length == 0);
+        try
+        {
+            structure = rawType.Length > 2 ? Hl7Text.Atom(rawType[2]) : "";
+            structureValid &= structure.Length <= 128;
+        }
+        catch (Hl7DecodeException)
+        {
+            structureValid = false;
+        }
         var sentAtValid = Hl7Timestamp.TryRead(Field(msh, 6), out var sentAt);
         var header = new Hl7MessageHeader
         {
-            MessageType = Required(type[0], 128), TriggerEvent = Required(type[1], 128),
-            MessageStructure = type[2].Length <= 128 ? type[2] :
-                throw new Hl7DecodeException(Hl7FailureKind.Protocol),
+            MessageType = Required(messageType, 128), TriggerEvent = Required(trigger, 128),
+            MessageStructure = structureValid ? structure : "",
             ControlId = Required(Hl7Text.Atom(Field(msh, 9)), 128),
             SendingApplication = Required(Hl7Text.Atom(Field(msh, 2)), 128),
             SendingFacility = Required(Hl7Text.Atom(Field(msh, 3)), 128),
@@ -69,7 +81,7 @@ internal static class Hl7WireReader
             ReceivingFacility = Required(Hl7Text.Atom(Field(msh, 5)), 128),
             SentAt = sentAtValid ? sentAt : DateTimeOffset.UnixEpoch
         };
-        if (!sentAtValid) throw new Hl7DecodeException(Hl7FailureKind.Protocol, header);
+        if (!sentAtValid || !structureValid) throw new Hl7DecodeException(Hl7FailureKind.Protocol, header);
         return header;
     }
 }
