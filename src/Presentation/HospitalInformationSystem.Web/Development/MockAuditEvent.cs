@@ -1,4 +1,7 @@
+using System.Text.Json;
+
 namespace HospitalInformationSystem.Web.Development;
 
 internal sealed record MockAuditEvent(Guid EventId, DateTimeOffset EventTime, string EventType,
-    Guid? UserId, string DisplayName, string Message, Guid? TargetId, bool IsSystem = false);
+    Guid? UserId, string DisplayName, string Message, Guid? TargetId, bool IsSystem = false,
+    Guid? ServiceAccountId = null, IReadOnlyDictionary<string, JsonElement>? Metadata = null, string? RequestId = null);

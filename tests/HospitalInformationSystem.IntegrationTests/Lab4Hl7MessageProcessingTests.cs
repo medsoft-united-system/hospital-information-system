@@ -153,7 +153,7 @@ public sealed class Lab4Hl7MessageProcessingTests(ServiceAuthenticationApiFactor
 
         AssertAuthenticationFailure(acknowledgement, controlId, accessToken);
         (await ClinicalSnapshotAsync()).Should().Be(before);
-        (await ImportAuditCountAsync()).Should().Be(auditsBefore);
+        (await ImportAuditCountAsync()).Should().Be(auditsBefore + 1);
     }
 
     [Theory]
@@ -189,7 +189,7 @@ public sealed class Lab4Hl7MessageProcessingTests(ServiceAuthenticationApiFactor
 
         AssertAuthenticationFailure(acknowledgement, controlId, invalidToken);
         (await ClinicalSnapshotAsync()).Should().Be(before);
-        (await ImportAuditCountAsync()).Should().Be(auditsBefore);
+        (await ImportAuditCountAsync()).Should().Be(auditsBefore + 1);
     }
 
     private async Task<ServiceAccountKeyResultDto> CreateServiceAsync(string role)
