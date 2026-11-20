@@ -76,6 +76,7 @@ class Lab3IsolationTests(unittest.TestCase):
         inherited = {"PATH": "/bin", "DOCKER_CONTEXT": "desktop-linux", "ConnectionStrings__Postgres": "working-db",
                      "Authentication__Jwt__PrivateKeyPath": "working-key", "Security__DataProtection__KeyDirectory": "working-ring",
                      "Fhir__PublicBaseUrl": "working-url", "LIS_DB_DSN": "working-lis", "POSTGRES_PASSWORD": "working-password",
+                     "Hl7Import__Enabled": "true", "Hl7Import__ServerCertificate__PfxPath": "/working/hl7.pfx",
                      "DOTNET_ENVIRONMENT": "Production", "GITHUB_TOKEN": "credential", "AllowedHosts": "working-host"}
         self.assertEqual(smoke.clean_environment(inherited), {"PATH": "/bin", "DOCKER_CONTEXT": "desktop-linux"})
         self.assertEqual(inherited["ConnectionStrings__Postgres"], "working-db")

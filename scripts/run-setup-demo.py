@@ -91,7 +91,8 @@ def run(arguments):
         match = re.fullmatch(r"127\.0\.0\.1:([0-9]{1,5})", binding)
         if not match or not 1 <= int(match[1]) <= 65535:
             raise ValueError("Docker вернул неожиданный порт демонстрационной БД.")
-        application_environment = os.environ.copy()
+        application_environment = {key: value for key, value in os.environ.items() if not key.startswith("Hl7Import__")}
+        application_environment["Hl7Import__Enabled"] = "false"
         application_environment["ConnectionStrings__Postgres"] = (
             "Host=host.docker.internal;Port=" + match[1]
             + ";Database=hospital;Username=postgres;Password=" + environment["POSTGRES_PASSWORD"])

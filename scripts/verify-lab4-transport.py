@@ -39,7 +39,7 @@ def copy_sources(destination):
 
 
 def run(arguments):
-    docker = shutil.which("docker")
+    docker = shutil.which(arguments.docker)
     if docker is None:
         raise ValueError("Docker is required for the Linux TLS 1.3 test profile.")
     probe = subprocess.run([docker, "info", "--format", "{{.ServerVersion}}"],
@@ -72,7 +72,8 @@ def run(arguments):
             command += ["--mount", "type=bind,source=" + str(packages) + ",target=/nuget-cache,readonly"]
             restore_arguments = ["-p:RestoreFallbackFolders=/nuget-cache"]
         command += [arguments.image, "dotnet", "test", PROJECT,
-                    "--filter", "Category=MllpTls", "-m:1",
+                    "--filter", ("Category=MllpTls|FullyQualifiedName~Lab4UpgradeFromLab3Tests"
+                                 if arguments.include_upgrade else "Category=MllpTls"), "-m:1",
                     "-p:EnableMllpTlsTests=true", "-p:UseSharedCompilation=false",
                     "-p:RestoreIgnoreFailedSources=true", *restore_arguments]
         print("Linux TLS 1.3 profile: copied", count, "repository source files; ignored files stay outside the container.", flush=True)
@@ -87,6 +88,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--image", default="mcr.microsoft.com/dotnet/sdk:10.0",
                         help="Linux .NET 10 SDK image used for the TLS 1.3 test profile.")
+    parser.add_argument("--include-upgrade", action="store_true",
+                        help="Also verify migration from the last Lab3 schema with existing credentials and clinical data.")
+    parser.add_argument("--docker", default="docker", help="Path to Docker CLI.")
     arguments = parser.parse_args()
     try:
         return run(arguments)

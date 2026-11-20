@@ -38,12 +38,15 @@ class SetupDemoTests(unittest.TestCase):
             return 0
         self.launcher.run_application.side_effect = record_environment
         with patch.dict(os.environ, {"ConnectionStrings__Postgres": "Host=production;Database=important",
-                                     "Database__Seed": "true"}):
+                                     "Database__Seed": "true", "Hl7Import__Enabled": "true",
+                                     "Hl7Import__ServerCertificate__PfxPath": "/working/private/hl7.pfx"}):
             before = dict(os.environ)
             code, docker = self.execute()
             self.assertEqual(dict(os.environ), before)
         self.assertEqual(code, 0)
         self.assertIn("Host=host.docker.internal;Port=15432;Database=hospital;", observed["ConnectionStrings__Postgres"])
+        self.assertEqual(observed["Hl7Import__Enabled"], "false")
+        self.assertNotIn("Hl7Import__ServerCertificate__PfxPath", observed)
         self.assertEqual(observed["Database__Seed"], "false")
         self.assertEqual(observed["Database__ApplyMigrations"], "true")
         self.assertEqual(observed["Authentication__Setup__AdministratorUserName"], "admin")

@@ -86,6 +86,44 @@ class MakefileTests(unittest.TestCase):
             "scripts/prepare-lab3-integration.py", "--run", "--start-database", "--security-directory", str(source),
             "--output-directory", str(integration), "--docker-network", "lab3-private", "--docker", "docker", "--no-build"])
 
+    def test_lab4_prepare_passes_paths_port_and_optional_public_ca_without_shell_expansion(self):
+        source = self.directory / "source ' $literal"
+        output = self.directory / "client ' $literal"
+        ca = self.directory / "T7 ' CA.pem"
+        result = self.run_make("lab4-prepare", "PYTHON=" + str(self.executable),
+                               "SECURITY_DIR=" + str(source).replace("$", "$$"),
+                               "LAB4_SECURITY_DIR=" + str(output).replace("$", "$$"),
+                               "HL7_CLIENT_CA=" + str(ca), "MLLP_PORT=12575")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        args = json.loads(self.probe.read_text())
+        self.assertEqual(args[0], "scripts/prepare-lab4-integration.py")
+        self.assertEqual(args[args.index("--security-directory") + 1], str(source))
+        self.assertEqual(args[args.index("--output-directory") + 1], str(output))
+        self.assertEqual(args[args.index("--client-ca") + 1], str(ca))
+        self.assertEqual(args[args.index("--mllp-port") + 1], "12575")
+        self.assertNotIn("--run", args)
+
+    def test_lab4_run_forwards_tool_paths_and_never_requests_a_database_reset(self):
+        result = self.run_make("lab4-run", "PYTHON=" + str(self.executable),
+                               "DOTNET=/custom/dotnet", "DOCKER=/custom/docker", "NO_BUILD=1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        args = json.loads(self.probe.read_text())
+        self.assertIn("--run", args)
+        self.assertIn("--start-database", args)
+        self.assertIn("--no-build", args)
+        self.assertEqual(args[args.index("--dotnet") + 1], "/custom/dotnet")
+        self.assertEqual(args[args.index("--docker") + 1], "/custom/docker")
+        self.assertNotIn("--fresh-database", args)
+
+    def test_lab4_check_uses_isolated_launcher_and_tls_upgrade_profile(self):
+        result = self.run_make("-n", "lab4-check", "NO_BUILD=1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("scripts/verify-lab4-launcher.py", result.stdout)
+        self.assertIn("scripts/verify-lab4-transport.py", result.stdout)
+        self.assertIn("--include-upgrade", result.stdout)
+        self.assertNotIn("prepare-lab4-integration.py", result.stdout)
+        self.assertNotIn("--start-database", result.stdout)
+
     def test_lab3_smoke_passes_lis_checkout_and_report_as_separate_arguments(self):
         source = self.directory / "Go LIS ' source"
         report = self.directory / "report file.json"

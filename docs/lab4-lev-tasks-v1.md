@@ -236,6 +236,16 @@ L3 по-прежнему пишет success/duplicate/business-validation соб
 
 TLS-handshake/framing ошибки остаются transport logs: до подтверждённого mTLS processor не вызывается и ложные client-cert события не создаются. API key, UAC, токен, ФИО пациента и полный XML не передаются отказ-аудитору; сохраняются только выбранные поля. Миграция не требуется: использован существующий JSON metadata контракт.
 
+## Прогресс L7 на 20.11.2026
+
+Проверено: 168 Python/Makefile/OpenSSL-теста без пропусков; реальный изолированный launcher smoke с HTTPS/MLLP, отказами и перезапуском API; 25 Linux integration scenarios (24 TLS/TCP + upgrade Lab3→Lab4) без пропусков. По опубликованному ревью усилена отрицательная mTLS-проверка: после отказа без сертификата до перезапуска listener должен снова вернуть AA/CONNECTED; недоступный listener не считается правильным отказом. Отдельный первоначальный запуск upgrade-теста на macOS также прошёл после старта Docker Desktop.
+
+Добавлены `make lab4-prepare`, `make lab4-run` и `make lab4-check`. Запуск сохраняет HTTPS-профиль Lab3, исходный CA/JWT/Data Protection/owner token, рабочую БД и сеть Go LIS. `run-secure-development.py` передаёт HL7-настройки, публикует отдельный loopback MLLP-порт и монтирует readonly только серверный PFX, парольный файл и публичный client CA. Порты Web/API не могут быть выбраны для MLLP. Обычный disabled-профиль очищает stale HL7-настройки, demo/Lab3 smoke изолируют их.
+
+`prepare-hl7-client-certificate.py` создаёт независимый RSA3072 ClientAuth PEM-выпуск вне repo; private key 0600, каталог 0700. Повтор проверяет CA/цепочку/EKU/срок/ключевую пару без перезаписи. При `HL7_CLIENT_CA` принимается публичный корень Т7, учебный client key не выпускается. В терминале отдельно показаны серверный CA и client CA, HTTPS localhost и MLLP localhost; Docker-only his-api оставлен для LIS.
+
+Подробный запуск и взаимодействие скриптов описаны в `docs/system-guide-v1.md`, раздел 7.10.6. Автономная проверка launcher использует только временные сертификаты/БД/случайные порты и повторный запуск API. Отдельный PostgreSQL-тест мигрирует последнюю Lab3-схему дважды, проверяя сохранность admin/TOTP/refresh, LIS Argon2id key/service session, пациента/ЭМК, результата анализа, истории и аудита. Настоящий desktop и XML-показ остаются L8.
+
 ## 4. Карточки задач Льва
 
 ### L1. Зафиксировать C4 и серверные интерфейсы — 5 SP
@@ -314,7 +324,7 @@ TLS-handshake/framing ошибки остаются transport logs: до под�
 
 **Результат:** HIS для четвёртой лабы запускается одной понятной командой.
 
-- Дополнить Makefile/скрипты: предлагаемые `make lab4-prepare`, `make lab4-run`, `make lab4-check`; это **будущие** команды, сейчас их нет.
+- Дополнить Makefile/скрипты: `make lab4-prepare`, `make lab4-run`, `make lab4-check` (реализованы в L7).
 - Пробросить MLLP-порт и внешние пути сертификатов, объяснить hostname/SAN и отдельные HTTPS/MLLP параметры. Для desktop используется host-адрес, не Docker-only `his-api` без DNS на машине. Обновить allowlist окружения в `run-secure-development.py`, иначе новая секция настроек не попадёт в контейнер.
 - Использовать клиентский выпуск T7 либо тестовые временные сертификаты, не заставляя L5 ждать T7. Приватный CA-ключ не монтировать в сервер/desktop runtime.
 - Миграции применяются поверх лабораторной 3; при повторном запуске остаются admin, данные, LIS-сервисный аккаунт, ключи и история.
@@ -384,5 +394,5 @@ TLS-handshake/framing ошибки остаются transport logs: до под�
 - [x] L4: parser/ACK/probe по C4.
 - [x] L5: MLLP/mTLS server и защита транспортного уровня.
 - [x] L6: аудит реального сертификата и UI.
-- [ ] L7: запуск/upgrade без потери текущих данных.
+- [x] L7: запуск/upgrade без потери текущих данных.
 - [ ] L8: настоящий XML, desktop и сквозной показ.
