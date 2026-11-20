@@ -10,6 +10,7 @@ using HospitalInformationSystem.Infrastructure.ServiceAccounts.Tokens;
 using System.Security.Authentication;
 using HospitalInformationSystem.Api.Fhir;
 using HospitalInformationSystem.Api.Hl7;
+using HospitalInformationSystem.Api.Hl7.Transport;
 
 var builder = WebApplication.CreateBuilder(args);
 if (builder.Environment.IsDevelopment())
@@ -37,6 +38,7 @@ builder.Services.AddApiSecurity(builder.Configuration, builder.Environment);
 builder.Services.AddServiceAccountSecurity(builder.Configuration);
 builder.Services.AddFhirApi();
 builder.Services.AddHl7ImportCodec();
+builder.Services.AddHl7MllpTransport(builder.Configuration);
 
 var app = builder.Build();
 _ = app.Services.GetRequiredService<JwtKeyMaterial>();
