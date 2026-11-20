@@ -45,7 +45,7 @@ public sealed class Hl7MessageCodec(TimeProvider timeProvider) : IHl7MessageCode
         }
         catch (Hl7DecodeException exception) when (exception.Header is null)
         {
-            throw new Hl7DecodeException(exception.Kind, wire.Header);
+            throw new Hl7DecodeException(exception.Kind, wire.Header, exception.ExternalPatientId);
         }
     }
 
@@ -65,7 +65,7 @@ public sealed class Hl7MessageCodec(TimeProvider timeProvider) : IHl7MessageCode
         }
         catch (Hl7DecodeException exception) when (exception.Header is null)
         {
-            throw new Hl7DecodeException(exception.Kind, header);
+            throw new Hl7DecodeException(exception.Kind, header, exception.ExternalPatientId);
         }
     }
 

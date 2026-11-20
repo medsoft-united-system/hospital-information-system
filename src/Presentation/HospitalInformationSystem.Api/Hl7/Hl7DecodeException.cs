@@ -7,7 +7,8 @@ public enum Hl7FailureKind
     Validation
 }
 
-public sealed class Hl7DecodeException(Hl7FailureKind kind, Hl7MessageHeader? header = null)
+public sealed class Hl7DecodeException(Hl7FailureKind kind, Hl7MessageHeader? header = null,
+    string? externalPatientId = null)
     : Exception(kind switch
     {
         Hl7FailureKind.Authentication => "HL7 authentication rejected.",
@@ -17,4 +18,5 @@ public sealed class Hl7DecodeException(Hl7FailureKind kind, Hl7MessageHeader? he
 {
     public Hl7FailureKind Kind { get; } = kind;
     public Hl7MessageHeader? Header { get; } = header;
+    public string? ExternalPatientId { get; } = externalPatientId;
 }

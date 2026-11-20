@@ -21,7 +21,7 @@ public static class AuditLabels
         AuditEventType.AdministratorLogin => "Вход администратора",
         AuditEventType.UserLogin => "Вход сотрудника",
         AuditEventType.ServiceLogin => "Вход сервисного аккаунта",
-        AuditEventType.Hl7PatientImported => "Импорт пациента HL7",
+        AuditEventType.Hl7PatientImported => "Импорт (HL7)",
         AuditEventType.LoginFailed => "Неудачный вход",
         AuditEventType.MedicalWorkerCreated => "Создан медработник",
         AuditEventType.MedicalWorkerUpdated => "Изменён медработник",

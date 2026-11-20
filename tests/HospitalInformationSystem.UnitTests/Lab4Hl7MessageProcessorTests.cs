@@ -24,6 +24,7 @@ public sealed class Lab4Hl7MessageProcessorTests
     private readonly Mock<IHl7MessageCodec> _codec = new(MockBehavior.Strict);
     private readonly Mock<IHl7ImportTokenValidator> _tokens = new(MockBehavior.Strict);
     private readonly Mock<ISender> _sender = new(MockBehavior.Strict);
+    private readonly Mock<IHl7ImportFailureAuditor> _failureAuditor = new();
     private readonly Mock<TimeProvider> _clock = new(MockBehavior.Strict);
     private Hl7Acknowledgement? _acknowledgement;
     private Hl7MessageHeader? _responseHeader;
@@ -295,7 +296,7 @@ public sealed class Lab4Hl7MessageProcessorTests
         var payload = Encoding.UTF8.GetBytes(
             $"MSH|^~\\&|MEDSOFT_IMPORT|LAB4_XML|HIS|MEDSOFT|20261117123456+0000||{messageType}|correlation-001|P|2.8||||||UNICODE UTF-8\r");
         var processor = new Hl7MessageProcessor(new Hl7MessageCodec(_clock.Object),
-            _tokens.Object, _sender.Object, _clock.Object);
+            _tokens.Object, _sender.Object, _clock.Object, _failureAuditor.Object);
 
         var response = await processor.ProcessAsync(payload, Certificate, null, CancellationToken.None);
 
@@ -317,6 +318,7 @@ public sealed class Lab4Hl7MessageProcessorTests
         services.AddSingleton(_clock.Object);
         services.AddSingleton(_tokens.Object);
         services.AddSingleton(_sender.Object);
+        services.AddSingleton(_failureAuditor.Object);
         services.AddHl7ImportCodec();
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         using var first = provider.CreateScope();
@@ -328,7 +330,7 @@ public sealed class Lab4Hl7MessageProcessorTests
             .Should().NotBeSameAs(second.ServiceProvider.GetRequiredService<Hl7MessageProcessor>());
     }
 
-    private Hl7MessageProcessor Processor() => new(_codec.Object, _tokens.Object, _sender.Object, _clock.Object);
+    private Hl7MessageProcessor Processor() => new(_codec.Object, _tokens.Object, _sender.Object, _clock.Object, _failureAuditor.Object);
 
     private void SetMessage(Hl7MessageHeader header, ImportedPatientInput? patient)
     {

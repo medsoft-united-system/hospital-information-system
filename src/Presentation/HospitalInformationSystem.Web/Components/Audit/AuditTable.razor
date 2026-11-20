@@ -8,12 +8,15 @@
       <th scope="col">Тип события</th>
       <th scope="col">Инициатор</th>
       <th scope="col">Сообщение</th>
+      <th scope="col">Результат</th>
     </tr>
     </thead>
     <tbody>
     @foreach (var item in Items)
     {
-      <tr @key="item.EventId" data-event-id="@item.EventId">
+      var import = Hl7ImportAuditDisplayFactory.Create(item);
+      var detailsKey = $"hl7-details-{item.EventId}";
+      <tr @key="item.EventId" data-event-id="@item.EventId" class="@(import is not null ? "hl7-audit-event-row" : null)">
         <td data-label="Время">@item.EventTime.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</td>
         <td data-label="Тип события">@AuditLabels.EventType(item.EventType)</td>
         <td data-label="Инициатор">
@@ -31,7 +34,28 @@
             <small class="field-hint d-block">@revocation</small>
           }
         </td>
+        <td data-label="Результат">
+          @if (import is not null)
+          {
+            <span class="audit-result audit-result-@import.ResultClass">@import.ResultLabel</span>
+          }
+          else
+          {
+            <span class="audit-result-empty" aria-label="Результат не применяется">—</span>
+          }
+        </td>
       </tr>
+      @if (import is not null)
+      {
+        <tr @key="detailsKey" class="hl7-audit-details-row" data-details-for="@item.EventId">
+          <td colspan="5">
+            <details class="hl7-audit-disclosure">
+              <summary>Импорт и сертификат</summary>
+              <Hl7ImportAuditDetails Details="import" />
+            </details>
+          </td>
+        </tr>
+      }
     }
     </tbody>
   </table>

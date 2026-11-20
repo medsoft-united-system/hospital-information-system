@@ -13,8 +13,22 @@ internal static class Hl7PatientMapper
         OnlyFields(pid, 3, 5, 7, 8);
         var id = Hl7Text.Components(Field(pid, 3), 5);
         Require(id[1] == "" && id[2] == "" && id[3] == Hl7ImportProtocol.SourceSystem && id[4] == "PI");
-        var name = Hl7Text.Components(Field(pid, 5), 3);
         var externalId = RequiredClinical(id[0], 128);
+        if (externalId != externalId.Trim())
+            throw new Hl7DecodeException(Hl7FailureKind.Validation);
+        try
+        {
+            return MapFields(pid, dg1, id[3], externalId);
+        }
+        catch (Hl7DecodeException exception)
+        {
+            throw new Hl7DecodeException(exception.Kind, exception.Header, externalId);
+        }
+    }
+
+    private static ImportedPatientInput MapFields(string[] pid, string[][] dg1, string sourceSystem, string externalId)
+    {
+        var name = Hl7Text.Components(Field(pid, 5), 3);
         var lastName = RequiredClinical(name[0], 24);
         var firstName = RequiredClinical(name[1], 24);
         if (name[2].Length > 24) throw new Hl7DecodeException(Hl7FailureKind.Validation);
@@ -45,7 +59,7 @@ internal static class Hl7PatientMapper
         }
         return new ImportedPatientInput
         {
-            SourceSystem = id[3], ExternalPatientId = externalId, LastName = lastName, FirstName = firstName,
+            SourceSystem = sourceSystem, ExternalPatientId = externalId, LastName = lastName, FirstName = firstName,
             MiddleName = name[2].Length == 0 ? null : name[2], BirthDate = birthDate, Sex = sex, Diagnoses = diagnoses
         };
     }

@@ -52,7 +52,7 @@ public sealed class ImportedPatientService(HospitalDbContext db, TimeProvider ti
                 cancellationToken);
             if (existing is not null)
             {
-                AppendAudit(command, actor, "duplicate", existing.PatientId, 0);
+                AppendAudit(command, actor, Hl7ImportAuditOutcomes.Duplicate, existing.PatientId, 0);
                 await db.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
                 return new PatientImportRejected(PatientImportRejection.Duplicate, "Пациент уже импортирован.");
@@ -78,7 +78,7 @@ public sealed class ImportedPatientService(HospitalDbContext db, TimeProvider ti
                 SourceSystem = input.SourceSystem, ExternalPatientId = input.ExternalPatientId,
                 PatientId = patient.Id, CreatedAtUtc = now
             });
-            AppendAudit(command, actor, "success", patient.Id, input.Diagnoses.Count);
+            AppendAudit(command, actor, Hl7ImportAuditOutcomes.Success, patient.Id, input.Diagnoses.Count);
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return new PatientImported(patient.Id, input.Diagnoses.Count);
@@ -88,7 +88,7 @@ public sealed class ImportedPatientService(HospitalDbContext db, TimeProvider ti
             db.ChangeTracker.Clear();
             if (actor is null) throw;
             using var actorScope = auditContext.Begin(actor);
-            AppendAudit(command, actor, "validation-failed", null, 0);
+            AppendAudit(command, actor, Hl7ImportAuditOutcomes.ValidationFailed, null, 0);
             await db.SaveChangesAsync(cancellationToken);
             return new PatientImportRejected(PatientImportRejection.Validation,
                 IsNameConflict(exception)
@@ -100,7 +100,7 @@ public sealed class ImportedPatientService(HospitalDbContext db, TimeProvider ti
             db.ChangeTracker.Clear();
             if (actor is null) throw;
             using var actorScope = auditContext.Begin(actor);
-            AppendAudit(command, actor, "duplicate", null, 0);
+            AppendAudit(command, actor, Hl7ImportAuditOutcomes.Duplicate, null, 0);
             await db.SaveChangesAsync(cancellationToken);
             return new PatientImportRejected(PatientImportRejection.Duplicate, "Пациент уже импортирован.");
         }
@@ -176,27 +176,16 @@ public sealed class ImportedPatientService(HospitalDbContext db, TimeProvider ti
 
     private void AppendAudit(ImportPatientCommand command, AuditActor actor, string outcome, Guid? patientId, int count)
     {
-        var certificate = command.Context.ClientCertificate;
-        audit.Append(AuditEventType.Hl7PatientImported, outcome == "success" ? "Пациент импортирован через HL7." :
+        audit.Append(AuditEventType.Hl7PatientImported,
+            outcome == Hl7ImportAuditOutcomes.Success ? "Пациент импортирован через HL7." :
                 "Импорт пациента через HL7 отклонён.",
-            new AuditMetadata
-            {
-                Action = "hl7-patient-import", TargetId = patientId, ServiceAccountId = actor.ServiceAccountId,
-                Outcome = outcome, SourceSystem = SafeValue(command.Patient?.SourceSystem, 64),
-                ExternalPatientId = SafeValue(command.Patient?.ExternalPatientId, 128), DiagnosisCount = count,
-                ClientCertificateSha256 = certificate.Sha256Fingerprint,
-                ClientCertificateSubject = SafeValue(certificate.Subject, 2048),
-                ClientCertificateIssuer = SafeValue(certificate.Issuer, 2048),
-                ClientCertificateSerialNumber = SafeValue(certificate.SerialNumber, 128),
-                ClientCertificateNotBeforeUtc = certificate.NotBeforeUtc.ToUniversalTime(),
-                ClientCertificateNotAfterUtc = certificate.NotAfterUtc.ToUniversalTime()
-            }, actor);
+            Hl7ImportAuditMetadataFactory.Create(outcome, command.Context.ClientCertificate,
+                actor.ServiceAccountId, command.Patient?.SourceSystem, command.Patient?.ExternalPatientId,
+                patientId, count), actor);
     }
 
     private static bool SafeText(string? value, int max) => value is { Length: > 0 } && value.Length <= max &&
         !string.IsNullOrWhiteSpace(value) && !value.Any(char.IsControl);
-
-    private static string? SafeValue(string? value, int max) => SafeText(value, max) ? value : null;
 
     private static bool IsNameConflict(Exception exception) => exception.GetBaseException() is PostgresException
         { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "ux_diagnosis_definitions_name" };

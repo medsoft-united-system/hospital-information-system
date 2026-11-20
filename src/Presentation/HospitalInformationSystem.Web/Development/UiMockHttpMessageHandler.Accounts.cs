@@ -103,9 +103,11 @@ public sealed partial class UiMockHttpMessageHandler
             .ThenByDescending(x => x.EventId).Skip((int)skip).Take(pageSize + 1).ToArray();
         var result = slice.Take(pageSize).Select(x => new AuditEventDto(x.EventId, x.EventTime,
             Enum.Parse<AuditEventType>(x.EventType), new AuditActorDto(
+                x.ServiceAccountId.HasValue ? AuditActorKind.ServiceAccount :
                 x.IsSystem ? AuditActorKind.System : x.UserId.HasValue ? AuditActorKind.User : AuditActorKind.Anonymous,
-                x.UserId, x.DisplayName, $"ui-mock-{x.EventId:N}", x.IsSystem ? "UiMock" : null), x.Message,
-            new Dictionary<string, JsonElement>
+                x.UserId, x.DisplayName, x.RequestId ?? $"ui-mock-{x.EventId:N}", x.IsSystem ? "UiMock" : null,
+                x.ServiceAccountId), x.Message,
+            x.Metadata ?? new Dictionary<string, JsonElement>
             {
                 ["reason"] = JsonSerializer.SerializeToElement("UiMock"),
                 ["targetId"] = JsonSerializer.SerializeToElement(x.TargetId)

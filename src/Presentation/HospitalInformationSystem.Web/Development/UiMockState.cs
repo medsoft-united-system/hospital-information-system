@@ -194,6 +194,7 @@ public sealed partial class UiMockState
         AppendEvent(record, "MedicalRecordCreated", null, "{}", createdAt);
         SeedLaboratoryAnalyses(createdAt);
         SeedServiceAccounts(createdAt);
+        SeedHl7Audit();
         AddAudit("MedicalWorkerCreated", "Подготовлены синтетические медработники UiMock.", DoctorId);
         AddAudit("PatientCreated", "Подготовлен учебный пациент UiMock.", PatientWithRecordId);
         Audit.Add(new MockAuditEvent(Guid.NewGuid(), DateTimeOffset.UtcNow, "AdministratorSetup", null,

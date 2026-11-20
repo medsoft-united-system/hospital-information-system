@@ -1,0 +1,34 @@
+@using System.Globalization
+
+<div class="hl7-audit-grid">
+  <section class="hl7-audit-section" aria-label="Данные импорта">
+    <h3>Импорт пациента</h3>
+    <dl>
+      <div><dt>Сервисный аккаунт</dt><dd>@(Details.ServiceName ?? "Не установлен")</dd></div>
+      <div><dt>ID аккаунта</dt><dd class="audit-code">@(Details.ServiceId?.ToString() ?? "Не установлен")</dd></div>
+      <div><dt>ID сообщения</dt><dd class="audit-code">@(Details.MessageId ?? "Не указан")</dd></div>
+      <div><dt>Источник</dt><dd>@(Details.SourceSystem ?? "Не указан")</dd></div>
+      <div><dt>Внешний ID пациента</dt><dd class="audit-code">@(Details.ExternalPatientId ?? "Не определён")</dd></div>
+      <div><dt>Пациент HIS</dt><dd class="audit-code">@(Details.PatientId?.ToString() ?? "Не определён")</dd></div>
+      <div><dt>Принято диагнозов</dt><dd>@(Details.AcceptedDiagnoses?.ToString(CultureInfo.InvariantCulture) ?? "Не указано")</dd></div>
+    </dl>
+  </section>
+  <section class="hl7-audit-section" aria-label="Клиентский сертификат">
+    <h3>Клиентский сертификат</h3>
+    <dl>
+      <div><dt>SHA-256</dt><dd class="audit-code">@(Details.CertificateSha256 ?? "Не указан")</dd></div>
+      <div><dt>Subject</dt><dd>@(Details.CertificateSubject ?? "Не указан")</dd></div>
+      <div><dt>Issuer</dt><dd>@(Details.CertificateIssuer ?? "Не указан")</dd></div>
+      <div><dt>Серийный номер</dt><dd class="audit-code">@(Details.CertificateSerial ?? "Не указан")</dd></div>
+      <div><dt>Действителен с</dt><dd>@FormatTimestamp(Details.CertificateNotBefore)</dd></div>
+      <div><dt>Действителен до</dt><dd>@FormatTimestamp(Details.CertificateNotAfter)</dd></div>
+    </dl>
+  </section>
+</div>
+
+@code {
+  [Parameter, EditorRequired] public Hl7ImportAuditDisplay Details { get; set; } = default!;
+
+  private static string FormatTimestamp(DateTimeOffset? value) =>
+    value?.ToUniversalTime().ToString("dd.MM.yyyy HH:mm:ss 'UTC'", CultureInfo.InvariantCulture) ?? "Не указано";
+}

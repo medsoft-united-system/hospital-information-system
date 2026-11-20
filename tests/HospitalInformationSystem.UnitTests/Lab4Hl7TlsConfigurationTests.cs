@@ -81,7 +81,7 @@ public sealed class Lab4Hl7TlsConfigurationTests
         var result = new Hl7ImportOptionsValidator().Validate(null, options);
 
         result.Failed.Should().BeTrue();
-        string.Join(" ", result.Failures).Should().NotContain(pki.Directory).And.NotContain(TestPki.Password);
+        string.Join(" ", result.Failures ?? []).Should().NotContain(pki.Directory).And.NotContain(TestPki.Password);
     }
 
     [Fact]

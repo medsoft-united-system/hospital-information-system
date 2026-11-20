@@ -1,0 +1,29 @@
+.audit-table { min-width: 760px; }
+.audit-table td { vertical-align: top; }
+.audit-table td[data-label="Сообщение"] { min-width: 260px; max-width: 640px; overflow-wrap: anywhere; }
+.audit-table td[data-label="Результат"] { white-space: nowrap; }
+.hl7-audit-event-row > td { border-bottom: 0; }
+.hl7-audit-details-row > td { padding: 0 28px 16px; border-top: 0; }
+.hl7-audit-disclosure { min-width: 0; }
+.hl7-audit-disclosure summary { width: fit-content; color: var(--green, #245b46); font-size: 12px; font-weight: 600; cursor: pointer; }
+.hl7-audit-disclosure summary:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; border-radius: 2px; }
+.audit-result { display: inline-flex; padding: 4px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; line-height: 1.4; }
+.audit-result-success { color: #14603c; background: #e7f5ed; }
+.audit-result-duplicate { color: #805414; background: #fff4d9; }
+.audit-result-error { color: #a33434; background: #fdecec; }
+.audit-result-unknown { color: #58677b; background: #edf1f5; }
+.audit-result-empty { color: var(--muted, #64748b); }
+.actor-serviceaccount { color: var(--green-dark, #194332); background: var(--soft-green, #eaf1e7); }
+
+@media (max-width: 640px) {
+  .audit-table { min-width: 0; width: 100%; }
+  .audit-table td[data-label="Время"] { grid-column: 1; grid-row: 1; }
+  .audit-table td[data-label="Тип события"] { grid-column: 1 / -1; grid-row: 2; }
+  .audit-table td[data-label="Инициатор"] { grid-column: 1 / -1; grid-row: 3; overflow-wrap: anywhere; }
+  .audit-table td[data-label="Сообщение"] { grid-column: 1 / -1; grid-row: 4; min-width: 0; max-width: none; }
+  .audit-table td[data-label="Результат"] { grid-column: 2; grid-row: 1; justify-self: end; }
+  .audit-table .hl7-audit-event-row { padding-bottom: 10px; }
+  .audit-table .hl7-audit-details-row { padding-top: 0; border-top: 0; }
+  .audit-table .hl7-audit-details-row > td { grid-column: 1 / -1; padding: 0; }
+  .audit-table .hl7-audit-details-row > td::before { display: none; }
+}
