@@ -66,6 +66,17 @@ def exchange(port, context, token):
     return msa[1], msa[3]
 
 
+def verify_client_certificate_requirement(port, unauthenticated_context, authenticated_context, token):
+    try:
+        exchange(port, unauthenticated_context, token)
+    except (ssl.SSLError, OSError):
+        pass
+    else:
+        raise ValueError("MLLP accepted a connection without a client certificate.")
+    if exchange(port, authenticated_context, token) != ("AA", "CONNECTED"):
+        raise ValueError("MLLP was not healthy after rejecting the connection without a client certificate.")
+
+
 def start_api(smoke, docker, arguments, profile, connection):
     preparer = load_tool("lab4_smoke_environment", "prepare-lab4-integration.py")
     launcher = load_tool("lab4_smoke_launcher", "run-secure-development.py")
@@ -144,12 +155,7 @@ def run(arguments):
         if exchange(port, mtls, "invalid-launcher-check-token")[0] != "AR":
             raise ValueError("MLLP accepted an invalid UAC token.")
         print("PASS: invalid UAC token rejected by MLLP.", flush=True)
-        try:
-            exchange(port, context, pair["accessToken"])
-        except (ssl.SSLError, OSError):
-            pass
-        else:
-            raise ValueError("MLLP accepted a connection without a client certificate.")
+        verify_client_certificate_requirement(port, context, mtls, pair["accessToken"])
         print("PASS: real launcher mounts/ports, HTTPS TLS 1.3, HL7 JWT and MLLP mutual TLS probe.", flush=True)
         docker.command("rm", "--force", name)
         _, second_origin, second_port = start_api(smoke, docker, options, profile, connection)

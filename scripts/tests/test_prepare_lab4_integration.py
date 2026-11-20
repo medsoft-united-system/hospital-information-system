@@ -1,6 +1,7 @@
 import argparse
 import importlib.util
 import io
+import ssl
 from pathlib import Path
 import tempfile
 import unittest
@@ -177,6 +178,30 @@ class Lab4LauncherIsolationTests(unittest.TestCase):
         self.assertEqual(base["ConnectionStrings__Postgres"], "Host=his-db;Password=IsolatedOnly")
         self.assertEqual(origin, "https://localhost:50001")
         self.assertEqual(port, 50002)
+
+    def test_no_certificate_refusal_is_followed_by_a_healthy_authenticated_probe(self):
+        without_certificate, with_certificate = object(), object()
+        with patch.object(smoke, "exchange", side_effect=[ssl.SSLError("certificate required"), ("AA", "CONNECTED")]) as exchange:
+            smoke.verify_client_certificate_requirement(2575, without_certificate, with_certificate, "synthetic.jwt")
+        self.assertEqual(exchange.call_args_list[0].args, (2575, without_certificate, "synthetic.jwt"))
+        self.assertEqual(exchange.call_args_list[1].args, (2575, with_certificate, "synthetic.jwt"))
+
+    def test_unavailable_listener_is_not_reported_as_a_successful_mtls_refusal(self):
+        with patch.object(smoke, "exchange", side_effect=[ConnectionRefusedError(), ConnectionRefusedError()]) as exchange:
+            with self.assertRaises(ConnectionRefusedError):
+                smoke.verify_client_certificate_requirement(2575, object(), object(), "synthetic.jwt")
+        self.assertEqual(exchange.call_count, 2)
+
+    def test_refused_authenticated_probe_after_no_certificate_is_not_a_success(self):
+        with patch.object(smoke, "exchange", side_effect=[ConnectionError(), ("AR", "AUTH")]):
+            with self.assertRaisesRegex(ValueError, "not healthy"):
+                smoke.verify_client_certificate_requirement(2575, object(), object(), "synthetic.jwt")
+
+    def test_accepting_a_probe_without_certificate_fails_the_check(self):
+        with patch.object(smoke, "exchange", return_value=("AA", "CONNECTED")) as exchange:
+            with self.assertRaisesRegex(ValueError, "without a client certificate"):
+                smoke.verify_client_certificate_requirement(2575, object(), object(), "synthetic.jwt")
+        self.assertEqual(exchange.call_count, 1)
 
     def test_snapshot_detects_key_replacement(self):
         with tempfile.TemporaryDirectory() as temporary:

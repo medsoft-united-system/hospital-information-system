@@ -238,7 +238,7 @@ TLS-handshake/framing ошибки остаются transport logs: до под�
 
 ## Прогресс L7 на 20.11.2026
 
-Проверено: 164 Python/Makefile/OpenSSL-теста без пропусков; реальный изолированный launcher smoke с HTTPS/MLLP, отказами и перезапуском API; 25 Linux integration scenarios (24 TLS/TCP + upgrade Lab3→Lab4) без пропусков. Отдельный первоначальный запуск upgrade-теста на macOS также прошёл после старта Docker Desktop.
+Проверено: 168 Python/Makefile/OpenSSL-теста без пропусков; реальный изолированный launcher smoke с HTTPS/MLLP, отказами и перезапуском API; 25 Linux integration scenarios (24 TLS/TCP + upgrade Lab3→Lab4) без пропусков. По опубликованному ревью усилена отрицательная mTLS-проверка: после отказа без сертификата до перезапуска listener должен снова вернуть AA/CONNECTED; недоступный listener не считается правильным отказом. Отдельный первоначальный запуск upgrade-теста на macOS также прошёл после старта Docker Desktop.
 
 Добавлены `make lab4-prepare`, `make lab4-run` и `make lab4-check`. Запуск сохраняет HTTPS-профиль Lab3, исходный CA/JWT/Data Protection/owner token, рабочую БД и сеть Go LIS. `run-secure-development.py` передаёт HL7-настройки, публикует отдельный loopback MLLP-порт и монтирует readonly только серверный PFX, парольный файл и публичный client CA. Порты Web/API не могут быть выбраны для MLLP. Обычный disabled-профиль очищает stale HL7-настройки, demo/Lab3 smoke изолируют их.
 

@@ -873,7 +873,7 @@ API `GET /api/audit` остаётся только для администрат
 
 ### 7.10.6. Запуск лабораторной 4 через Makefile
 
-Проверено 20.11.2026: 164 Python/Makefile/OpenSSL-теста, реальный launcher smoke и 25 Linux-сценариев (24 TLS/TCP + upgrade Lab3→Lab4), без ошибок и пропусков.
+Проверено 20.11.2026: 168 Python/Makefile/OpenSSL-теста, реальный launcher smoke и 25 Linux-сценариев (24 TLS/TCP + upgrade Lab3→Lab4), без ошибок и пропусков.
 
 Нужны Docker Desktop, .NET 10 SDK, Python 3.11+ с TLS 1.3 и OpenSSL >= 1.1.1. Для новой установки сначала выполните первоначальную подготовку из раздела 2. Существующий рабочий выпуск сертификатов и БД не пересоздавайте.
 
@@ -931,7 +931,7 @@ make lab4-run HL7_CLIENT_CA="/absolute/path/to/t7-public-ca.pem"
 make lab4-check
 ```
 
-Она выполняет Python/Makefile/OpenSSL-тесты, затем `verify-lab4-launcher.py`: временный CA/ClientAuth, два одинаковых запуска подготовки без изменения ключей, отдельная PostgreSQL в tmpfs и API на случайных loopback-портах. Реально проверяются HTTPS TLS 1.3/CA/SAN, первоначальная настройка администратора, сервисный token/probe, MLLP AA/CONNECTED, отказ неверному JWT/отсутствующему client certificate и перезапуск с сохранением аккаунта и действующей сервисной сессии. Используются собственные случайно названные Docker-ресурсы с проверкой ownership при cleanup, рабочие `.env`/БД/секреты не читаются.
+Она выполняет Python/Makefile/OpenSSL-тесты, затем `verify-lab4-launcher.py`: временный CA/ClientAuth, два одинаковых запуска подготовки без изменения ключей, отдельная PostgreSQL в tmpfs и API на случайных loopback-портах. Реально проверяются HTTPS TLS 1.3/CA/SAN, первоначальная настройка администратора, сервисный token/probe, MLLP AA/CONNECTED, отказ неверному JWT/отсутствующему client certificate, повторный AA/CONNECTED до остановки listener и перезапуск с сохранением аккаунта и действующей сервисной сессии. Используются собственные случайно названные Docker-ресурсы с проверкой ownership при cleanup, рабочие `.env`/БД/секреты не читаются.
 
 Далее `verify-lab4-transport.py --include-upgrade` запускает 24 Linux TLS/TCP-сценария и отдельный тест upgrade. Он создаёт схему последней Lab3-миграции `UseArgon2idForServiceApiKeys`, заполняет её синтетическими admin/TOTP, human/service refresh, LIS Argon2id API key, пациентом/ЭМК, анализом с результатом, историей и аудитом. Два применения новых миграций должны сохранить все прежние значения, пароли/ключи и восстановление ЭМК из истории. Проверка требует Docker и доступных SDK/runtime images; она не включает настоящий desktop-клиент и не заменяет L8.
 
