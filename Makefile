@@ -13,16 +13,21 @@ LAB3_REPORT ?= artifacts/lab3/integration-report.json
 LIS_SOURCE ?=
 LIS_REPO ?= $(abspath ../laboratory-information-system)
 FRESH_DATABASE ?= 0
+LAB4_SECURITY_DIR ?= $(SECURITY_DIR)-lab4
+MLLP_PORT ?= 2575
+HL7_CLIENT_CA ?=
 
 quote = '$(subst ','"'"',$(1))'
 build_flag = $(if $(filter 1,$(NO_BUILD)),--no-build,)
 fresh_database_flag = $(if $(filter 1,$(FRESH_DATABASE)),--fresh-database,)
 lis_build_flag = $(if $(filter 1,$(NO_BUILD)),,--build)
 lis_compose = HIS_CA_FILE=$(call quote,$(INTEGRATION_SECURITY_DIR)/lis-ca-cert.pem) LAB3_NETWORK=$(call quote,$(LAB3_NETWORK)) $(call quote,$(DOCKER)) compose --project-directory $(call quote,$(LIS_REPO)) -f $(call quote,$(LIS_REPO)/compose.yaml) -f $(call quote,$(CURDIR)/compose.lis-integration.yaml)
+client_ca_flag = $(if $(strip $(HL7_CLIENT_CA)),--client-ca $(call quote,$(HL7_CLIENT_CA)),)
+lab4_flags = --security-directory $(call quote,$(SECURITY_DIR)) --integration-security-directory $(call quote,$(INTEGRATION_SECURITY_DIR)) --output-directory $(call quote,$(LAB4_SECURITY_DIR)) --docker-network $(call quote,$(LAB3_NETWORK)) --mllp-port $(call quote,$(MLLP_PORT)) $(client_ca_flag)
 trust_flag = $(if $(filter 1,$(TRUST_CA)),--trust-ca,)
 lis_source_flag = $(if $(strip $(LIS_SOURCE)),--lis-source $(call quote,$(LIS_SOURCE)),)
 
-.PHONY: help run demo db db-stop build test restore setup certificates prepare lis-up lis-stop lis-status lis-logs lab3-check lab3-report test-unit test-integration test-scripts lab3-prepare lab3-run lab3-smoke
+.PHONY: help run demo db db-stop build test restore setup certificates prepare lis-up lis-stop lis-status lis-logs lab3-check lab3-report test-unit test-integration test-scripts lab3-prepare lab3-run lab3-smoke lab4-prepare lab4-run lab4-check
 
 help:
 	@printf '%s\n' \
@@ -41,6 +46,9 @@ help:
 	  'make lab3-check — совместная проверка HIS и LIS' \
 	  'make lab3-report — показать отчёт проверки' \
 	  'make lab3-smoke — изолированная HTTPS-проверка лабораторной 3' \
+	  'make lab4-prepare — подготовить MLLP/mTLS и client certificate, сохранив ключи HIS' \
+	  'make lab4-run — запустить HIS с HTTPS и MLLP для desktop, сохранив LIS' \
+	  'make lab4-check — проверить launcher, TLS и upgrade на одноразовых данных' \
 	  '' \
 	  'Параметры: ISU_ID=408944, SECURITY_DIR=/path/to/security, NO_BUILD=1.' \
 	  'make demo TRUST_CA=0 — не добавлять CA в связку ключей повторно.' \
@@ -68,6 +76,19 @@ lab3-run:
 	  --security-directory $(call quote,$(SECURITY_DIR)) \
 	  --output-directory $(call quote,$(INTEGRATION_SECURITY_DIR)) \
 	  --docker-network $(call quote,$(LAB3_NETWORK)) --docker $(call quote,$(DOCKER)) $(build_flag)
+
+lab4-prepare:
+	@$(call quote,$(PYTHON)) scripts/prepare-lab4-integration.py $(lab4_flags)
+
+lab4-run:
+	@$(call quote,$(PYTHON)) scripts/prepare-lab4-integration.py $(lab4_flags) --run --start-database \
+	  --docker $(call quote,$(DOCKER)) --dotnet $(call quote,$(DOTNET)) $(build_flag)
+
+lab4-check:
+	@$(call quote,$(PYTHON)) -m unittest discover -s scripts/tests
+	@$(call quote,$(PYTHON)) scripts/verify-lab4-launcher.py --isu-id $(call quote,$(ISU_ID)) \
+	  --docker $(call quote,$(DOCKER)) $(build_flag)
+	@$(call quote,$(PYTHON)) scripts/verify-lab4-transport.py --docker $(call quote,$(DOCKER)) --include-upgrade
 
 lab3-smoke:
 	@$(call quote,$(PYTHON)) scripts/verify-lab3-integration.py --isu-id $(call quote,$(ISU_ID)) \

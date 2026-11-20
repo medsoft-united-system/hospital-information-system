@@ -31,7 +31,7 @@ HELPERS = REPOSITORY / "scripts/lab3-smoke"
 API_IMAGE = "medsoft-api:lab3-smoke"
 GO_IMAGE = "mcr.microsoft.com/dotnet/aspnet:10.0"
 REPORT_KIND = "medsoft-lab3-smoke"
-CONFIG_PREFIXES = ("ConnectionStrings__", "Authentication__", "Security__", "Database__", "ASPNETCORE_", "Fhir__", "LIS_", "POSTGRES_")
+CONFIG_PREFIXES = ("ConnectionStrings__", "Authentication__", "Security__", "Database__", "ASPNETCORE_", "Fhir__", "Hl7Import__", "LIS_", "POSTGRES_")
 GO_CHECKS = frozenset({"verified_tls13_ca_hostname", "go_token_testConnection_metadata", "go_four_resources_and_pagination",
     "go_rejected_wrong_patient_before_post", "go_observation_201", "go_completed_readback_and_duplicate_409",
     "go_refresh_keeps_old_access_and_family_deadline", "go_reuse_revokes_family_and_fhir_access",

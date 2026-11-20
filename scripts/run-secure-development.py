@@ -87,6 +87,58 @@ def ensure_named_network(docker, network):
         raise ValueError("Для интеграции нужна локальная Docker-сеть с драйвером bridge.")
 
 
+def hl7_configuration(environment, *, native=False):
+    enabled = environment.get("Hl7Import__Enabled", "false").strip().lower()
+    if enabled not in ("true", "false"):
+        raise ValueError("Hl7Import__Enabled должен быть true или false.")
+    if enabled == "false":
+        for key in list(environment):
+            if key.startswith("Hl7Import__"):
+                del environment[key]
+        environment["Hl7Import__Enabled"] = "false"
+        return []
+    port_text = environment.get("Hl7Import__Port", "2575").strip()
+    if not re.fullmatch(r"[0-9]{1,5}", port_text) or not 1 <= int(port_text) <= 65535 or int(port_text) in (5101, 5201):
+        raise ValueError("MLLP-порт должен быть от 1 до 65535 и отличаться от HTTPS-портов Web 5101 и API 5201.")
+    port = str(int(port_text))
+    environment["Hl7Import__Enabled"] = "true"
+    environment["Hl7Import__Port"] = port
+    options = [] if native else ["--publish", "127.0.0.1:" + port + ":" + port]
+    bindings = (
+        ("Hl7Import__ServerCertificate__PfxPath", "/run/secrets/hl7-server.pfx", True),
+        ("Hl7Import__ServerCertificate__PasswordFile", "/run/secrets/hl7-server-password.txt", True),
+        ("Hl7Import__ClientTrust__CaCertificatePath", "/run/secrets/hl7-client-ca.pem", False))
+    for variable, target, private in bindings:
+        value = environment.get(variable, "")
+        if not value.strip():
+            raise ValueError("Для MLLP задайте путь " + variable + ".")
+        raw_path = Path(value).expanduser().absolute()
+        for item in (raw_path, *raw_path.parents):
+            if item.is_symlink() and not (sys.platform == "darwin" and str(item) in ("/var", "/tmp")
+                                         and item.resolve() == Path("/private" + str(item))):
+                raise ValueError("Файлы MLLP не должны содержать символические ссылки.")
+        path = raw_path.resolve()
+        if not path.is_file():
+            raise ValueError("Файл MLLP не найден: " + variable + ".")
+        if private and os.name != "nt" and path.stat().st_mode & 0o077:
+            raise ValueError("PFX и пароль MLLP должны иметь закрытые права 0600.")
+        if "," in str(path):
+            raise ValueError("Пути MLLP не должны содержать запятые для Docker bind mount.")
+        if variable.endswith("PasswordFile"):
+            try:
+                password = path.read_text(encoding="utf-8").rstrip("\r\n")
+            except UnicodeError:
+                raise ValueError("Пароль MLLP PFX должен быть одной строкой UTF-8.") from None
+            if not password or any(character in password for character in "\r\n\0"):
+                raise ValueError("Пароль MLLP PFX должен быть одной непустой строкой.")
+        if not private and b"PRIVATE KEY" in path.read_bytes():
+            raise ValueError("В ClientTrust разрешён только публичный сертификат CA без private key.")
+        if not native:
+            options += ["--mount", "type=bind,src=" + str(path) + ",dst=" + target + ",readonly"]
+        environment[variable] = str(path) if native else target
+    return options
+
+
 def api_configuration(directory, host_environment, name, native=False, *, docker_network=None, network_alias=None):
     validate_network(docker_network, network_alias)
     if native and docker_network is not None:
@@ -158,7 +210,8 @@ def api_configuration(directory, host_environment, name, native=False, *, docker
     environment["Security__DataProtection__KeyDirectory"] = str(protection) if native else "/var/lib/medsoft/data-protection"
     environment["Security__DataProtection__CertificatePath"] = str(protection_pfx) if native else "/run/secrets/data-protection.pfx"
     environment["Security__DataProtection__CertificatePassword"] = wrapping_password
-    prefixes = ("ConnectionStrings__", "Authentication__", "Security__", "Database__", "Fhir__", "ASPNETCORE_Kestrel__")
+    options += hl7_configuration(environment, native=native)
+    prefixes = ("ConnectionStrings__", "Authentication__", "Security__", "Database__", "Fhir__", "Hl7Import__", "ASPNETCORE_Kestrel__")
     keys = sorted(key for key in environment if key.startswith(prefixes)
                   or key in ("ASPNETCORE_ENVIRONMENT", "ASPNETCORE_URLS", "AllowedHosts"))
     for key in keys:
@@ -231,10 +284,10 @@ def run(arguments, *, environment=None):
             stop_process(process)
 
 
-def run_application(directory, environment, *, no_build=False, docker="docker", docker_network=None, network_alias=None):
+def run_application(directory, environment, *, no_build=False, docker="docker", dotnet="dotnet", docker_network=None, network_alias=None):
     return run(argparse.Namespace(
         security_directory=str(directory), api_container=True, api_only=False, web_only=False,
-        no_build=no_build, dotnet="dotnet", docker=docker,
+        no_build=no_build, dotnet=dotnet, docker=docker,
         docker_network=docker_network, network_alias=network_alias), environment=environment)
 
 
