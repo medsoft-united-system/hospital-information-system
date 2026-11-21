@@ -29,9 +29,9 @@ internal static class Hl7PatientMapper
     private static ImportedPatientInput MapFields(string[] pid, string[][] dg1, string sourceSystem, string externalId)
     {
         var name = Hl7Text.Components(Field(pid, 5), 3);
-        var lastName = RequiredClinical(name[0], 24);
-        var firstName = RequiredClinical(name[1], 24);
-        if (name[2].Length > 24) throw new Hl7DecodeException(Hl7FailureKind.Validation);
+        var lastName = RequiredClinical(name[0], PatientFieldLimits.MaxNameLength);
+        var firstName = RequiredClinical(name[1], PatientFieldLimits.MaxNameLength);
+        if (name[2].Length > PatientFieldLimits.MaxNameLength) throw new Hl7DecodeException(Hl7FailureKind.Validation);
         if (!DateOnly.TryParseExact(Field(pid, 7), "yyyyMMdd", CultureInfo.InvariantCulture,
                 DateTimeStyles.None, out var birthDate))
             throw new Hl7DecodeException(Hl7FailureKind.Validation);

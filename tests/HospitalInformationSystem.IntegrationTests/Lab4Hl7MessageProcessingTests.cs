@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -7,6 +8,7 @@ using HospitalInformationSystem.Api.Hl7;
 using HospitalInformationSystem.Application.Abstractions;
 using HospitalInformationSystem.Application.Hl7Import;
 using HospitalInformationSystem.Contracts.Auth;
+using HospitalInformationSystem.Contracts.Patients;
 using HospitalInformationSystem.Contracts.Security;
 using HospitalInformationSystem.Contracts.ServiceAccounts;
 using HospitalInformationSystem.Infrastructure.Contexts;
@@ -101,6 +103,74 @@ public sealed class Lab4Hl7MessageProcessingTests(ServiceAuthenticationApiFactor
             {
                 using (document) return document.RootElement.GetProperty("outcome").GetString();
             }).Should().BeEquivalentTo("success", "duplicate");
+    }
+
+    [Theory]
+    [InlineData(25)]
+    [InlineData(64)]
+    public async Task AuthorizedAdt_WithLongPatientNames_ShouldCommitCompleteValuesAndReturnThemThroughApi(int length)
+    {
+        var account = await CreateServiceAsync("HL7Import");
+        var pair = await factory.IssueAsync(account.ApiKey);
+        var externalId = Guid.NewGuid().ToString("N");
+        var controlId = "issue40-" + Guid.NewGuid().ToString("N");
+        var names = new[] { new string('Ф', length), new string('И', length), new string('О', length) };
+        var payload = WithPatientNames(Payload("adt-no-diagnoses.hl7", pair.AccessToken, controlId, externalId), names);
+
+        var acknowledgement = await ProcessAsync(payload, Certificate());
+
+        acknowledgement.Code.Should().Be("AA");
+        acknowledgement.CorrelationId.Should().Be(controlId);
+        Guid.TryParseExact(acknowledgement.Text, "D", out var patientId).Should().BeTrue();
+        patientId.Should().NotBeEmpty();
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
+            var patient = await db.Patients.AsNoTracking().SingleAsync(row => row.Id == patientId);
+            new[] { patient.LastName, patient.FirstName, patient.MiddleName }.Should().Equal(names);
+            var identifier = await db.PatientExternalIdentifiers.AsNoTracking()
+                .SingleAsync(row => row.SourceSystem == "LAB4_XML" && row.ExternalPatientId == externalId);
+            identifier.PatientId.Should().Be(patientId);
+            (await db.MedicalRecords.CountAsync(row => row.PatientId == patientId)).Should().Be(1);
+        }
+
+        using var reader = factory.Application.CreateDefaultClient(new Uri("https://localhost"));
+        reader.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", await HumanTokenAsync());
+        using var response = await reader.GetAsync("/api/patients/" + patientId.ToString("D"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+        var readback = (await response.Content.ReadFromJsonAsync<PatientDto>())!;
+        new[] { readback.LastName, readback.FirstName, readback.MiddleName }.Should().Equal(names);
+        readback.HasMedicalRecord.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task AuthorizedAdt_WithOversizedPatientName_ShouldRejectWithoutClinicalWritesAndAuditOnce(int component)
+    {
+        var account = await CreateServiceAsync("HL7Import");
+        var pair = await factory.IssueAsync(account.ApiKey);
+        var externalId = Guid.NewGuid().ToString("N");
+        var controlId = "issue40-rejected-" + Guid.NewGuid().ToString("N");
+        var names = new[] { "Иванов", "Алексей", "Петрович" };
+        names[component] = new string('Я', 65);
+        var payload = WithPatientNames(Payload("adt-no-diagnoses.hl7", pair.AccessToken, controlId, externalId), names);
+        var before = await ClinicalSnapshotAsync();
+
+        var acknowledgement = await ProcessAsync(payload, Certificate());
+
+        acknowledgement.Code.Should().Be("AE");
+        acknowledgement.CorrelationId.Should().Be(controlId);
+        acknowledgement.Text.Should().StartWith("VALIDATION:");
+        (await ClinicalSnapshotAsync()).Should().Be(before);
+        var audit = (await ImportAuditsAsync(account.Account.Id)).Should().ContainSingle().Subject;
+        audit.RequestId.Should().Be(controlId);
+        using var metadata = JsonDocument.Parse(audit.MetadataJson);
+        metadata.RootElement.GetProperty("outcome").GetString().Should().Be("validation-failed");
+        metadata.RootElement.GetProperty("externalPatientId").GetString().Should().Be(externalId);
+        metadata.RootElement.TryGetProperty("targetId", out _).Should().BeFalse();
     }
 
     [Fact]
@@ -266,6 +336,16 @@ public sealed class Lab4Hl7MessageProcessingTests(ServiceAuthenticationApiFactor
             segments[pidIndex] = string.Join('|', pid);
         }
         return Utf8.GetBytes(string.Join('\r', segments) + '\r');
+    }
+
+    private static byte[] WithPatientNames(byte[] payload, string[] names)
+    {
+        var segments = Utf8.GetString(payload).Split('\r');
+        var index = Array.FindIndex(segments, segment => segment.StartsWith("PID|", StringComparison.Ordinal));
+        var fields = segments[index].Split('|');
+        fields[5] = string.Join('^', names);
+        segments[index] = string.Join('|', fields);
+        return Utf8.GetBytes(string.Join('\r', segments));
     }
 
     private static void AssertAuthenticationFailure(Acknowledgement acknowledgement, string controlId, string token)

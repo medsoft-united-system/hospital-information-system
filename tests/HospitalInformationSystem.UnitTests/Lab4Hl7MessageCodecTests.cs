@@ -72,6 +72,57 @@ public sealed class Lab4Hl7MessageCodecTests
         patient.Diagnoses[0].DiagnosedAt.Should().NotBe(patient.Diagnoses[1].DiagnosedAt);
     }
 
+    [Theory]
+    [InlineData(0, 24, true)]
+    [InlineData(0, 25, true)]
+    [InlineData(0, 64, true)]
+    [InlineData(0, 65, false)]
+    [InlineData(1, 24, true)]
+    [InlineData(1, 25, true)]
+    [InlineData(1, 64, true)]
+    [InlineData(1, 65, false)]
+    [InlineData(2, 24, true)]
+    [InlineData(2, 25, true)]
+    [InlineData(2, 64, true)]
+    [InlineData(2, 65, false)]
+    public void Decode_PatientNameLengthBoundary_ShouldPreserveValidValuesAndRejectOverflow(
+        int component, int length, bool accepted)
+    {
+        var names = new[] { "Иванов", "Алексей", "Петрович" };
+        names[component] = new string('Я', length);
+        var payload = Utf8.GetBytes(Field(Text("adt-no-diagnoses.hl7"), "PID", 5, string.Join('^', names)));
+
+        if (!accepted)
+        {
+            var exception = Failure(payload);
+            exception.Kind.Should().Be(Hl7FailureKind.Validation);
+            exception.Header.Should().NotBeNull();
+            exception.Header!.ControlId.Should().Be("lab4-accepted-no-diagnoses-001");
+            exception.ExternalPatientId.Should().Be("347821");
+            return;
+        }
+
+        var patient = _codec.Decode(payload).Patient!;
+
+        new[] { patient.LastName, patient.FirstName, patient.MiddleName }.Should().Equal(names);
+    }
+
+    [Fact]
+    public void Decode_EscapedPatientNamesAtMaximumLength_ShouldLimitDecodedTextAndPreserveEveryCharacter()
+    {
+        var expected = new string('Ж', 59) + "|^~\\&";
+        var name = Escape(expected);
+        var payload = Utf8.GetBytes(Field(Text("adt-no-diagnoses.hl7"), "PID", 5,
+            string.Join('^', name, name, name)));
+
+        var patient = _codec.Decode(payload).Patient!;
+
+        expected.Should().HaveLength(64);
+        patient.LastName.Should().Be(expected);
+        patient.FirstName.Should().Be(expected);
+        patient.MiddleName.Should().Be(expected);
+    }
+
     [Fact]
     public void Decode_Probe_ShouldProduceAnAuthenticatedEnvelopeWithoutPatientData()
     {

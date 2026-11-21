@@ -13,8 +13,8 @@ public static class PatientService
         var validComment = OptionalText(comment);
         TextValidation.RejectNullCharacter(validMiddleName, "Отчество");
         TextValidation.RejectNullCharacter(validComment, "Комментарий");
-        if (validMiddleName?.Length > 64)
-            throw new DomainValidationException("Отчество: допускается не более 64 символов.");
+        if (validMiddleName?.Length > PatientFieldLimits.MaxNameLength)
+            throw new DomainValidationException($"Отчество: допускается не более {PatientFieldLimits.MaxNameLength} символов.");
         if (validComment?.Length > 32)
             throw new DomainValidationException("Комментарий: допускается не более 32 символов.");
         if (!Enum.IsDefined(sex))
@@ -35,8 +35,8 @@ public static class PatientService
     {
         var normalized = value?.Trim();
         TextValidation.RejectNullCharacter(normalized, label);
-        if (normalized is null || normalized.Length is < 1 or > 64)
-            throw new DomainValidationException($"{label}: требуется от 1 до 64 символов.");
+        if (normalized is null || normalized.Length is < 1 or > PatientFieldLimits.MaxNameLength)
+            throw new DomainValidationException($"{label}: требуется от 1 до {PatientFieldLimits.MaxNameLength} символов.");
         return normalized;
     }
 
