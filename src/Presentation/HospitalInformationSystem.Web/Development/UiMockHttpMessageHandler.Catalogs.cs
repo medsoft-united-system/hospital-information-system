@@ -1,9 +1,9 @@
 using System.Net;
 using System.Text;
-using HospitalInformationSystem.Contracts.Diagnoses;
-using HospitalInformationSystem.Contracts.Security;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
-using HospitalInformationSystem.Contracts.Patients;
+using HospitalInformationSystem.Application.Models.Diagnoses;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Patients;
+using HospitalInformationSystem.Application.Models.Security;
 
 namespace HospitalInformationSystem.Web.Development;
 
@@ -52,8 +52,10 @@ public sealed partial class UiMockHttpMessageHandler
         var updatedRole = update.Role ?? current.Role ?? MedicalWorkerRole.Other;
         var updated = current with
         {
-            FirstName = update.FirstName.Trim(), LastName = update.LastName.Trim(),
-            Position = update.Position.Trim(), Role = updatedRole
+            FirstName = update.FirstName.Trim(),
+            LastName = update.LastName.Trim(),
+            Position = update.Position.Trim(),
+            Role = updatedRole
         };
         state.Workers[current.Id] = updated;
         state.WorkerRoles[current.Id] = UiMockState.RoleValue(updatedRole);
@@ -95,9 +97,12 @@ public sealed partial class UiMockHttpMessageHandler
         if (!ValidPatient(update)) return BadRequest("Проверьте имя, фамилию, дату и комментарий до 32 символов.");
         var updated = current with
         {
-            FirstName = update.FirstName.Trim(), LastName = update.LastName.Trim(),
-            MiddleName = update.MiddleName?.Trim(), BirthDate = update.BirthDate,
-            Sex = update.Sex, Comment = update.Comment?.Trim()
+            FirstName = update.FirstName.Trim(),
+            LastName = update.LastName.Trim(),
+            MiddleName = update.MiddleName?.Trim(),
+            BirthDate = update.BirthDate,
+            Sex = update.Sex,
+            Comment = update.Comment?.Trim()
         };
         state.Patients[current.Id] = updated;
         state.AddAudit("PatientUpdated", "Изменён демонстрационный пациент.", current.Id);

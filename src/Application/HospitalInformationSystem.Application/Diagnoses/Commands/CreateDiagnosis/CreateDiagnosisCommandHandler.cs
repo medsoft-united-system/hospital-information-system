@@ -1,8 +1,8 @@
-using HospitalInformationSystem.Domain.Diagnoses.Factories;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Contracts.Diagnoses;
-using HospitalInformationSystem.Domain.Diagnoses;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.Diagnoses.Factories;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Diagnoses;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.Diagnoses.Commands.CreateDiagnosis;

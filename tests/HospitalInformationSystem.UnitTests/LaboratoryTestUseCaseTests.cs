@@ -1,16 +1,15 @@
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.UnitOfWork;
 using HospitalInformationSystem.Application.LaboratoryTests.Commands.CreateLaboratoryTest;
 using HospitalInformationSystem.Application.LaboratoryTests.Commands.SetLaboratoryTestActive;
 using HospitalInformationSystem.Application.LaboratoryTests.Commands.UpdateLaboratoryTest;
+using HospitalInformationSystem.Application.LaboratoryTests.Factories;
 using HospitalInformationSystem.Application.LaboratoryTests.Queries.GetLaboratoryTest;
 using HospitalInformationSystem.Application.LaboratoryTests.Queries.GetLaboratoryTests;
-using HospitalInformationSystem.Contracts.LaboratoryTests;
-using HospitalInformationSystem.Domain.Common;
-using HospitalInformationSystem.Domain.LaboratoryTests;
-using HospitalInformationSystem.Domain.LaboratoryTests.Factories;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
 using Moq;
 
 namespace HospitalInformationSystem.UnitTests;

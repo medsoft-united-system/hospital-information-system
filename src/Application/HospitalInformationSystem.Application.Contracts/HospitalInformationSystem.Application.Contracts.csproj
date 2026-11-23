@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\HospitalInformationSystem.Application.Models\HospitalInformationSystem.Application.Models.csproj" />
+  </ItemGroup>
+</Project>

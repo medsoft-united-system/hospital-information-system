@@ -4,8 +4,8 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Diagnoses;
-using HospitalInformationSystem.Contracts.Patients;
+using HospitalInformationSystem.Application.Models.Diagnoses;
+using HospitalInformationSystem.Application.Models.Patients;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -68,8 +68,12 @@ public sealed class PatientsAndDiagnosesApiTests(HospitalApiFactory factory) : I
         object sexValue = int.TryParse(sex, out var number) ? number : sex;
         var response = await _client.PostAsJsonAsync("/api/patients", new
         {
-            FirstName = firstName, LastName = "Соколова", MiddleName = (string?)null,
-            BirthDate = "1985-03-12", Sex = sexValue, Comment = comment
+            FirstName = firstName,
+            LastName = "Соколова",
+            MiddleName = (string?)null,
+            BirthDate = "1985-03-12",
+            Sex = sexValue,
+            Comment = comment
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -99,7 +103,8 @@ public sealed class PatientsAndDiagnosesApiTests(HospitalApiFactory factory) : I
         var now = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow();
         var invalid = request with
         {
-            FirstName = "Мария", BirthDate = DateOnly.FromDateTime(now.UtcDateTime).AddDays(2)
+            FirstName = "Мария",
+            BirthDate = DateOnly.FromDateTime(now.UtcDateTime).AddDays(2)
         };
 
         var response = update

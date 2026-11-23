@@ -3,7 +3,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.ServiceAuth;
+using HospitalInformationSystem.Application.Models.ServiceAuth;
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
 using HospitalInformationSystem.Infrastructure.ServiceAccounts.Tokens;
 using Microsoft.Extensions.Options;
@@ -153,9 +153,9 @@ public sealed class ServiceTokenSecurityTests(JwtSigningKeyFixture fixture) : IC
     public void ValidationParameters_UnknownKidOrSymmetricAlgorithm_ShouldReject()
     {
         var unknown = new SigningCredentials(new RsaSecurityKey(((RsaSecurityKey)fixture.Keys.SigningCredentials.Key).Rsa)
-            { KeyId = "unconfigured-service-key" }, SecurityAlgorithms.RsaSha256);
+        { KeyId = "unconfigured-service-key" }, SecurityAlgorithms.RsaSha256);
         var symmetric = new SigningCredentials(new SymmetricSecurityKey(RandomNumberGenerator.GetBytes(64))
-            { KeyId = fixture.Options.KeyId }, SecurityAlgorithms.HmacSha256);
+        { KeyId = fixture.Options.KeyId }, SecurityAlgorithms.HmacSha256);
         foreach (var signing in new[] { unknown, symmetric })
         {
             var token = Token(Now.AddMinutes(-1), Now.AddMinutes(4), credentials: signing);

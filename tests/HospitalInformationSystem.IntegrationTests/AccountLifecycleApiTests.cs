@@ -7,18 +7,24 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Audit;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Application.Abstractions.Identity;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.Transactions;
+using HospitalInformationSystem.Application.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.Auth.Services;
+using HospitalInformationSystem.Application.Contracts.Audit;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Identity;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using MedicalWorkerRole = HospitalInformationSystem.Application.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
@@ -150,8 +156,10 @@ public sealed class AccountLifecycleApiTests(SecureHospitalApiFactory factory) :
         var worker = (await workerResponse.Content.ReadFromJsonAsync<MedicalWorkerDto>())!;
         await using (var scope = factory.Services.CreateAsyncScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
-            var service = new AccountService(db, scope.ServiceProvider.GetRequiredService<UserManager<HospitalUser>>(),
+            var service = new AccountService(scope.ServiceProvider.GetRequiredService<IAccountRepository>(),
+                scope.ServiceProvider.GetRequiredService<IMedicalWorkerRepository>(),
+                scope.ServiceProvider.GetRequiredService<IUnitOfWork>(),
+                scope.ServiceProvider.GetRequiredService<ITransactionManager>(),
                 TimeProvider.System, new AccountPasswordGenerator(), new ThrowingAuditWriter());
             Func<Task> create = () => service.CreateForWorkerAsync(worker.Id,
                 new CreateWorkerAccountRequest("roll." + Guid.NewGuid().ToString("N")[..11]), CancellationToken.None);
@@ -170,9 +178,12 @@ public sealed class AccountLifecycleApiTests(SecureHospitalApiFactory factory) :
         for (var index = 0; index < 4; index++)
             db.RefreshSessions.Add(new RefreshSessionDbo
             {
-                Id = Guid.NewGuid(), UserId = accountId, FamilyId = Guid.NewGuid(),
+                Id = Guid.NewGuid(),
+                UserId = accountId,
+                FamilyId = Guid.NewGuid(),
                 TokenHash = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
-                CreatedAtUtc = now.AddHours(-2), ExpiresAtUtc = index == 2 ? now.AddHours(-1) : now.AddHours(1),
+                CreatedAtUtc = now.AddHours(-2),
+                ExpiresAtUtc = index == 2 ? now.AddHours(-1) : now.AddHours(1),
                 RevokedAtUtc = index == 3 ? now.AddMinutes(-1) : null,
                 RevokeReason = index == 3 ? "logout" : null
             });

@@ -1,5 +1,5 @@
 using System.Text;
-using HospitalInformationSystem.Contracts.Hl7Import;
+using HospitalInformationSystem.Application.Models.Hl7Import;
 using static HospitalInformationSystem.Api.Hl7.Hl7Profile;
 
 namespace HospitalInformationSystem.Api.Hl7;
@@ -72,7 +72,8 @@ internal static class Hl7WireReader
         var sentAtValid = Hl7Timestamp.TryRead(Field(msh, 6), out var sentAt);
         var header = new Hl7MessageHeader
         {
-            MessageType = Required(messageType, 128), TriggerEvent = Required(trigger, 128),
+            MessageType = Required(messageType, 128),
+            TriggerEvent = Required(trigger, 128),
             MessageStructure = structureValid ? structure : "",
             ControlId = Required(Hl7Text.Atom(Field(msh, 9)), 128),
             SendingApplication = Required(Hl7Text.Atom(Field(msh, 2)), 128),

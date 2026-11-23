@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FluentAssertions;
+using HospitalInformationSystem.Application.Models.Maintenance;
 using HospitalInformationSystem.Infrastructure.Identity;
 using HospitalInformationSystem.Infrastructure.Maintenance;
 

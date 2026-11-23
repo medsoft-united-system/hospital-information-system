@@ -1,6 +1,6 @@
 using HospitalInformationSystem.Api.Security;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Models.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;

@@ -1,8 +1,8 @@
-using System.Security.Claims;
-using System.Text.Encodings.Web;
 using System.Net.Http;
 using System.Net.Http.Json;
-using HospitalInformationSystem.Contracts.Auth;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using HospitalInformationSystem.Application.Models.Auth;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -10,8 +10,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace HospitalInformationSystem.IntegrationTests;
 

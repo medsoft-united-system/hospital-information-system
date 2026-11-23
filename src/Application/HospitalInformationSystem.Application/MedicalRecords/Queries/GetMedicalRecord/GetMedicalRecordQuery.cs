@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Contracts.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Queries.GetMedicalRecord;

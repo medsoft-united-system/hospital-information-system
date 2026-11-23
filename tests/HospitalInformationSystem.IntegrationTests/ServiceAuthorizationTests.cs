@@ -4,17 +4,17 @@ using System.Text;
 using System.Text.Json.Nodes;
 using FluentAssertions;
 using Hl7.Fhir.Serialization;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.ServiceAccounts;
-using HospitalInformationSystem.Contracts.ServiceAuth;
-using HospitalInformationSystem.Domain.LaboratoryTests.Factories;
-using HospitalInformationSystem.Domain.MedicalRecords.Factories;
-using HospitalInformationSystem.Domain.MedicalRecords.Services;
-using HospitalInformationSystem.Domain.MedicalWorkers;
-using HospitalInformationSystem.Domain.MedicalWorkers.Factories;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.LaboratoryTests.Factories;
+using HospitalInformationSystem.Application.MedicalRecords.Factories;
+using HospitalInformationSystem.Application.MedicalRecords.Services;
+using HospitalInformationSystem.Application.MedicalWorkers.Factories;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.ServiceAuth;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Bundle = Hl7.Fhir.Model.Bundle;
@@ -49,9 +49,13 @@ public sealed class ServiceAuthorizationTests(ServiceAuthenticationApiFactory fa
         (await FhirAsync<ServiceRequest>(requestResponse)).Status.Should().Be(RequestStatus.Active);
         var body = new JsonObject
         {
-            ["resourceType"] = "Observation", ["status"] = "final",
-            ["code"] = new JsonObject { ["coding"] = new JsonArray(new JsonObject
-                { ["system"] = "http://loinc.org", ["code"] = scenario.LoincCode }) },
+            ["resourceType"] = "Observation",
+            ["status"] = "final",
+            ["code"] = new JsonObject
+            {
+                ["coding"] = new JsonArray(new JsonObject
+                { ["system"] = "http://loinc.org", ["code"] = scenario.LoincCode })
+            },
             ["subject"] = new JsonObject { ["reference"] = $"Patient/{scenario.PatientId:D}" },
             ["basedOn"] = new JsonArray(new JsonObject { ["reference"] = $"ServiceRequest/{scenario.RequestId:D}" }),
             ["issued"] = scenario.IssuedAt.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", System.Globalization.CultureInfo.InvariantCulture),
@@ -150,7 +154,7 @@ public sealed class ServiceAuthorizationTests(ServiceAuthenticationApiFactory fa
         var pair = await factory.IssueAsync(account.ApiKey);
         using var client = factory.CreateMachineClient(pair.AccessToken);
         using var request = new HttpRequestMessage(new HttpMethod(method), path)
-            { Content = new StringContent("{}", Encoding.UTF8, "application/fhir+json") };
+        { Content = new StringContent("{}", Encoding.UTF8, "application/fhir+json") };
         using var response = await client.SendAsync(request);
         await FhirAsync<OperationOutcome>(response, HttpStatusCode.MethodNotAllowed);
     }
@@ -163,22 +167,36 @@ public sealed class ServiceAuthorizationTests(ServiceAuthenticationApiFactory fa
         var doctor = MedicalWorkerFactory.Create("Проверочный", "Врач", "Врач-терапевт", now, MedicalWorkerRole.Doctor);
         var patient = new PatientDbo
         {
-            Id = Guid.NewGuid(), FirstName = "Учебный", LastName = "Пациент", BirthDate = new DateOnly(1985, 3, 12),
-            Sex = 0, CreatedAtUtc = now, UpdatedAtUtc = now
+            Id = Guid.NewGuid(),
+            FirstName = "Учебный",
+            LastName = "Пациент",
+            BirthDate = new DateOnly(1985, 3, 12),
+            Sex = 0,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
         };
         var definition = LaboratoryTestDefinitionFactory.Create(
             NewCode(),
             "Исследование реального JWT", now);
         db.MedicalWorkers.Add(new MedicalWorkerDbo
         {
-            Id = doctor.Id, FirstName = doctor.FirstName, LastName = doctor.LastName, Position = doctor.Position,
-            Role = doctor.Role, CreatedAtUtc = now, UpdatedAtUtc = now
+            Id = doctor.Id,
+            FirstName = doctor.FirstName,
+            LastName = doctor.LastName,
+            Position = doctor.Position,
+            Role = doctor.Role,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
         });
         db.Patients.Add(patient);
         db.LaboratoryTestDefinitions.Add(new LaboratoryTestDefinitionDbo
         {
-            Id = definition.Id, LoincCode = definition.LoincCode, DisplayName = definition.DisplayName,
-            IsActive = true, CreatedAtUtc = now, UpdatedAtUtc = now
+            Id = definition.Id,
+            LoincCode = definition.LoincCode,
+            DisplayName = definition.DisplayName,
+            IsActive = true,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
         });
         await db.SaveChangesAsync();
         var record = MedicalRecordFactory.Create(patient.Id, doctor, now);

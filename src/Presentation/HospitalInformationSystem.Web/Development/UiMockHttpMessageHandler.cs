@@ -3,8 +3,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Security;
 
 namespace HospitalInformationSystem.Web.Development;
 
@@ -186,7 +186,7 @@ public sealed partial class UiMockHttpMessageHandler(UiMockState state) : HttpMe
     };
 
     private static HttpResponseMessage Error(HttpStatusCode status, string message) => Json(new
-        { title = message, detail = message, status = (int)status, traceId = "ui-mock-only" }, status);
+    { title = message, detail = message, status = (int)status, traceId = "ui-mock-only" }, status);
     private static HttpResponseMessage BadRequest(string message) => Error(HttpStatusCode.BadRequest, message);
     private static HttpResponseMessage Forbidden() => Error(HttpStatusCode.Forbidden, "Недостаточно прав для этой демонстрационной роли.");
     private static HttpResponseMessage Unauthorized() => Error(HttpStatusCode.Unauthorized, "Недействительная демонстрационная сессия.");

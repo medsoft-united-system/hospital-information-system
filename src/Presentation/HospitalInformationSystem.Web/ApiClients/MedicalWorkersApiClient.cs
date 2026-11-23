@@ -1,5 +1,5 @@
 using System.Net.Http.Json;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
 
 namespace HospitalInformationSystem.Web.ApiClients;
 

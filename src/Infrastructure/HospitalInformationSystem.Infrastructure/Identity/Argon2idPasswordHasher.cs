@@ -127,7 +127,10 @@ public sealed class Argon2idPasswordHasher : IPasswordHasher<HospitalUser>
         {
             using var algorithm = new Argon2id(passwordBytes)
             {
-                Salt = salt, MemorySize = memory, Iterations = iterations, DegreeOfParallelism = parallelism
+                Salt = salt,
+                MemorySize = memory,
+                Iterations = iterations,
+                DegreeOfParallelism = parallelism
             };
             return algorithm.GetBytes(HashLength);
         }

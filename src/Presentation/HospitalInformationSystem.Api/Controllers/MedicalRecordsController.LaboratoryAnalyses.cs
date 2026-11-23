@@ -1,6 +1,6 @@
 using HospitalInformationSystem.Api.Security;
 using HospitalInformationSystem.Application.MedicalRecords.Commands.CreateLaboratoryAnalysisRequests;
-using HospitalInformationSystem.Contracts.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

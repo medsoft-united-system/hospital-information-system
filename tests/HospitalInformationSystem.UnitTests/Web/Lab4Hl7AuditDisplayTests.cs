@@ -2,8 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Hl7Import;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Application.Models.Hl7Import;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Web.Authentication;
 using HospitalInformationSystem.Web.Components.Audit;
 using HospitalInformationSystem.Web.Development;
@@ -191,7 +191,8 @@ public sealed class Lab4Hl7AuditDisplayTests
         {
             ["revokedServiceSessionCount"] = JsonSerializer.SerializeToElement(3),
             ["clientCertificateSubject"] = JsonSerializer.SerializeToElement("unused-cert-field")
-        }) with { EventType = AuditEventType.AccountChanged };
+        }) with
+        { EventType = AuditEventType.AccountChanged };
 
         var html = WebUtility.HtmlDecode(await RenderAsync(item));
 

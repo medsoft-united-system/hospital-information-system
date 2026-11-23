@@ -2,15 +2,15 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using MedicalWorkerRole = HospitalInformationSystem.Application.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
@@ -75,7 +75,8 @@ public sealed class AuthenticationAuditApiTests(SecureHospitalApiFactory factory
         var response = await client.PostAsJsonAsync("/api/auth/login",
             factory.AdministratorLogin() with
             {
-                Password = password, Portal = wrongPortal ? LoginPortal.MedicalWorker : LoginPortal.Administrator
+                Password = password,
+                Portal = wrongPortal ? LoginPortal.MedicalWorker : LoginPortal.Administrator
             });
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -167,7 +168,9 @@ public sealed class AuthenticationAuditApiTests(SecureHospitalApiFactory factory
             builder.UseSetting("Security:LoginRateLimit:PermitLimit", "2"));
         using var client = limitedFactory.CreateClient(new WebApplicationFactoryClientOptions
         {
-            BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false, HandleCookies = true
+            BaseAddress = new Uri("https://localhost"),
+            AllowAutoRedirect = false,
+            HandleCookies = true
         });
         await RefreshCsrfAsync(client);
         var attemptedName = "missing" + Guid.NewGuid().ToString("N")[..8];

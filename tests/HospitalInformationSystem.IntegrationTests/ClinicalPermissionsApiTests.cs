@@ -1,14 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Patients;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Patients;
+using HospitalInformationSystem.Application.Models.Persistence;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using Microsoft.Extensions.DependencyInjection;
-using WorkerRole = HospitalInformationSystem.Domain.MedicalWorkers.MedicalWorkerRole;
+using WorkerRole = HospitalInformationSystem.Application.Models.MedicalWorkers.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
@@ -100,8 +99,13 @@ public sealed class ClinicalPermissionsApiTests(SecureHospitalApiFactory factory
             var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
             var worker = new MedicalWorkerDbo
             {
-                Id = Guid.NewGuid(), FirstName = "Врач", LastName = "Проверка", Position = "Сотрудник",
-                Role = role, CreatedAtUtc = DateTimeOffset.UtcNow, UpdatedAtUtc = DateTimeOffset.UtcNow
+                Id = Guid.NewGuid(),
+                FirstName = "Врач",
+                LastName = "Проверка",
+                Position = "Сотрудник",
+                Role = role,
+                CreatedAtUtc = DateTimeOffset.UtcNow,
+                UpdatedAtUtc = DateTimeOffset.UtcNow
             };
             db.MedicalWorkers.Add(worker);
             await db.SaveChangesAsync(CancellationToken.None);

@@ -18,8 +18,13 @@ public sealed class Lab4Hl7TlsConfigurationTests
     {
         var options = new Hl7ImportOptions
         {
-            Enabled = false, Port = -1, ListenAddress = "invalid", ServerCertificate = null!,
-            ClientTrust = null!, Timeouts = null!, Limits = null!
+            Enabled = false,
+            Port = -1,
+            ListenAddress = "invalid",
+            ServerCertificate = null!,
+            ClientTrust = null!,
+            Timeouts = null!,
+            Limits = null!
         };
 
         new Hl7ImportOptionsValidator().Validate(null, options).Succeeded.Should().BeTrue();

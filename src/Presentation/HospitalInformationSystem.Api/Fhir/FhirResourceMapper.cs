@@ -1,10 +1,10 @@
 using System.Globalization;
 using Hl7.Fhir.Model;
-using HospitalInformationSystem.Application.Fhir;
-using DomainPatient = HospitalInformationSystem.Domain.Patients.Patient;
-using DomainSex = HospitalInformationSystem.Domain.Patients.AdministrativeSex;
-using DomainWorker = HospitalInformationSystem.Domain.MedicalWorkers.MedicalWorker;
-using DomainRequestStatus = HospitalInformationSystem.Domain.MedicalRecords.LaboratoryAnalysisRequestStatus;
+using HospitalInformationSystem.Application.Models.Fhir;
+using DomainPatient = HospitalInformationSystem.Application.Models.Patients.Patient;
+using DomainRequestStatus = HospitalInformationSystem.Application.Models.MedicalRecords.LaboratoryAnalysisRequestStatus;
+using DomainSex = HospitalInformationSystem.Application.Models.Patients.AdministrativeSex;
+using DomainWorker = HospitalInformationSystem.Application.Models.MedicalWorkers.MedicalWorker;
 using FhirCapabilityStatement = Hl7.Fhir.Model.CapabilityStatement;
 using FhirOperationOutcome = Hl7.Fhir.Model.OperationOutcome;
 
@@ -17,7 +17,8 @@ public static class FhirResourceMapper
 
     public static Patient ToPatient(DomainPatient patient) => new()
     {
-        Id = Id(patient.Id), Active = true,
+        Id = Id(patient.Id),
+        Active = true,
         Name = [Name(patient.LastName, patient.FirstName, patient.MiddleName)],
         BirthDate = patient.BirthDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
         Gender = patient.Sex switch
@@ -30,7 +31,8 @@ public static class FhirResourceMapper
 
     public static Practitioner ToPractitioner(DomainWorker worker) => new()
     {
-        Id = Id(worker.Id), Active = !worker.IsDeleted,
+        Id = Id(worker.Id),
+        Active = !worker.IsDeleted,
         Name = [Name(worker.LastName, worker.FirstName)],
         Qualification = string.IsNullOrWhiteSpace(worker.Position) ? [] :
             [new Practitioner.QualificationComponent { Code = new CodeableConcept { Text = worker.Position } }]
@@ -55,7 +57,8 @@ public static class FhirResourceMapper
 
     public static Observation ToObservation(FhirObservationReadModel result) => new()
     {
-        Id = Id(result.Id), Status = ObservationStatus.Final,
+        Id = Id(result.Id),
+        Status = ObservationStatus.Final,
         Code = Loinc(result.LoincCode, result.DisplayName),
         Subject = Reference("Patient", result.PatientId),
         BasedOn = [Reference("ServiceRequest", result.LaboratoryAnalysisRequestId)],
@@ -65,9 +68,13 @@ public static class FhirResourceMapper
 
     public static FhirCapabilityStatement CapabilityStatement() => new()
     {
-        Id = "medsoft-fhir-r5", Name = "MedSoftFhirR5", Title = "MedSoft HIS FHIR R5",
-        Version = "lab3-l6", Status = PublicationStatus.Active,
-        Date = "2026-11-09T00:00:00Z", Kind = CapabilityStatementKind.Capability,
+        Id = "medsoft-fhir-r5",
+        Name = "MedSoftFhirR5",
+        Title = "MedSoft HIS FHIR R5",
+        Version = "lab3-l6",
+        Status = PublicationStatus.Active,
+        Date = "2026-11-09T00:00:00Z",
+        Kind = CapabilityStatementKind.Capability,
         Software = new FhirCapabilityStatement.SoftwareComponent { Name = "MedSoft HIS", Version = "lab3-l6" },
         FhirVersion = FHIRVersion.N5_0_0,
         Format = [FhirResponseWriter.ContentType],
@@ -109,7 +116,8 @@ public static class FhirResourceMapper
             Link = [new Bundle.LinkComponent { Relation = "self", Url = selfUrl }],
             Entry = items.Select(resource => new Bundle.EntryComponent
             {
-                FullUrl = resourceEndpoint + resource.Id, Resource = resource,
+                FullUrl = resourceEndpoint + resource.Id,
+                Resource = resource,
                 Search = new Bundle.SearchComponent { Mode = Bundle.SearchEntryMode.Match }
             }).ToList()
         };
@@ -157,7 +165,9 @@ public static class FhirResourceMapper
         if (create) interactions.Add(new() { Code = FhirCapabilityStatement.TypeRestfulInteraction.Create });
         return new FhirCapabilityStatement.ResourceComponent
         {
-            Type = type, Interaction = interactions, SearchParam = search is null ? [] : [search],
+            Type = type,
+            Interaction = interactions,
+            SearchParam = search is null ? [] : [search],
             UpdateCreate = create ? false : null,
             ConditionalCreate = create ? false : null
         };
@@ -165,7 +175,8 @@ public static class FhirResourceMapper
 
     private static HumanName Name(string family, string first, string? middle = null) => new()
     {
-        Use = HumanName.NameUse.Official, Family = family,
+        Use = HumanName.NameUse.Official,
+        Family = family,
         Given = string.IsNullOrWhiteSpace(middle) ? [first] : [first, middle]
     };
 

@@ -1,8 +1,8 @@
 using System.Net;
 using System.Reflection;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.LaboratoryTests;
-using HospitalInformationSystem.Contracts.MedicalRecords;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Components.MedicalRecords;
 using HospitalInformationSystem.Web.Gateways;
@@ -81,7 +81,7 @@ public sealed class LaboratoryAnalysesPanelTests
                 request.LaboratoryTestDefinitionIds.Should().BeEquivalentTo([first.Id, second.Id]);
                 request.Comment.Should().Be("Натощак");
                 request.ExpectedVersions.Should().BeEquivalentTo(new Dictionary<Guid, uint>
-                    { [first.Id] = first.Version, [second.Id] = second.Version });
+                { [first.Id] = first.Version, [second.Id] = second.Version });
             }).ReturnsAsync(created);
         using var panel = await PanelAsync(record, records, catalog);
         await InvokeAsync(panel, "OpenFormAsync");
@@ -336,7 +336,8 @@ public sealed class LaboratoryAnalysesPanelTests
         using var panel = await PanelAsync(record with { LaboratoryAnalysisRequests = [request] }, records, Catalog());
         SetProperty(panel, nameof(LaboratoryAnalysesPanel.Record), record with
         {
-            Version = record.Version + 1, LaboratoryAnalysisRequests = [request]
+            Version = record.Version + 1,
+            LaboratoryAnalysisRequests = [request]
         });
 
         await InvokeAsync(panel, "OnParametersSetAsync");

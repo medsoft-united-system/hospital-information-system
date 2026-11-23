@@ -1,4 +1,5 @@
-using HospitalInformationSystem.Domain.LaboratoryTests.Factories;
+using HospitalInformationSystem.Application.LaboratoryTests.Factories;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using Microsoft.EntityFrameworkCore;
 

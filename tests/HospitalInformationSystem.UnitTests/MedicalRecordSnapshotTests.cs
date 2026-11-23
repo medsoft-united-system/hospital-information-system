@@ -1,16 +1,16 @@
-using HospitalInformationSystem.Domain.MedicalRecords.Factories;
-using HospitalInformationSystem.Domain.MedicalRecords.Services;
-using HospitalInformationSystem.Domain.MedicalWorkers.Factories;
 using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.MedicalRecords.Factories;
+using HospitalInformationSystem.Application.MedicalRecords.Services;
 using HospitalInformationSystem.Application.MedicalRecords.Snapshot;
-using HospitalInformationSystem.Domain.MedicalRecords;
-using HospitalInformationSystem.Domain.MedicalWorkers;
+using HospitalInformationSystem.Application.MedicalWorkers.Factories;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
 using Moq;
 using Xunit;
 
@@ -113,8 +113,11 @@ public sealed class MedicalRecordSnapshotTests
         var (record, diagnosis, original, _) = Scenario();
         var withoutCurrentState = new MedicalRecord
         {
-            Id = record.Id, PatientId = record.PatientId, CreatedAtUtc = record.CreatedAtUtc,
-            Version = record.Version, HistoryEvents = record.HistoryEvents
+            Id = record.Id,
+            PatientId = record.PatientId,
+            CreatedAtUtc = record.CreatedAtUtc,
+            Version = record.Version,
+            HistoryEvents = record.HistoryEvents
         };
 
         var snapshot = MedicalRecordSnapshotReplay.Build(withoutCurrentState, withoutCurrentState.HistoryEvents, T2);
@@ -273,10 +276,15 @@ public sealed class MedicalRecordSnapshotTests
         Guid? recordId = null) =>
         new()
         {
-            Id = item.Id, MedicalRecordId = recordId ?? item.MedicalRecordId, Version = item.Version,
-            OccurredAtUtc = item.OccurredAtUtc, PerformedByMedicalWorkerId = item.PerformedByMedicalWorkerId,
+            Id = item.Id,
+            MedicalRecordId = recordId ?? item.MedicalRecordId,
+            Version = item.Version,
+            OccurredAtUtc = item.OccurredAtUtc,
+            PerformedByMedicalWorkerId = item.PerformedByMedicalWorkerId,
             PerformedByNameSnapshot = item.PerformedByNameSnapshot,
             PerformedByPositionSnapshot = item.PerformedByPositionSnapshot,
-            EventType = type ?? item.EventType, EntityId = item.EntityId, PayloadJson = payload ?? item.PayloadJson
+            EventType = type ?? item.EventType,
+            EntityId = item.EntityId,
+            PayloadJson = payload ?? item.PayloadJson
         };
 }

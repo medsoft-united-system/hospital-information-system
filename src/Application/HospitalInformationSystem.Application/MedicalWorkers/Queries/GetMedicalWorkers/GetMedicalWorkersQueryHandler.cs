@@ -1,5 +1,5 @@
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.MedicalWorkers.Queries.GetMedicalWorkers;

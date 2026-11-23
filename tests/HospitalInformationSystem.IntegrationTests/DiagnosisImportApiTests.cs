@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Diagnoses;
+using HospitalInformationSystem.Application.Models.Diagnoses;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.TestHost;

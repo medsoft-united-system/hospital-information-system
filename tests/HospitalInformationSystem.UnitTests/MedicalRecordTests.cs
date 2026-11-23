@@ -1,15 +1,15 @@
-using HospitalInformationSystem.Domain.MedicalRecords.Factories;
-using HospitalInformationSystem.Domain.MedicalRecords.Services;
-using HospitalInformationSystem.Domain.MedicalWorkers.Factories;
-using HospitalInformationSystem.Domain.MedicalWorkers.Services;
 using System;
 using System.Linq;
 using FluentAssertions;
 using HospitalInformationSystem.Application.MedicalRecords;
+using HospitalInformationSystem.Application.MedicalRecords.Factories;
 using HospitalInformationSystem.Application.MedicalRecords.Mapping;
-using HospitalInformationSystem.Domain.Common;
-using HospitalInformationSystem.Domain.MedicalRecords;
-using HospitalInformationSystem.Domain.MedicalWorkers;
+using HospitalInformationSystem.Application.MedicalRecords.Services;
+using HospitalInformationSystem.Application.MedicalWorkers.Factories;
+using HospitalInformationSystem.Application.MedicalWorkers.Services;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
 using Xunit;
 using MedicalRecordMapping = HospitalInformationSystem.Application.MedicalRecords.Mapping.MedicalRecordMapping;
 

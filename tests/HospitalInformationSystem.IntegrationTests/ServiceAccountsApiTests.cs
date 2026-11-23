@@ -5,17 +5,16 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.ServiceAccounts;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Security;
-using HospitalInformationSystem.Contracts.ServiceAccounts;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.Security;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using HospitalInformationSystem.Infrastructure.ServiceAccounts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using WorkerRole = HospitalInformationSystem.Domain.MedicalWorkers.MedicalWorkerRole;
+using WorkerRole = HospitalInformationSystem.Application.Models.MedicalWorkers.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
@@ -170,7 +169,7 @@ public sealed class ServiceAccountsApiTests(SecureHospitalApiFactory factory) : 
         using var client = await AdministratorAsync();
         var created = await CreateAsync(client);
         using var request = new HttpRequestMessage(new HttpMethod(method), $"/api/service-accounts/{created.Account.Id}{suffix}")
-            { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+        { Content = new StringContent(body, Encoding.UTF8, "application/json") };
         using var response = await client.SendAsync(request);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await client.GetFromJsonAsync<ServiceAccountDto>($"/api/service-accounts/{created.Account.Id}"))
@@ -269,8 +268,13 @@ public sealed class ServiceAccountsApiTests(SecureHospitalApiFactory factory) : 
             var now = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow();
             var worker = new MedicalWorkerDbo
             {
-                Id = Guid.NewGuid(), FirstName = "Проверка", LastName = "Сервисных", Position = "Сотрудник",
-                Role = role, CreatedAtUtc = now, UpdatedAtUtc = now
+                Id = Guid.NewGuid(),
+                FirstName = "Проверка",
+                LastName = "Сервисных",
+                Position = "Сотрудник",
+                Role = role,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
             };
             db.MedicalWorkers.Add(worker);
             await db.SaveChangesAsync();

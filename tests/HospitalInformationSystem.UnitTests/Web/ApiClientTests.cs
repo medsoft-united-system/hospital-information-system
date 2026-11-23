@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
 using HospitalInformationSystem.Web.ApiClients;
 using Xunit;
 
@@ -156,7 +156,7 @@ public sealed class ApiClientTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(new HttpResponseMessage(status)
-                { Content = new StringContent(body, Encoding.UTF8, "application/json") });
+            { Content = new StringContent(body, Encoding.UTF8, "application/json") });
         }
     }
 }

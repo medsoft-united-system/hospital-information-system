@@ -1,8 +1,11 @@
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Audit;
-using HospitalInformationSystem.Contracts.Security;
-using HospitalInformationSystem.Domain.Common;
+using HospitalInformationSystem.Application.Audit.Factories;
+using HospitalInformationSystem.Application.Audit.Services;
+using HospitalInformationSystem.Application.Audit.Writers;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Audit;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using Microsoft.EntityFrameworkCore;
@@ -24,8 +27,11 @@ public sealed class AuditEventFactoryTests
         var entry = _factory.Create(AuditEventType.AccountChanged, "Пароль аккаунта сброшен.", actor,
             new AuditMetadata
             {
-                Action = "password-reset", TargetId = targetId, AccountId = targetId,
-                RevokedRefreshTokenCount = 0, RevokeReason = "password-reset"
+                Action = "password-reset",
+                TargetId = targetId,
+                AccountId = targetId,
+                RevokedRefreshTokenCount = 0,
+                RevokeReason = "password-reset"
             });
 
         entry.EventId.Should().NotBeEmpty();
@@ -151,7 +157,7 @@ public sealed class AuditEventFactoryTests
     public void Append_UnsavedEvent_ShouldTrackWithoutCommittingBusinessTransaction()
     {
         using var db = NewDbContext();
-        var writer = new AuditWriter(db, _factory, new SystemAuditActorAccessor());
+        var writer = new AuditWriter(new AuditRepository(db), new AuditEntryFactory(new FixedTimeProvider(Now)), new SystemAuditActorAccessor());
 
         writer.Append(AuditEventType.PatientCreated, "Пациент создан.",
             new AuditMetadata { Action = "patient-create", TargetId = Guid.NewGuid() });
@@ -168,7 +174,7 @@ public sealed class AuditEventFactoryTests
     public async Task List_InvalidPageBounds_ShouldRejectBeforeQueryingDatabase(int page, int pageSize)
     {
         using var db = NewDbContext();
-        var service = new AuditQueryService(db);
+        var service = new AuditQueryService(new AuditRepository(db));
         var list = () => service.ListAsync(new AuditQuery(page, pageSize), CancellationToken.None);
 
         await list.Should().ThrowAsync<DomainValidationException>();
@@ -178,7 +184,7 @@ public sealed class AuditEventFactoryTests
     public async Task List_InvalidTypeOrPeriod_ShouldRejectBeforeQueryingDatabase()
     {
         using var db = NewDbContext();
-        var service = new AuditQueryService(db);
+        var service = new AuditQueryService(new AuditRepository(db));
         var invalidType = () => service.ListAsync(new AuditQuery(EventType: (AuditEventType)999), CancellationToken.None);
         var invalidPeriod = () => service.ListAsync(new AuditQuery(From: Now.AddSeconds(1), To: Now), CancellationToken.None);
 

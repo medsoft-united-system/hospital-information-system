@@ -1,15 +1,15 @@
 using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using HospitalInformationSystem.Application.Audit;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.ServiceAccounts;
-using HospitalInformationSystem.Contracts.Security;
-using HospitalInformationSystem.Contracts.ServiceAuth;
-using HospitalInformationSystem.Domain.ServiceAccounts;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Contracts.Audit;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.Security;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.ServiceAuth;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using HospitalInformationSystem.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -18,7 +18,7 @@ namespace HospitalInformationSystem.Infrastructure.ServiceAccounts.Tokens;
 
 public sealed partial class ServiceTokenSessionService(HospitalDbContext db, JwtKeyMaterial keys,
     IOptions<ServiceTokenOptions> options, TimeProvider timeProvider, IAuditWriter audit, IAuditActorAccessor actors,
-    IServiceApiKeyGenerator apiKeys)
+    IServiceApiKeyGenerator apiKeys) : IServiceTokenSessionService
 {
     public async Task<ServiceTokenPairDto?> AuthenticateAsync(string? apiKey, CancellationToken cancellationToken)
     {
@@ -109,9 +109,13 @@ public sealed partial class ServiceTokenSessionService(HospitalDbContext db, Jwt
         sessionId = Guid.NewGuid();
         db.ServiceRefreshSessions.Add(new ServiceRefreshSessionDbo
         {
-            Id = sessionId, ServiceAccountId = account.Id, FamilyId = familyId,
-            TokenHash = ServiceRefreshTokenMaterial.Hash(refresh)!, AuthenticationVersion = account.AuthenticationVersion,
-            CreatedAtUtc = now, ExpiresAtUtc = familyExpires
+            Id = sessionId,
+            ServiceAccountId = account.Id,
+            FamilyId = familyId,
+            TokenHash = ServiceRefreshTokenMaterial.Hash(refresh)!,
+            AuthenticationVersion = account.AuthenticationVersion,
+            CreatedAtUtc = now,
+            ExpiresAtUtc = familyExpires
         });
         List<Claim> claims =
         [

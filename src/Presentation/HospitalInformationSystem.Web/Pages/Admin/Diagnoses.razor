@@ -1,6 +1,6 @@
 @page "/admin/diagnoses"
 @attribute [Authorize(Roles = ApplicationRoles.Administrator)]
-@using HospitalInformationSystem.Contracts.Diagnoses
+@using HospitalInformationSystem.Application.Models.Diagnoses
 @implements IDisposable
 @inject DiagnosesApiClient Api
 

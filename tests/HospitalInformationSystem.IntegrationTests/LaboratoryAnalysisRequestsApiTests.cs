@@ -1,17 +1,17 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Common;
 using HospitalInformationSystem.Application.MedicalRecords.Commands.RecordLaboratoryAnalysisResult;
-using HospitalInformationSystem.Contracts.LaboratoryTests;
-using HospitalInformationSystem.Contracts.MedicalRecords;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
-using HospitalInformationSystem.Contracts.Patients;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Patients;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using MedicalWorkerRole = HospitalInformationSystem.Application.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
@@ -29,9 +29,13 @@ public sealed class LaboratoryAnalysisRequestsApiTests(MedicalRecordsApiFactory 
         var selected = catalog.Take(2).ToArray();
         factory.Clock.SetUtcNow(T0.AddMinutes(1));
         using var created = await _client.PostAsJsonAsync($"/api/medical-records/{record.Id}/laboratory-analysis-requests",
-            new { LaboratoryTestDefinitionIds = selected.Select(x => x.Id).ToArray(), Comment = " Натощак ",
+            new
+            {
+                LaboratoryTestDefinitionIds = selected.Select(x => x.Id).ToArray(),
+                Comment = " Натощак ",
                 ExpectedVersions = selected.ToDictionary(x => x.Id, x => x.Version),
-                PerformedByMedicalWorkerId = Guid.NewGuid() });
+                PerformedByMedicalWorkerId = Guid.NewGuid()
+            });
         created.StatusCode.Should().Be(HttpStatusCode.Created);
         created.Headers.Location!.ToString().Should().EndWith($"/api/medical-records/{record.Id}");
         var requests = (await created.Content.ReadFromJsonAsync<LaboratoryAnalysisRequestDto[]>())!;
@@ -113,8 +117,11 @@ public sealed class LaboratoryAnalysisRequestsApiTests(MedicalRecordsApiFactory 
 
         using var retried = await _client.PostAsJsonAsync(
             $"/api/medical-records/{record.Id}/laboratory-analysis-requests",
-            body with { ExpectedVersions = new Dictionary<Guid, uint>
-                { [first.Id] = first.Version, [second.Id] = currentDefinition.Version } });
+            body with
+            {
+                ExpectedVersions = new Dictionary<Guid, uint>
+                { [first.Id] = first.Version, [second.Id] = currentDefinition.Version }
+            });
         retried.StatusCode.Should().Be(HttpStatusCode.Created);
         (await retried.Content.ReadFromJsonAsync<LaboratoryAnalysisRequestDto[]>())!
             .Should().HaveCount(2).And.Contain(x => x.LaboratoryTestDefinitionId == second.Id &&

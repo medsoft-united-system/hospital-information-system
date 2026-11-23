@@ -1,9 +1,10 @@
 using FluentAssertions;
+using HospitalInformationSystem.Application.DI;
+using HospitalInformationSystem.Infrastructure.DI;
 using HospitalInformationSystem.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection;
-using HospitalInformationSystem.Infrastructure.DI;
+using Microsoft.Extensions.Options;
 
 namespace HospitalInformationSystem.UnitTests;
 
@@ -96,6 +97,7 @@ public sealed class Argon2idPasswordHasherTests
     public void ResolveHasher_ConfiguredInfrastructure_ShouldUseConfiguredParameters()
     {
         var services = new ServiceCollection();
+        services.AddApplication();
         services.AddInfrastructure("Host=localhost;Database=unused;Username=unused");
         services.Configure<Argon2idOptions>(options => { options.MemorySizeKiB = 32768; options.Iterations = 2; });
         using var provider = services.BuildServiceProvider();

@@ -1,8 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Audit;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Application.Audit.Factories;
+using HospitalInformationSystem.Application.Audit.Services;
+using HospitalInformationSystem.Application.Audit.Writers;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Audit;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using Microsoft.EntityFrameworkCore;
@@ -69,7 +72,7 @@ public sealed class AuditQueryServiceTests(HospitalApiFactory factory) : IClassF
         await db.SaveChangesAsync(CancellationToken.None);
         db.ChangeTracker.Clear();
 
-        var service = new AuditQueryService(db);
+        var service = new AuditQueryService(new AuditRepository(db));
         var query = new AuditQuery(PageSize: 2, EventType: AuditEventType.AccountChanged,
             From: at.ToOffset(TimeSpan.FromHours(3)), To: at);
         var first = await service.ListAsync(query, CancellationToken.None);
@@ -90,13 +93,13 @@ public sealed class AuditQueryServiceTests(HospitalApiFactory factory) : IClassF
     {
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
-        var writer = new AuditWriter(db, new AuditEventFactory(TimeProvider.System), new SystemAuditActorAccessor());
+        var writer = new AuditWriter(new AuditRepository(db), new AuditEntryFactory(TimeProvider.System), new SystemAuditActorAccessor());
         Guid eventId;
         await using (var transaction = await db.Database.BeginTransactionAsync(CancellationToken.None))
         {
             writer.Append(AuditEventType.AccountChanged, "Активность аккаунта изменена.",
                 new AuditMetadata { Action = "activity-change", TargetId = Guid.NewGuid() });
-            eventId = db.ChangeTracker.Entries<Infrastructure.Persistence.Models.AuditEventDbo>()
+            eventId = db.ChangeTracker.Entries<Application.Models.Persistence.AuditEventDbo>()
                 .Single().Entity.EventId;
             await db.SaveChangesAsync(CancellationToken.None);
             await transaction.RollbackAsync(CancellationToken.None);

@@ -1,11 +1,11 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Audit;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Audit;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -63,8 +63,12 @@ public sealed class ServiceAuditMigrationTests
         await AssertLegacyEventsAsync(db, userEventId, systemEventId, userId, at);
         var service = new ServiceAccountDbo
         {
-            Id = Guid.NewGuid(), Name = "lis.migration", NormalizedName = "LIS.MIGRATION",
-            ApiKeyHash = SHA256.HashData("migration-test-key"u8), CreatedAtUtc = at, UpdatedAtUtc = at
+            Id = Guid.NewGuid(),
+            Name = "lis.migration",
+            NormalizedName = "LIS.MIGRATION",
+            ApiKeyHash = SHA256.HashData("migration-test-key"u8),
+            CreatedAtUtc = at,
+            UpdatedAtUtc = at
         };
         db.ServiceAccounts.Add(service);
         var serviceEvent = new AuditEventFactory(TimeProvider.System).Create(AuditEventType.MedicalRecordChanged,

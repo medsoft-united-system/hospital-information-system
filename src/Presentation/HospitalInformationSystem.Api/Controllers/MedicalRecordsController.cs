@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using HospitalInformationSystem.Api.Security;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
 using HospitalInformationSystem.Application.MedicalRecords.Commands.AddMedicalRecordDiagnosis;
 using HospitalInformationSystem.Application.MedicalRecords.Commands.AddPrescription;
 using HospitalInformationSystem.Application.MedicalRecords.Commands.CancelPrescription;
@@ -10,11 +12,9 @@ using HospitalInformationSystem.Application.MedicalRecords.Queries.GetMedicalRec
 using HospitalInformationSystem.Application.MedicalRecords.Queries.GetMedicalRecordHistory;
 using HospitalInformationSystem.Application.MedicalRecords.Queries.GetMedicalRecordSnapshot;
 using HospitalInformationSystem.Application.MedicalRecords.Queries.GetPatientMedicalRecord;
-using HospitalInformationSystem.Contracts.MedicalRecords;
-using HospitalInformationSystem.Domain.Common;
-using HospitalInformationSystem.Api.Security;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Application.Abstractions;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

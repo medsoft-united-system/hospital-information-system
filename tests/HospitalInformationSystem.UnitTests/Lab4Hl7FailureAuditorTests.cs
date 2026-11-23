@@ -1,12 +1,12 @@
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Audit;
+using HospitalInformationSystem.Application.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.Contracts.Audit;
 using HospitalInformationSystem.Application.Hl7Import;
-using HospitalInformationSystem.Application.ServiceAccounts;
-using HospitalInformationSystem.Contracts.Hl7Import;
-using HospitalInformationSystem.Contracts.Security;
-using HospitalInformationSystem.Domain.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Hl7Import;
+using HospitalInformationSystem.Application.Models.Security;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 using HospitalInformationSystem.Infrastructure.Audit;
 using HospitalInformationSystem.Infrastructure.Hl7Import;
 using Microsoft.Extensions.DependencyInjection;
@@ -213,7 +213,9 @@ public sealed class Lab4Hl7FailureAuditorTests
             ExternalPatientId = "invalid\nexternal",
             ClientCertificate = Certificate with
             {
-                Subject = new string('S', 2049), Issuer = "invalid\nissuer", SerialNumber = ""
+                Subject = new string('S', 2049),
+                Issuer = "invalid\nissuer",
+                SerialNumber = ""
             }
         };
 

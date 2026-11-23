@@ -1,9 +1,10 @@
 using System.Text.Json;
+using HospitalInformationSystem.Application.Models.Maintenance;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Maintenance;
+using HospitalInformationSystem.Maintenance;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using HospitalInformationSystem.Maintenance;
 using Microsoft.Extensions.Options;
 
 if (args.Length == 0 || args[0] != "benchmark-password-hashing" &&

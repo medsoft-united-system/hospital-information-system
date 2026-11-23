@@ -1,7 +1,8 @@
 using FluentAssertions;
-using HospitalInformationSystem.Application.Audit;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Application.Audit.Services;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Audit;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +28,7 @@ public sealed class ServiceAuditPersistenceTests(FhirReadApiFactory factory) : I
         db.AuditEvents.AddRange(legacy, current, employee);
         await db.SaveChangesAsync();
         db.ChangeTracker.Clear();
-        var service = new AuditQueryService(db);
+        var service = new AuditQueryService(new AuditRepository(db));
 
         var all = await service.ListAsync(new AuditQuery(From: at, To: at), CancellationToken.None);
         var serviceLogins = await service.ListAsync(new AuditQuery(EventType: AuditEventType.ServiceLogin,
@@ -59,7 +60,7 @@ public sealed class ServiceAuditPersistenceTests(FhirReadApiFactory factory) : I
         await db.SaveChangesAsync(CancellationToken.None);
         db.ChangeTracker.Clear();
 
-        var page = await new AuditQueryService(db).ListAsync(new AuditQuery(From: at, To: at), CancellationToken.None);
+        var page = await new AuditQueryService(new AuditRepository(db)).ListAsync(new AuditQuery(From: at, To: at), CancellationToken.None);
 
         var restored = page.Items.Should().ContainSingle(item => item.EventId == entry.EventId).Which;
         restored.Actor.Kind.Should().Be(AuditActorKind.ServiceAccount);

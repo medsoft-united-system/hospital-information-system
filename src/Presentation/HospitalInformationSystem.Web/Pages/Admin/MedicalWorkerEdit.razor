@@ -1,6 +1,6 @@
 @page "/admin/medical-workers/new"
 @page "/admin/medical-workers/{Id:guid}"
-@using HospitalInformationSystem.Contracts.Security
+@using HospitalInformationSystem.Application.Models.Security
 @using HospitalInformationSystem.Web.Components.Accounts
 @attribute [Authorize(Roles = ApplicationRoles.Administrator)]
 @implements IDisposable

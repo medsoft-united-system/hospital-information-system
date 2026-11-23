@@ -2,13 +2,13 @@ using System.Data.Common;
 using System.Security.Cryptography;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Fhir;
-using HospitalInformationSystem.Domain.MedicalRecords;
-using HospitalInformationSystem.Domain.MedicalWorkers;
-using HospitalInformationSystem.Domain.Patients;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Models.Fhir;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Patients;
+using HospitalInformationSystem.Application.Models.Persistence;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using HospitalInformationSystem.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -78,28 +78,28 @@ public sealed class FhirReadRepositoryTests(HospitalApiFactory factory, ITestOut
 
         foreach (var status in new LaboratoryAnalysisRequestStatus?[]
                  { null, LaboratoryAnalysisRequestStatus.Active, LaboratoryAnalysisRequestStatus.Completed })
-        foreach (var after in new FhirPagePosition?[] { null, position })
-        {
-            await repository.SearchServiceRequestsAsync(status, 20, after, CancellationToken.None);
-            await using var explain = new NpgsqlCommand("EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) " + probe.CommandText,
-                (NpgsqlConnection)db.Database.GetDbConnection(), (NpgsqlTransaction)transaction.GetDbTransaction());
-            foreach (var parameter in probe.Parameters)
-                explain.Parameters.Add(parameter.Clone());
-            var planJson = (string)(await explain.ExecuteScalarAsync())!;
-            output.WriteLine($"status={status?.ToString() ?? "all"}, continuation={after is not null}\n{planJson}");
-            using var document = JsonDocument.Parse(planJson);
-            var nodes = PlanNodes(document.RootElement[0].GetProperty("Plan")).ToArray();
-            nodes.Should().NotContain(x => x.GetProperty("Node Type").GetString() == "Sort");
-            var indexScan = nodes.Where(x => x.TryGetProperty("Index Name", out var name) &&
-                    (name.GetString() == "ix_lab_requests_fhir_order" ||
-                     status.HasValue && name.GetString() == "ix_lab_requests_queue"))
-                .Should().ContainSingle().Which;
-            if (status.HasValue && indexScan.GetProperty("Index Name").GetString() == "ix_lab_requests_queue")
-                indexScan.GetProperty("Index Cond").GetString().Should().Contain("status");
-            if (after is not null)
-                indexScan.GetProperty("Index Cond").GetString().Should()
-                    .Contain("authored_at_fhir_utc").And.Contain("id").And.Contain(">");
-        }
+            foreach (var after in new FhirPagePosition?[] { null, position })
+            {
+                await repository.SearchServiceRequestsAsync(status, 20, after, CancellationToken.None);
+                await using var explain = new NpgsqlCommand("EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) " + probe.CommandText,
+                    (NpgsqlConnection)db.Database.GetDbConnection(), (NpgsqlTransaction)transaction.GetDbTransaction());
+                foreach (var parameter in probe.Parameters)
+                    explain.Parameters.Add(parameter.Clone());
+                var planJson = (string)(await explain.ExecuteScalarAsync())!;
+                output.WriteLine($"status={status?.ToString() ?? "all"}, continuation={after is not null}\n{planJson}");
+                using var document = JsonDocument.Parse(planJson);
+                var nodes = PlanNodes(document.RootElement[0].GetProperty("Plan")).ToArray();
+                nodes.Should().NotContain(x => x.GetProperty("Node Type").GetString() == "Sort");
+                var indexScan = nodes.Where(x => x.TryGetProperty("Index Name", out var name) &&
+                        (name.GetString() == "ix_lab_requests_fhir_order" ||
+                         status.HasValue && name.GetString() == "ix_lab_requests_queue"))
+                    .Should().ContainSingle().Which;
+                if (status.HasValue && indexScan.GetProperty("Index Name").GetString() == "ix_lab_requests_queue")
+                    indexScan.GetProperty("Index Cond").GetString().Should().Contain("status");
+                if (after is not null)
+                    indexScan.GetProperty("Index Cond").GetString().Should()
+                        .Contain("authored_at_fhir_utc").And.Contain("id").And.Contain(">");
+            }
     }
 
     [Theory]
@@ -235,24 +235,42 @@ public sealed class FhirReadRepositoryTests(HospitalApiFactory factory, ITestOut
     {
         var worker = new MedicalWorkerDbo
         {
-            Id = Guid.NewGuid(), FirstName = "Алексей", LastName = "Проверка", Position = "Врач",
-            Role = MedicalWorkerRole.Doctor, CreatedAtUtc = At, UpdatedAtUtc = At
+            Id = Guid.NewGuid(),
+            FirstName = "Алексей",
+            LastName = "Проверка",
+            Position = "Врач",
+            Role = MedicalWorkerRole.Doctor,
+            CreatedAtUtc = At,
+            UpdatedAtUtc = At
         };
         var patient = new PatientDbo
         {
-            Id = Guid.NewGuid(), FirstName = "Иван", LastName = "Проверка", BirthDate = new DateOnly(1990, 1, 1),
-            Sex = (int)AdministrativeSex.Male, Comment = "Внутренний комментарий", CreatedAtUtc = At, UpdatedAtUtc = At
+            Id = Guid.NewGuid(),
+            FirstName = "Иван",
+            LastName = "Проверка",
+            BirthDate = new DateOnly(1990, 1, 1),
+            Sex = (int)AdministrativeSex.Male,
+            Comment = "Внутренний комментарий",
+            CreatedAtUtc = At,
+            UpdatedAtUtc = At
         };
         var definition = new LaboratoryTestDefinitionDbo
         {
-            Id = Guid.NewGuid(), LoincCode = BitConverter.ToUInt64(Guid.NewGuid().ToByteArray()) + "-0",
-            DisplayName = "Сохранённое название исследования", CreatedAtUtc = At, UpdatedAtUtc = At
+            Id = Guid.NewGuid(),
+            LoincCode = BitConverter.ToUInt64(Guid.NewGuid().ToByteArray()) + "-0",
+            DisplayName = "Сохранённое название исследования",
+            CreatedAtUtc = At,
+            UpdatedAtUtc = At
         };
         var serviceName = "fhir-" + Guid.NewGuid().ToString("N");
         var service = new ServiceAccountDbo
         {
-            Id = Guid.NewGuid(), Name = serviceName, NormalizedName = serviceName.ToUpperInvariant(),
-            ApiKeyHash = RandomNumberGenerator.GetBytes(32), CreatedAtUtc = At, UpdatedAtUtc = At
+            Id = Guid.NewGuid(),
+            Name = serviceName,
+            NormalizedName = serviceName.ToUpperInvariant(),
+            ApiKeyHash = RandomNumberGenerator.GetBytes(32),
+            CreatedAtUtc = At,
+            UpdatedAtUtc = At
         };
         db.MedicalWorkers.Add(worker);
         db.Patients.Add(patient);
@@ -268,9 +286,13 @@ public sealed class FhirReadRepositoryTests(HospitalApiFactory factory, ITestOut
         {
             var request = new LaboratoryAnalysisRequestDbo
             {
-                Id = Guid.Parse($"a5000000-0000-4000-8000-{index + 1:D12}"), MedicalRecordId = record.Id,
-                PatientId = patient.Id, RequestedByMedicalWorkerId = worker.Id, LaboratoryTestDefinitionId = definition.Id,
-                LoincCodeSnapshot = definition.LoincCode, DisplayNameSnapshot = definition.DisplayName,
+                Id = Guid.Parse($"a5000000-0000-4000-8000-{index + 1:D12}"),
+                MedicalRecordId = record.Id,
+                PatientId = patient.Id,
+                RequestedByMedicalWorkerId = worker.Id,
+                LaboratoryTestDefinitionId = definition.Id,
+                LoincCodeSnapshot = definition.LoincCode,
+                DisplayNameSnapshot = definition.DisplayName,
                 Comment = index == 0 ? "Исходный комментарий" : null,
                 AuthoredAtUtc = At.AddMilliseconds(index / 5).AddTicks((4 - index % 5) * 10),
                 Status = index % 3 == 0 ? LaboratoryAnalysisRequestStatus.Completed : LaboratoryAnalysisRequestStatus.Active
@@ -280,8 +302,12 @@ public sealed class FhirReadRepositoryTests(HospitalApiFactory factory, ITestOut
             {
                 var result = new LaboratoryAnalysisResultDbo
                 {
-                    Id = Guid.NewGuid(), LaboratoryAnalysisRequestId = request.Id, PatientId = patient.Id,
-                    Value = "142", IssuedAtUtc = At.AddMinutes(index + 1), ReceivedAtUtc = At.AddMinutes(index + 2),
+                    Id = Guid.NewGuid(),
+                    LaboratoryAnalysisRequestId = request.Id,
+                    PatientId = patient.Id,
+                    Value = "142",
+                    IssuedAtUtc = At.AddMinutes(index + 1),
+                    ReceivedAtUtc = At.AddMinutes(index + 2),
                     CreatedByServiceAccountId = service.Id
                 };
                 request.Result = result;
@@ -303,8 +329,8 @@ public sealed class FhirReadRepositoryTests(HospitalApiFactory factory, ITestOut
         yield return node;
         if (!node.TryGetProperty("Plans", out var children)) yield break;
         foreach (var child in children.EnumerateArray())
-        foreach (var descendant in PlanNodes(child))
-            yield return descendant;
+            foreach (var descendant in PlanNodes(child))
+                yield return descendant;
     }
 
     private sealed class SearchCommandProbe : DbCommandInterceptor

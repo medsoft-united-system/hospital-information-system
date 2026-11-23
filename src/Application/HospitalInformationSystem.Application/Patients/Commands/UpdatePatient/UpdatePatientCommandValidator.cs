@@ -1,5 +1,5 @@
 using FluentValidation;
-using HospitalInformationSystem.Domain.Patients;
+using HospitalInformationSystem.Application.Models.Patients;
 
 namespace HospitalInformationSystem.Application.Patients.Commands.UpdatePatient;
 

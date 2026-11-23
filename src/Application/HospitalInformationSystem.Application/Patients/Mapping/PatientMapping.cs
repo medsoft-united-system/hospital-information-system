@@ -1,5 +1,4 @@
-using HospitalInformationSystem.Contracts.Patients;
-using HospitalInformationSystem.Domain.Patients;
+using HospitalInformationSystem.Application.Models.Patients;
 using Riok.Mapperly.Abstractions;
 
 namespace HospitalInformationSystem.Application.Patients.Mapping;
@@ -12,6 +11,4 @@ internal static partial class PatientMapping
     [MapperIgnoreTarget(nameof(PatientDto.HasMedicalRecord))]
     public static partial PatientDto ToDto(this Patient patient);
 
-    public static partial Domain.Patients.AdministrativeSex ToDomain(
-        this Contracts.Patients.AdministrativeSex sex);
 }

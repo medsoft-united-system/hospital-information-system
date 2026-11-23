@@ -5,13 +5,13 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Contracts.ServiceAccounts;
-using HospitalInformationSystem.Contracts.ServiceAuth;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.ServiceAuth;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.ServiceAccounts.Tokens;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -28,7 +28,7 @@ public sealed class ServiceTokenSessionPersistenceTests(SecureHospitalApiFactory
         await using var application = factory.WithWebHostBuilder(builder =>
             builder.UseSetting("Security:ServiceAuthRateLimit:PermitLimit", "1"));
         using var client = application.CreateClient(new WebApplicationFactoryClientOptions
-            { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
+        { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
         using var first = await client.PostAsJsonAsync("/api/service-auth/token", new { apiKey = "invalid-key" });
         first.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
@@ -59,7 +59,7 @@ public sealed class ServiceTokenSessionPersistenceTests(SecureHospitalApiFactory
         var fault = new FailAfterSave();
         await using var application = WithInterceptor(fault);
         using var client = application.CreateClient(new WebApplicationFactoryClientOptions
-            { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
+        { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
         var before = await CountsAsync(account.Account.Id);
         fault.Armed = true;
 

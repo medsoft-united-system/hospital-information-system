@@ -2,16 +2,17 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Diagnoses;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Diagnoses;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using MedicalWorkerRole = HospitalInformationSystem.Application.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
@@ -67,7 +68,9 @@ public sealed class AuditBoundaryApiTests(SecureHospitalApiFactory factory) : IC
             builder.UseSetting("Security:LoginRateLimit:PermitLimit", "1"));
         using var client = limited.CreateClient(new WebApplicationFactoryClientOptions
         {
-            BaseAddress = new Uri("https://localhost"), HandleCookies = true, AllowAutoRedirect = false
+            BaseAddress = new Uri("https://localhost"),
+            HandleCookies = true,
+            AllowAutoRedirect = false
         });
         var before = await EventIdsAsync(limited.Services, CancellationToken.None);
         var credentials = new LoginRequest("unknown", "Never.Log-Limited.182!");
@@ -209,7 +212,7 @@ public sealed class AuditBoundaryApiTests(SecureHospitalApiFactory factory) : IC
                 """, CancellationToken.None);
         }
         (await db.MedicalWorkers.AsNoTracking().SingleAsync(item => item.Id == worker.Id, CancellationToken.None))
-            .Role.Should().Be(Domain.MedicalWorkers.MedicalWorkerRole.Doctor);
+            .Role.Should().Be(Application.Models.MedicalWorkers.MedicalWorkerRole.Doctor);
         (await db.Users.Where(user => user.Id == account.Account.Id).Select(user => user.SecurityStamp)
             .SingleAsync(CancellationToken.None)).Should().Be(stamp);
         (await db.RefreshSessions.CountAsync(session => session.UserId == account.Account.Id &&

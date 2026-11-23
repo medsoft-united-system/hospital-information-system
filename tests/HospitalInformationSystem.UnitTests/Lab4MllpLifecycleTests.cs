@@ -13,8 +13,13 @@ public sealed class Lab4MllpLifecycleTests
     {
         var options = new Hl7ImportOptions
         {
-            Enabled = false, ListenAddress = "not-an-address", Port = -1,
-            ServerCertificate = null!, ClientTrust = null!, Limits = null!, Timeouts = null!
+            Enabled = false,
+            ListenAddress = "not-an-address",
+            Port = -1,
+            ServerCertificate = null!,
+            ClientTrust = null!,
+            Limits = null!,
+            Timeouts = null!
         };
         using var services = new ServiceCollection().BuildServiceProvider();
         using var listener = Listener(services, options);

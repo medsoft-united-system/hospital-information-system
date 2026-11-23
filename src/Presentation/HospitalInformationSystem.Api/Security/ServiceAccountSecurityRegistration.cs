@@ -1,9 +1,11 @@
 using System.Threading.RateLimiting;
-using HospitalInformationSystem.Application.Hl7Import;
-using HospitalInformationSystem.Application.ServiceAccounts;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Domain.ServiceAccounts;
-using HospitalInformationSystem.Contracts.ServiceAuth;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Contracts.Hl7Import;
+using HospitalInformationSystem.Application.Contracts.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Hl7Import;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.ServiceAuth;
 using HospitalInformationSystem.Infrastructure.ServiceAccounts.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -24,6 +26,7 @@ public static class ServiceAccountSecurityRegistration
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<ServiceTokenOptions>, ServiceTokenOptionsValidator>());
         services.AddSingleton<ServiceTokenValidationParameters>();
         services.AddScoped<ServiceTokenSessionService>();
+        services.AddScoped<IServiceTokenSessionService>(provider => provider.GetRequiredService<ServiceTokenSessionService>());
         services.AddScoped<ServiceTokenValidator>();
         services.AddScoped<IServiceTokenValidator>(provider => provider.GetRequiredService<ServiceTokenValidator>());
         services.AddScoped<IHl7ImportTokenValidator>(provider => provider.GetRequiredService<ServiceTokenValidator>());
@@ -40,7 +43,7 @@ public static class ServiceAccountSecurityRegistration
                 {
                     OnTokenValidated = async context =>
                     {
-                        var sessions = context.HttpContext.RequestServices.GetRequiredService<ServiceTokenSessionService>();
+                        var sessions = context.HttpContext.RequestServices.GetRequiredService<IServiceTokenSessionService>();
                         if (context.Principal is null || !await sessions.ValidatePrincipalAsync(context.Principal,
                                 context.HttpContext.RequestAborted))
                             context.Fail("Сервисная сессия недействительна.");
@@ -76,7 +79,10 @@ public static class ServiceAccountSecurityRegistration
             RateLimitPartition.GetSlidingWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "local",
                 _ => new SlidingWindowRateLimiterOptions
                 {
-                    PermitLimit = permitLimit, Window = TimeSpan.FromMinutes(5), SegmentsPerWindow = 5, QueueLimit = 0
+                    PermitLimit = permitLimit,
+                    Window = TimeSpan.FromMinutes(5),
+                    SegmentsPerWindow = 5,
+                    QueueLimit = 0
                 })));
         return services;
     }

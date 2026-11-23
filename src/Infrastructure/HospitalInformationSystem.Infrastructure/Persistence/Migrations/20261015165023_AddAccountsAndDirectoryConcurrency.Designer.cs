@@ -96,7 +96,7 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.DiagnosisDefinitionDbo", b =>
+            modelBuilder.Entity("HospitalInformationSystem.Application.Models.Persistence.DiagnosisDefinitionDbo", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -146,7 +146,7 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalRecordDbo", b =>
+            modelBuilder.Entity("HospitalInformationSystem.Application.Models.Persistence.MedicalRecordDbo", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -177,7 +177,7 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalRecordDiagnosisDbo", b =>
+            modelBuilder.Entity("HospitalInformationSystem.Application.Models.Persistence.MedicalRecordDiagnosisDbo", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -239,7 +239,7 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalRecordHistoryEventDbo", b =>
+            modelBuilder.Entity("HospitalInformationSystem.Application.Models.Persistence.MedicalRecordHistoryEventDbo", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -304,7 +304,7 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalWorkerDbo", b =>
+            modelBuilder.Entity("HospitalInformationSystem.Application.Models.Persistence.MedicalWorkerDbo", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -358,7 +358,7 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.PatientDbo", b =>
+            modelBuilder.Entity("HospitalInformationSystem.Application.Models.Persistence.PatientDbo", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -424,7 +424,7 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.PrescriptionDbo", b =>
+            modelBuilder.Entity("HospitalInformationSystem.Application.Models.Persistence.PrescriptionDbo", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -611,81 +611,81 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Identity.HospitalUser", b =>
                 {
-                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalWorkerDbo", null)
+                    b.HasOne("HospitalInformationSystem.Application.Models.Persistence.MedicalWorkerDbo", null)
                         .WithMany()
                         .HasForeignKey("MedicalWorkerId")
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
-            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalRecordDbo", b =>
+            modelBuilder.Entity("HospitalInformationSystem.Application.Models.Persistence.MedicalRecordDbo", b =>
                 {
-                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.PatientDbo", null)
+                    b.HasOne("HospitalInformationSystem.Application.Models.Persistence.PatientDbo", null)
                         .WithMany()
                         .HasForeignKey("PatientId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalRecordDiagnosisDbo", b =>
+            modelBuilder.Entity("HospitalInformationSystem.Application.Models.Persistence.MedicalRecordDiagnosisDbo", b =>
                 {
-                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalWorkerDbo", null)
+                    b.HasOne("HospitalInformationSystem.Application.Models.Persistence.MedicalWorkerDbo", null)
                         .WithMany()
                         .HasForeignKey("AddedByMedicalWorkerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.DiagnosisDefinitionDbo", null)
+                    b.HasOne("HospitalInformationSystem.Application.Models.Persistence.DiagnosisDefinitionDbo", null)
                         .WithMany()
                         .HasForeignKey("DiagnosisDefinitionId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalRecordDbo", null)
+                    b.HasOne("HospitalInformationSystem.Application.Models.Persistence.MedicalRecordDbo", null)
                         .WithMany("Diagnoses")
                         .HasForeignKey("MedicalRecordId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalWorkerDbo", null)
+                    b.HasOne("HospitalInformationSystem.Application.Models.Persistence.MedicalWorkerDbo", null)
                         .WithMany()
                         .HasForeignKey("RemovedByMedicalWorkerId")
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
-            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalRecordHistoryEventDbo", b =>
+            modelBuilder.Entity("HospitalInformationSystem.Application.Models.Persistence.MedicalRecordHistoryEventDbo", b =>
                 {
-                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalRecordDbo", null)
+                    b.HasOne("HospitalInformationSystem.Application.Models.Persistence.MedicalRecordDbo", null)
                         .WithMany("HistoryEvents")
                         .HasForeignKey("MedicalRecordId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalWorkerDbo", null)
+                    b.HasOne("HospitalInformationSystem.Application.Models.Persistence.MedicalWorkerDbo", null)
                         .WithMany()
                         .HasForeignKey("PerformedByMedicalWorkerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.PrescriptionDbo", b =>
+            modelBuilder.Entity("HospitalInformationSystem.Application.Models.Persistence.PrescriptionDbo", b =>
                 {
-                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalWorkerDbo", null)
+                    b.HasOne("HospitalInformationSystem.Application.Models.Persistence.MedicalWorkerDbo", null)
                         .WithMany()
                         .HasForeignKey("CancelledByMedicalWorkerId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalWorkerDbo", null)
+                    b.HasOne("HospitalInformationSystem.Application.Models.Persistence.MedicalWorkerDbo", null)
                         .WithMany()
                         .HasForeignKey("CreatedByMedicalWorkerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalRecordDbo", null)
+                    b.HasOne("HospitalInformationSystem.Application.Models.Persistence.MedicalRecordDbo", null)
                         .WithMany("Prescriptions")
                         .HasForeignKey("MedicalRecordId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("HospitalInformationSystem.Infrastructure.Persistence.Models.PrescriptionDbo", null)
+                    b.HasOne("HospitalInformationSystem.Application.Models.Persistence.PrescriptionDbo", null)
                         .WithMany()
                         .HasForeignKey("ReplacesPrescriptionId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -742,7 +742,7 @@ namespace HospitalInformationSystem.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("HospitalInformationSystem.Infrastructure.Persistence.Models.MedicalRecordDbo", b =>
+            modelBuilder.Entity("HospitalInformationSystem.Application.Models.Persistence.MedicalRecordDbo", b =>
                 {
                     b.Navigation("Diagnoses");
 

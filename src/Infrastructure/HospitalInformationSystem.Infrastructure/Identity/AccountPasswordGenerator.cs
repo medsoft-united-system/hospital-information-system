@@ -1,5 +1,5 @@
 using System.Security.Cryptography;
-using HospitalInformationSystem.Application.Abstractions;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
 
 namespace HospitalInformationSystem.Infrastructure.Identity;
 

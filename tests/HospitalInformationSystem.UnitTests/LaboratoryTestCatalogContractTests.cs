@@ -1,6 +1,6 @@
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Domain.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
 using HospitalInformationSystem.Infrastructure.Initializers;
 
 namespace HospitalInformationSystem.UnitTests;

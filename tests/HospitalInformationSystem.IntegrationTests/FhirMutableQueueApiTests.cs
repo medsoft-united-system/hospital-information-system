@@ -30,11 +30,13 @@ public sealed class FhirMutableQueueApiTests(FhirObservationCreateApiFactory fac
         {
             var body = JsonSerializer.Serialize(new
             {
-                resourceType = "Observation", status = "final",
+                resourceType = "Observation",
+                status = "final",
                 code = new { coding = new[] { new { system = "http://loinc.org", code = state.LoincCode } } },
                 subject = new { reference = $"Patient/{state.PatientId:D}" },
                 basedOn = new[] { new { reference = $"ServiceRequest/{state.RequestId:D}" } },
-                issued = "2026-11-09T12:05:00.000Z", valueString = "5.6"
+                issued = "2026-11-09T12:05:00.000Z",
+                valueString = "5.6"
             });
             using var content = new StringContent(body, Encoding.UTF8, "application/fhir+json");
             using var completedResponse = await client.PostAsync("/fhir/Observation", content);

@@ -1,15 +1,16 @@
 using System.Net;
 using System.Reflection;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.MedicalRecords;
-using HospitalInformationSystem.Contracts.Patients;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.Patients;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Authentication;
 using HospitalInformationSystem.Web.Gateways;
 using HospitalInformationSystem.Web.Pages.Medical;
 using Moq;
+using MedicalRecord = HospitalInformationSystem.Web.Pages.Medical.MedicalRecord;
 
 namespace HospitalInformationSystem.UnitTests.Web;
 
@@ -91,7 +92,7 @@ public sealed class ClinicalPagePermissionTests
     }
 
     private static HttpClient Client(Action sent) => new(new ProbeHandler(sent))
-        { BaseAddress = new Uri("https://localhost/") };
+    { BaseAddress = new Uri("https://localhost/") };
 
     private static void Set(object component, string field, object value) => component.GetType()
         .GetField(field, BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(component, value);

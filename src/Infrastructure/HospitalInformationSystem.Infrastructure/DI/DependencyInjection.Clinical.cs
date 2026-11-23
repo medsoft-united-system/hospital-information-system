@@ -1,5 +1,6 @@
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Hl7Import;
+using HospitalInformationSystem.Application.Abstractions.Hl7Import;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Models.Hl7Import;
 using HospitalInformationSystem.Infrastructure.Hl7Import;
 using HospitalInformationSystem.Infrastructure.Persistence.Repositories;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,7 +13,7 @@ public static partial class DependencyInjection
     {
         services.AddScoped<IMedicalWorkerRepository, MedicalWorkerRepository>();
         services.AddScoped<IPatientRepository, PatientRepository>();
-        services.AddScoped<IImportedPatientService, ImportedPatientService>();
+        services.AddScoped<IImportedPatientRepository, ImportedPatientRepository>();
         services.AddScoped<IDiagnosisRepository, DiagnosisRepository>();
         services.AddScoped<MedicalRecordRepository>();
         services.AddScoped<IMedicalRecordRepository>(provider => provider.GetRequiredService<MedicalRecordRepository>());

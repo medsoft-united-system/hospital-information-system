@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Contracts.Auth;
+using HospitalInformationSystem.Application.Models.Auth;
 using HospitalInformationSystem.Web.ApiClients;
 using Microsoft.JSInterop;
 

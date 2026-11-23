@@ -1,5 +1,5 @@
 using System.Security.Cryptography;
-using HospitalInformationSystem.Contracts.Auth;
+using HospitalInformationSystem.Application.Models.Auth;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -74,12 +74,20 @@ public sealed class JwtKeyMaterial : IDisposable
 
     public TokenValidationParameters ValidationParameters => new()
     {
-        RequireSignedTokens = true, ValidateIssuerSigningKey = true, IssuerSigningKey = ValidationKey,
-        TryAllIssuerSigningKeys = false, ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
-        ValidateIssuer = true, ValidIssuer = _options.Issuer,
-        ValidateAudience = true, ValidAudience = _options.Audience,
-        RequireExpirationTime = true, ValidateLifetime = true, ClockSkew = TimeSpan.Zero,
-        NameClaimType = SecurityTokenClaimTypes.UserName, RoleClaimType = SecurityTokenClaimTypes.AccountRole,
+        RequireSignedTokens = true,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = ValidationKey,
+        TryAllIssuerSigningKeys = false,
+        ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
+        ValidateIssuer = true,
+        ValidIssuer = _options.Issuer,
+        ValidateAudience = true,
+        ValidAudience = _options.Audience,
+        RequireExpirationTime = true,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero,
+        NameClaimType = SecurityTokenClaimTypes.UserName,
+        RoleClaimType = SecurityTokenClaimTypes.AccountRole,
         LifetimeValidator = (notBefore, expires, _, _) => expires is not null &&
             expires.Value > _timeProvider.GetUtcNow().UtcDateTime &&
             (notBefore is null || notBefore.Value <= _timeProvider.GetUtcNow().UtcDateTime &&

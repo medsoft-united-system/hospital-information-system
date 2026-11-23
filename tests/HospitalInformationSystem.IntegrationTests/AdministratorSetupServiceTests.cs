@@ -2,14 +2,15 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Contracts.Security;
-using HospitalInformationSystem.Domain.Common;
+using HospitalInformationSystem.Application.Auth.Services;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.DI;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.DI;
 using HospitalInformationSystem.Infrastructure.Identity;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -35,10 +36,14 @@ public sealed class AdministratorSetupServiceTests : IAsyncLifetime
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton<TimeProvider>(_clock);
+        services.AddApplication();
         services.AddInfrastructure(_postgres.GetConnectionString());
         services.AddDataProtection().UseEphemeralDataProtectionProvider();
         services.AddSingleton<TotpCodeService>();
         services.AddScoped<IAdministratorSetupService, AdministratorSetupService>();
+        services.AddScoped<IAdministratorSetupCryptography,
+            AdministratorSetupCryptography>();
+        services.AddSingleton(provider => provider.GetRequiredService<IOptions<AdministratorSetupOptions>>().Value);
         services.Configure<AdministratorSetupOptions>(options =>
             options.TokenSha256 = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(OwnerToken))));
         _services = services.BuildServiceProvider();
@@ -208,9 +213,12 @@ public sealed class AdministratorSetupServiceTests : IAsyncLifetime
             administratorId = (await db.Users.SingleAsync(CancellationToken.None)).Id;
             db.RefreshSessions.Add(new RefreshSessionDbo
             {
-                Id = Guid.NewGuid(), FamilyId = Guid.NewGuid(), UserId = administratorId,
+                Id = Guid.NewGuid(),
+                FamilyId = Guid.NewGuid(),
+                UserId = administratorId,
                 TokenHash = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
-                CreatedAtUtc = _clock.GetUtcNow(), ExpiresAtUtc = _clock.GetUtcNow().AddDays(1)
+                CreatedAtUtc = _clock.GetUtcNow(),
+                ExpiresAtUtc = _clock.GetUtcNow().AddDays(1)
             });
             await db.SaveChangesAsync(CancellationToken.None);
         }

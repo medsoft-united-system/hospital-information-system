@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Authentication;
 
@@ -121,7 +121,8 @@ public sealed class BrowserSessionConcurrencyTests
         new(new BrowserSessionHandler(state, tokens, new AuthenticationOperationCoordinator(), new Uri("https://localhost:5201/"))
         {
             InnerHandler = new ResponseHandler(send)
-        }) { BaseAddress = new Uri("https://localhost:5201/") };
+        })
+        { BaseAddress = new Uri("https://localhost:5201/") };
 
     private static HttpResponseMessage Json<T>(T value) => new(HttpStatusCode.OK) { Content = JsonContent.Create(value) };
 

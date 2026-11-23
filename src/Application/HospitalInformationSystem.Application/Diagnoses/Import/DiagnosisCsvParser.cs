@@ -1,6 +1,6 @@
 using FluentValidation;
 using FluentValidation.Results;
-using HospitalInformationSystem.Contracts.Diagnoses;
+using HospitalInformationSystem.Application.Models.Diagnoses;
 using Microsoft.VisualBasic.FileIO;
 
 namespace HospitalInformationSystem.Application.Diagnoses.Import;

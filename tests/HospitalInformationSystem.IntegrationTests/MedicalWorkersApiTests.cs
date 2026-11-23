@@ -5,16 +5,15 @@ using System.Net.Http.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Initializers;
-using HospitalInformationSystem.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Xunit;
+using MedicalWorkerRole = HospitalInformationSystem.Application.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
@@ -74,7 +73,10 @@ public sealed class MedicalWorkersApiTests(HospitalApiFactory factory) : IClassF
         var before = await _client.GetFromJsonAsync<MedicalWorkerDto[]>("/api/medical-workers?includeDeleted=true");
         using var response = await _client.PostAsJsonAsync("/api/medical-workers", new
         {
-            FirstName = "А", LastName = "Б", Position = "Врач", Role = role
+            FirstName = "А",
+            LastName = "Б",
+            Position = "Врач",
+            Role = role
         });
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await _client.GetFromJsonAsync<MedicalWorkerDto[]>("/api/medical-workers?includeDeleted=true"))!

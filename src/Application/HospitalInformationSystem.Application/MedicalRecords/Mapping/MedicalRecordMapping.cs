@@ -1,5 +1,4 @@
-using HospitalInformationSystem.Contracts.MedicalRecords;
-using HospitalInformationSystem.Domain.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 using Riok.Mapperly.Abstractions;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Mapping;
@@ -40,7 +39,7 @@ public static partial class MedicalRecordMapping
         IReadOnlyCollection<MedicalRecordHistoryEvent> historyEvents)
     {
         var authors = historyEvents.Where(x => x.EventType == MedicalRecordEventType.LaboratoryAnalysisRequested &&
-                                              x.AuthorKind == Domain.MedicalRecords.MedicalRecordAuthorKind.MedicalWorker &&
+                                              x.AuthorKind == Models.MedicalRecords.MedicalRecordAuthorKind.MedicalWorker &&
                                               x.EntityId.HasValue)
             .GroupBy(x => x.EntityId!.Value).ToDictionary(x => x.Key, x => x.OrderBy(item => item.Version).First());
         return requests.Select(request => request.ToDto() with
@@ -53,13 +52,7 @@ public static partial class MedicalRecordMapping
 
     public static partial LaboratoryAnalysisResultDto ToDto(this LaboratoryAnalysisResult result);
 
-    [MapEnum(EnumMappingStrategy.ByName)]
-    private static partial Contracts.MedicalRecords.LaboratoryAnalysisRequestStatus MapLaboratoryStatus(
-        Domain.MedicalRecords.LaboratoryAnalysisRequestStatus status);
 
-    [MapEnum(EnumMappingStrategy.ByName)]
-    private static partial Contracts.MedicalRecords.MedicalRecordAuthorKind MapHistoryAuthorKind(
-        Domain.MedicalRecords.MedicalRecordAuthorKind kind);
 
     [MapProperty(nameof(MedicalRecordHistoryEvent.PerformedByNameSnapshot), nameof(MedicalRecordHistoryEventDto.PerformedByName))]
     [MapProperty(nameof(MedicalRecordHistoryEvent.PerformedByPositionSnapshot), nameof(MedicalRecordHistoryEventDto.PerformedByPosition))]

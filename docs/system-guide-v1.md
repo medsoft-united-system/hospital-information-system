@@ -1,6 +1,6 @@
 # MedSoft: устройство системы, технологии, запуск и демонстрация — v1
 
-Обновлено 21 ноября 2026 года. Документ описывает HIS, запуск, безопасность, ЭМК и обмен с LIS по FHIR. Для лабораторной 4 приняты C4 и fixtures, реализованы роль HL7 Import, атомарный импорт, HL7 codec/ACK, opt-in MLLP/mTLS listener, подробный аудит импорта и Make-профиль запуска (L2–L7). Listener по умолчанию выключен, включается командой `make lab4-run`. Сетевые сценарии проверяются отдельным Linux-профилем. Следующий этап — приёмка с desktop (L8) — описан в [карточке Льва](lab4-lev-tasks-v1.md).
+Обновлено 23 ноября 2026 года. Документ описывает HIS, запуск, безопасность, ЭМК и обмен с LIS по FHIR. Для лабораторной 4 приняты C4 и fixtures, реализованы роль HL7 Import, атомарный импорт, HL7 codec/ACK, opt-in MLLP/mTLS listener, подробный аудит импорта и Make-профиль запуска (L2–L7). Listener по умолчанию выключен, включается командой `make lab4-run`. Сетевые сценарии проверяются отдельным Linux-профилем. Сценарий приёмки с desktop (L8) описан в [карточке Льва](lab4-lev-tasks-v1.md).
 
 Для первого знакомства прочитайте разделы 1–3. Для понимания реализации — 4–10. Для подготовки к защите — 11–13.
 
@@ -273,28 +273,40 @@ python3 scripts/run-setup-demo.py --new-certificates --trust-ca
 
 ### 4.1. Какие процессы работают
 
+Backend — одно приложение с гексагональным разделением: Application выполняет сценарии через интерфейсы, а Infrastructure предоставляет реализации для PostgreSQL, Identity и криптографии. Проекты — библиотеки внутри процесса API, а не отдельные микросервисы. MediatR вызывает обработчик в памяти того же процесса.
+
+На схеме сплошная стрелка означает зависимость проекта при компиляции, пунктирная — обмен во время работы. Application не ссылается на Infrastructure и не использует EF Core, ASP.NET Identity, Npgsql или Firely.
+
 ```mermaid
 flowchart LR
-    Browser[Браузер: Blazor WebAssembly] -->|HTTPS, JSON, JWT, CSRF| API[ASP.NET Core API]
-    API --> Application[Application: команды и запросы]
-    Application --> Domain[Domain: модели, фабрики, правила]
-    Application --> Infrastructure[Infrastructure: репозитории и Identity]
-    API --> Security[Сервисы входа и сессий]
-    Security --> Infrastructure
-    Infrastructure --> PostgreSQL[(PostgreSQL)]
+    Web[Web: Blazor WebAssembly] --> Models[Models: данные]
+    API[ASP.NET Core API] --> App[Application: сценарии и правила]
+    API --> Infra[Infrastructure: адаптеры]
+    App --> Contracts[Contracts: интерфейсы сервисов]
+    App --> Ports[Abstractions: порты хранения]
+    App --> Models
+    Contracts --> Models
+    Ports --> Models
+    Infra --> Contracts
+    Infra --> Ports
+    Infra --> Models
+    Infra --> App
+    Web -. HTTPS, JSON, JWT, CSRF .-> API
+    Infra -. SQL во время работы .-> DB[(PostgreSQL)]
 ```
 
-Backend — одно приложение. Application, Domain и Infrastructure являются его библиотеками, а не отдельными микросервисами. MediatR не отправляет сетевые запросы между ними.
+Infrastructure реализует порты Contracts и Abstractions. Его внешняя зависимость от Application позволяет использовать фабрики и служебные компоненты при инициализации; обратной зависимости нет. API собирает обе стороны через DI. При выполнении сценария вызов проходит из Application в объект адаптера через интерфейс — это runtime-вызов, а не ссылка внутреннего проекта на внешний.
 
-На Mac API запускается в Linux-контейнере для серверного TLS 1.3. Web обслуживается локальным development-сервером, а компоненты Blazor выполняются в браузере. PostgreSQL работает отдельным контейнером.
+На Mac API запускается в Linux-контейнере для серверного TLS 1.3. Web обслуживается локальным development-сервером, а компоненты Blazor выполняются в браузере. PostgreSQL работает отдельным контейнером. Из проектов системы Web ссылается только на Models; обращения к серверу выполняет через HTTP-клиенты.
 
 ### 4.2. Структура solution
 
 ```text
 src/
   Application/
-    HospitalInformationSystem.Domain/
+    HospitalInformationSystem.Models/
     HospitalInformationSystem.Contracts/
+    HospitalInformationSystem.Abstractions/
     HospitalInformationSystem.Application/
   Infrastructure/
     HospitalInformationSystem.Infrastructure/
@@ -311,35 +323,38 @@ docs/
   system-guide-v1.md
 ```
 
-В [solution](../HospitalInformationSystem.slnx) три основные solution folder: Application, Infrastructure, Presentation. Solution folder группирует проекты в IDE и сама не является сборкой.
+В [solution](../HospitalInformationSystem.slnx) три основные solution folder: Application, Infrastructure, Presentation. Solution folder группирует проекты в IDE и сама не является сборкой. В папке Application находятся четыре самостоятельных проекта.
 
 | Проект | Ответственность |
 |---|---|
-| Domain | Предметные модели, фабрики, правила изменения пациентов, сотрудников, диагнозов и ЭМК |
-| Contracts | DTO, запросы и ответы API, enum, общие правила прав и логинов; используется API и Web |
-| Application | Команды/запросы, обработчики, валидаторы, интерфейсы репозиториев/сервисов, построение снимков |
-| Infrastructure | EF Core, DBO, PostgreSQL, миграции, Identity, криптография, сессии и аудит |
-| Api | HTTP-контроллеры, аутентификация/авторизация, middleware и сборка DI |
-| Web | Страницы, формы, API-клиенты, gateways, браузерная сессия и интерфейс |
+| Models | Предметные модели, DTO и HTTP requests/responses, enum, payload истории, нейтральные read models, DBO и общие ограничения формата |
+| Contracts | Интерфейсы прикладных и вспомогательных сервисов: аккаунты, setup, сервисные аккаунты, аудит, импорт и контекст текущего пользователя |
+| Abstractions | Интерфейсы репозиториев, хранилища настройки/Identity, Unit of Work и управления транзакциями |
+| Application | Команды/запросы MediatR, handlers, валидаторы, фабрики, бизнес-сервисы, построение снимков и координация операций через порты |
+| Infrastructure | EF Core и PostgreSQL, конфигурации и миграции, реализации репозиториев/транзакций, ASP.NET Identity, криптография и адаптеры токенов/сессий |
+| Api | HTTP-контроллеры, FHIR-представления, аутентификация/авторизация, middleware и сборка DI |
+| Web | Страницы, формы, HTTP-клиенты, gateways, браузерная сессия и интерфейс |
 | Maintenance | Отчёт совместимости старой БД, применение явного плана перехода, измерение KDF |
 
-Application зависит от абстракций репозиториев. Конкретные реализации подключаются через DI в Infrastructure. Domain не обращается к HTTP или PostgreSQL. Contracts не передаёт наружу EF-модели.
+Models не зависит от остальных проектов системы и серверных фреймворков. Contracts и Abstractions зависят только от Models и содержат интерфейсы. Application зависит от этих трёх проектов. Например, `IMedicalWorkerRepository` находится в Abstractions, `IAccountService` — в Contracts, а его реализация `AccountService` — в Application. Регистрация DI выбирает конкретный адаптер при запуске API.
 
 ### 4.3. DTO, предметная модель и DBO
 
-Это три представления данных с разными задачами:
+Все три представления объявлены в Models, но решают разные задачи:
 
 | Представление | Пример | Для чего нужно |
 |---|---|---|
 | Request/DTO | `SaveMedicalWorkerRequest`, `MedicalWorkerDto` | Контракт HTTP и данных интерфейса |
-| Domain | `MedicalWorker` | Предметное состояние, с которым работают use cases |
-| DBO | `MedicalWorkerDbo` | Хранение, EF tracking, связи и особенности таблицы |
+| Предметная модель | `MedicalWorker` | Состояние, с которым работают прикладные сценарии |
+| DBO | `MedicalWorkerDbo` | Структура сохраняемых данных; EF настраивает её в Infrastructure |
 
-Обычная цепочка — request → command → domain → DBO при сохранении и DBO → domain → DTO при чтении. Прямой маппинг DTO в таблицу не является обязательным и не заменяет предметную проверку.
+Обычная цепочка — request → command или вызов сервиса → предметная модель → DBO при сохранении и DBO → предметная модель → DTO при чтении. Общий проект не делает эти представления взаимозаменяемыми: HTTP endpoint возвращает DTO и не раскрывает хеши и внутренние данные таблиц.
 
-Классы моделей содержат данные. Создание вынесено в `*Factory`, предметные изменения — в `*Service`, преобразование представлений — в мапперы. Например, `MedicalWorkerFactory` создаёт исходное состояние и ID, `MedicalWorkerService` применяет допустимые изменения, `MedicalWorkerDboMapper` переносит состояние в хранимую модель, `MedicalWorkerMapping` формирует DTO.
+Классы данных содержат свойства. Создание вынесено в `*Factory`, предметные изменения — в `*Service`, преобразования — в мапперы. Фабрики, бизнес-сервисы и DTO-мапперы находятся в Application. Например, `MedicalWorkerFactory` создаёт исходное состояние и ID, `MedicalWorkerService` применяет изменения, а `MedicalWorkerMapping` формирует DTO. В Infrastructure `MedicalWorkerDboMapper` преобразует предметную модель в DBO и обновляет отслеживаемую EF запись. Общие enum, JSON-конвертеры и чистые проверки формата остаются в Models, чтобы API и Web использовали одинаковые контракты.
 
-Мапперы обновления намеренно не переписывают идентификатор и время создания. Парольный хеш, закрытые ключи и внутреннее состояние Identity не становятся обычными полями DTO интерфейса.
+18 DBO находятся в [Models/Persistence](../src/Application/HospitalInformationSystem.Models/Persistence) с namespace `HospitalInformationSystem.Models.Persistence`. EF-конфигурации, `HospitalDbContext`, миграции и репозитории остаются в Infrastructure. `HospitalUser : IdentityUser<Guid>` также остаётся в Infrastructure: это адаптерная модель ASP.NET Identity, а не нейтральная модель приложения. Перенос DBO изменил расположение CLR-типов, но не таблицы, колонки, ограничения и идентификаторы существующих миграций. Схема БД сохраняется.
+
+Мапперы обновления намеренно не переписывают идентификатор и время создания. Парольный хеш, закрытые ключи и внутреннее состояние Identity не становятся обычными полями DTO интерфейса. Существующие JSON-имена, строковый формат пола пациента и числовые значения сохраняемых enum сохранены. Два enum медицинских ролей сопоставляются по именам, поскольку их числовые значения различаются.
 
 ## 5. Технологии: что они делают в проекте
 
@@ -388,7 +403,7 @@ JSON — формат обмена DTO. UUID идентифицирует объ
 
 DI-контейнер создаёт объекты и передаёт им зависимости через конструкторы. Поэтому обработчик принимает `IMedicalWorkerRepository`, а не сам создаёт PostgreSQL-соединение. В production ему передаётся EF-реализация, в модульном тесте — подмена.
 
-[AddApplication](../src/Application/HospitalInformationSystem.Application/DI/DependencyInjection.cs) регистрирует MediatR, валидаторы, pipeline валидации, контекст команд ЭМК, builder снимков и время. [AddInfrastructure](../src/Infrastructure/HospitalInformationSystem.Infrastructure/DI/DependencyInjection.cs) связывает интерфейсы с репозиториями, DbContext, Identity и аудитом.
+[AddApplication](../src/Application/HospitalInformationSystem.Application/DI/DependencyInjection.cs) регистрирует MediatR, валидаторы, pipeline валидации, фабрики аудита, сервисы аккаунтов/setup/сервисных аккаунтов/импорта, чтение и запись аудита, контекст команд ЭМК, builder снимков и время. [AddInfrastructure](../src/Infrastructure/HospitalInformationSystem.Infrastructure/DI/DependencyInjection.cs) связывает порты с EF-репозиториями, `IUnitOfWork`, менеджером транзакций, Identity и криптографическими адаптерами. Поэтому перенос прикладного сервиса не переносит SQL или криптографическую реализацию во внутренний слой.
 
 DbContext и репозитории имеют scoped lifetime: в пределах серверного запроса они работают с одним контекстом. `IUnitOfWork` ссылается на этот же `HospitalDbContext`, а не на отдельное подключение со своим несогласованным сохранением. Singleton используется для общих объектов, например генератора паролей и `TimeProvider.System`.
 
@@ -404,13 +419,13 @@ DbContext и репозитории имеют scoped lifetime: в предел�
 
 Валидаторы проверяют входные значения команд. `ValidationBehavior<TRequest,TResponse>` запускается в MediatR pipeline раньше handler. Он последовательно выполняет зарегистрированные валидаторы и собирает ошибки; при ошибке обработчик не вызывается.
 
-Валидация имеет несколько уровней: UI помогает исправить форму, Application проверяет use case, Domain защищает предметные правила, PostgreSQL — уникальность и ссылки. Проверка существования объекта или допустимости перехода состояния не заменяется проверкой длины строки.
+Валидация имеет несколько уровней: UI помогает исправить форму, валидаторы Application проверяют вход use case, его фабрики и сервисы защищают предметные правила, PostgreSQL — уникальность и ссылки. Общие ограничения формата объявлены в Models. Проверка существования объекта или допустимости перехода состояния не заменяется проверкой длины строки.
 
 ### 5.7. Mapperly
 
 Mapperly — генератор исходного кода. По объявлениям partial-мапперов он создаёт обычный C#-код преобразований во время сборки. Это избавляет от повторяющихся присваиваний и позволяет замечать проблемы маппинга при компиляции.
 
-В Application мапперы формируют DTO из domain, в Infrastructure — преобразуют domain и DBO и обновляют tracked DBO. Маппер не решает, имеет ли пользователь право изменить карту, и не назначает автора: эти решения остаются в политиках и use cases.
+В Application мапперы формируют DTO из предметных моделей, в Infrastructure — преобразуют предметные модели и DBO и обновляют tracked DBO. Объявления обоих видов данных находятся в Models. Маппер не решает, имеет ли пользователь право изменить карту, и не назначает автора: эти решения остаются в политиках и use cases.
 
 ### 5.8. EF Core, Npgsql, Repository и Unit of Work
 
@@ -459,34 +474,46 @@ sequenceDiagram
     participant C as MedicalWorkersController
     participant V as ValidationBehavior
     participant H as CreateMedicalWorkerCommandHandler
+    participant P as IMedicalWorkerRepository
     participant R as MedicalWorkerRepository
     participant DB as HospitalDbContext/PostgreSQL
     UI->>HTTP: POST + SaveMedicalWorkerRequest
     HTTP->>C: JWT + cookie + CSRF
     C->>V: ISender.Send(command)
     V->>H: После успешной валидации
-    H->>H: Factory.Create + Service.Update
-    H->>R: Add(domain)
+    H->>H: MedicalWorkerFactory.Create
+    H->>P: Add(worker)
+    P->>R: Реализация, выбранная DI
     R->>R: DboMapper.ToDbo
     H->>DB: IUnitOfWork.SaveChangesAsync
     DB->>DB: Данные + audit в БД
-    H->>H: Mapping.ToDto
+    H->>H: MedicalWorkerMapping.ToDto
     H-->>C: DTO
     C-->>HTTP: 201 Created + DTO
     HTTP-->>UI: Ответ
 ```
 
-Контроллер принимает HTTP-модель и создаёт команду. Handler создаёт предметный объект через фабрику и применяет правила сервиса. Репозиторий добавляет DBO, а Unit of Work фиксирует его. Формирование DTO не требует передавать EF tracking или внутренние поля таблицы клиенту.
+Контроллер принимает HTTP-модель из Models и создаёт команду Application. Handler создаёт предметный объект через фабрику Application и вызывает порт `IMedicalWorkerRepository` из Abstractions. DI передаёт реализацию `MedicalWorkerRepository` из Infrastructure. Она добавляет DBO, а `IUnitOfWork` фиксирует изменения через тот же `HospitalDbContext`. Handler знает интерфейсы и модели, но не знает EF и PostgreSQL.
 
-При обновлении handler сначала загружает объект. Репозиторий сохраняет связь с tracked DBO, сервис меняет domain, `UpdateAsync` переносит состояние обратно. Конфликт параллельной записи превращается в 409, а не молча перезаписывает чужое изменение.
+При обновлении handler сначала загружает объект. Репозиторий сохраняет связь с tracked DBO, `MedicalWorkerService` изменяет предметную модель, `UpdateAsync` переносит состояние обратно. Конфликт параллельной записи превращается в 409, а не молча перезаписывает чужое изменение.
 
-Чтение сотрудника короче: controller → query → handler → repository → domain → DTO. Handler списка пациентов дополнительно одним запросом получает множество patient ID с ЭМК, чтобы заполнить `HasMedicalRecord` без запроса на каждую строку.
+Чтение сотрудника короче: controller → query → handler → порт репозитория → EF-адаптер → предметная модель → DTO. Handler списка пациентов дополнительно одним запросом получает множество patient ID с ЭМК, чтобы заполнить `HasMedicalRecord` без запроса на каждую строку.
 
 ### 6.2. Почему часть контроллеров вызывает сервис напрямую
 
-Сотрудники, пациенты, справочник и ЭМК организованы как команды/запросы MediatR. Вход, setup, аккаунты и аудит используют специализированные сервисы напрямую. Это существующая граница реализации, а не требование, что всякая операция должна проходить через один шаблон.
+Сотрудники, пациенты, справочники и ЭМК организованы как команды/запросы MediatR. Аккаунты, первоначальная настройка, управление сервисными аккаунтами и аудит вызываются через специализированные сервисы Contracts. Их реализации находятся в Application и выполняют сценарии через порты Abstractions. MediatR не является условием работы DI или транзакций.
 
-Например, `AccountsController` вызывает `IAccountService`, а `AuditController` — `IAuditQueryService`. Эти сервисы сами содержат нужные проверки и работу с хранилищем. MediatR не является условием работы DI или транзакций.
+| Сценарий | Прикладной сервис | Порт и внешний адаптер |
+|---|---|---|
+| Создание аккаунта, смена активности и сброс пароля | `AccountService` | `IAccountRepository` → `AccountRepository` с ASP.NET Identity; `IMedicalWorkerRepository` для сотрудника |
+| Первоначальная настройка и проверка TOTP | `AdministratorSetupService` | `IAdministratorSetupStore` → `AdministratorSetupStore`; `IAdministratorSetupCryptography` → `AdministratorSetupCryptography` |
+| Создание/ротация/отключение сервисного аккаунта | `ServiceAccountService` | `IServiceAccountRepository` → `ServiceAccountRepository`; генератор ключей и отзыв сессий подключены отдельными интерфейсами |
+| Подготовка/чтение аудита | `AuditWriter`, `AuditQueryService` | `IAuditRepository` → `AuditRepository`; `AuditEntryFactory` формирует событие в Application |
+| Атомарный импорт HL7 | `ImportedPatientService` | `IImportedPatientRepository` → `ImportedPatientRepository`; handler передаёт нейтральный `ImportPatientRequest` |
+
+Для атомарных операций Application использует `ITransactionManager` и `IApplicationTransaction`. Их EF-реализация `EfTransactionManager` работает с тем же DbContext, что и репозитории/Unit of Work; внутреннему слою не нужны `IDbContextTransaction` или SQL. Адаптеры выпуска JWT, refresh-сессий, хеширования паролей, TOTP и Data Protection остаются в Infrastructure. Контроллеры аутентификации также используют технические средства ASP.NET Identity для проверки входа.
+
+Общая цепочка: controller → прикладной сервис или MediatR handler → порт → адаптер → хранилище. Например, `AccountsController` вызывает `IAccountService`, а `AuditController` — `IAuditQueryService`; бизнес-решения принимают реализации Application, запросы к БД выполняют реализации Infrastructure.
 
 ### 6.3. Вход в систему
 
@@ -533,7 +560,7 @@ Handler использует `MedicalRecordCommandContext`: проверяет �
 
 ### 7.3. Справочник диагнозов и CSV
 
-Код диагноза содержит 3–32 символа, название — 3–256 после удаления внешних пробелов (`Trim`). Эти пределы действуют в Domain, REST/CSV, EF и Web, включая снимки диагнозов ЭМК. Поддерживаются коды `I10`, `I48`, `J45.9`, прежние шестисимвольные и локальные коды. Сопоставление выполняется по точному коду после `Trim`, поэтому `I10` и `I10.00` определяют разные записи. Код и название уникальны в справочнике, что закреплено отдельными уникальными индексами БД.
+Код диагноза содержит 3–32 символа, название — 3–256 после удаления внешних пробелов (`Trim`). Общие пределы объявлены в Models и применяются в Application, REST/CSV, EF и Web, включая снимки диагнозов ЭМК. Поддерживаются коды `I10`, `I48`, `J45.9`, прежние шестисимвольные и локальные коды. Сопоставление выполняется по точному коду после `Trim`, поэтому `I10` и `I10.00` определяют разные записи. Код и название уникальны в справочнике, что закреплено отдельными уникальными индексами БД.
 
 CSV должен быть UTF-8, с заголовком `Code,Name` и разделителем-запятой. Допускаются BOM и поля в кавычках. Пример:
 
@@ -573,9 +600,9 @@ Replay проверяет целостность всей истории: пос
 
 Начальный набор содержит семь исследований: глюкозу, гемоглобин, антитела к ВИЧ, HBsAg, антитела к гепатиту C, антитела к Treponema pallidum и ДНК Yersinia pestis. Коды, уточнённые названия и официальные источники LOINC находятся в [общем JSON](../tests/Fixtures/Lab3/laboratory-test-catalog.json). Приложение не обращается к внешней терминологии при каждом открытии.
 
-`LaboratoryTestDefinition` хранит только состояние. Фабрика и `LaboratoryTestDefinitionService` выполняют нормализацию и изменения; команды/запросы идут через MediatR и FluentValidation. `LaboratoryTestRepository` преобразует Domain ↔ DBO через Mapperly, `HospitalDbContext` сохраняет данные. На UI `LaboratoryTests.razor` вызывает gateway, тот проверяет роль и обращается к typed API client. Проверка прав повторяется на сервере: чтение — администратор и медицинские аккаунты, запись — только администратор, с CSRF.
+`LaboratoryTestDefinition` хранит только состояние. Фабрика и `LaboratoryTestDefinitionService` выполняют нормализацию и изменения; команды/запросы идут через MediatR и FluentValidation. `LaboratoryTestRepository` преобразует предметную модель ↔ DBO через Mapperly, `HospitalDbContext` сохраняет данные. На UI `LaboratoryTests.razor` вызывает gateway, тот проверяет роль и обращается к typed API client. Проверка прав повторяется на сервере: чтение — администратор и медицинские аккаунты, запись — только администратор, с CSRF.
 
-При создании и изменении справочника код имеет длину 3–32, ASCII-форму `цифры-дефис-цифра` и корректную контрольную цифру Mod10. Поддержаны 14 исторических исключений LOINC. Domain и Web используют один исходный алгоритм проверки. Имя содержит 3–256 Unicode-символов после trim. Уникальный индекс запрещает повтор кода независимо от активности. Проверка контрольной цифры выполняется локально. Источники правил приведены в [руководстве LOINC](https://loinc.org/kb/users-guide/calculating-mod-10-check-digits/) и [списке исторических исключений](https://loinc.org/kb/users-guide/calculating-mod-10-check-digits/terms-with-invalid-check-digits/).
+При создании и изменении справочника код имеет длину 3–32, ASCII-форму `цифры-дефис-цифра` и корректную контрольную цифру Mod10. Поддержаны 14 исторических исключений LOINC. Application и Web используют один алгоритм проверки из Models. Имя содержит 3–256 Unicode-символов после trim. Уникальный индекс запрещает повтор кода независимо от активности. Проверка контрольной цифры выполняется локально. Источники правил приведены в [руководстве LOINC](https://loinc.org/kb/users-guide/calculating-mod-10-check-digits/) и [списке исторических исключений](https://loinc.org/kb/users-guide/calculating-mod-10-check-digits/terms-with-invalid-check-digits/).
 
 Старые назначения сохраняют код, прошедший действовавшую при создании проверку формата. `MedicalRecordSnapshotReplay` читает такие события, а `FhirObservationReader` и валидатор результата проверяют прежнюю ASCII-форму кода. `MedicalRecordService` требует точное совпадение кода и пациента с сохранённым заказом. Новые назначения проходят Mod10. Предыдущие payload истории сохраняются.
 
@@ -607,7 +634,7 @@ L5 добавил читающий FHIR HTTP API, L6 — атомарный пр
 
 ### 7.7. FHIR R5: чтение для лабораторной системы
 
-FHIR — стандарт медицинских ресурсов и их HTTP-представления. Сервер использует **Firely `Hl7.Fhir.R5` 6.7.0** только в API и тестах; Domain/Application не зависят от SDK. Это R5: код назначения находится в `ServiceRequest.code.concept.coding`, а результат передаётся через `Observation.valueString` без единиц измерения. Числоподобные значения остаются строками.
+FHIR — стандарт медицинских ресурсов и их HTTP-представления. Сервер использует **Firely `Hl7.Fhir.R5` 6.7.0** только в API и тестах; Models, Contracts, Abstractions и Application не зависят от SDK. Это R5: код назначения находится в `ServiceRequest.code.concept.coding`, а результат передаётся через `Observation.valueString` без единиц измерения. Числоподобные значения остаются строками.
 
 `FhirController` строго разбирает ID/поисковые параметры и отправляет MediatR queries. Их handlers обращаются к `IFhirReadRepository`, реализация в Infrastructure читает только нужные поля без tracking. Дальше `FhirResourceMapper` создаёт SDK-ресурс, `FhirResponseWriter` сериализует его в UTF-8 `application/fhir+json` с `Cache-Control: no-store`. Внутренние пациентские комментарии, Identity-аккаунты, TOTP и пароли через FHIR не выдаются. Практикующий врач читается и после soft delete с `active=false`, а лабораторный код/название берутся из сохранённого снимка заказа.
 
@@ -639,7 +666,7 @@ Handler загружает ЭМК, `MedicalRecordService` сверяет пац�
 
 Формат ключа — `msa_<ID аккаунта в N lowercase>.<43 base64url символа>`. Секрет — 32 случайных байта RandomNumberGenerator. ServiceApiKeyGenerator проверяет канонический формат и хеширует base64url-представление секрета через Argon2id с отдельной случайной солью 16 байт. В bytea-поле api_key_hash сохраняется UTF-8 PHC-строка с алгоритмом, параметрами, солью и хешем. Параметры берутся из Security:PasswordHashing:Argon2id: по умолчанию 64 МиБ, 3 итерации, parallelism 1. Публичный KeyPrefix содержит ID аккаунта. Ранее выданные ключи с 32-байтовыми SHA-256-хешами проверяются в прежнем формате и при успешном получении новой сессии переводятся на Argon2id. Такой переход выполняется в транзакции выдачи сессии и сохраняет версию безопасности, время изменения аккаунта и действующие сессии. Увеличение параметров Argon2id также учитывается при следующем входе. Миграция разрешает оба формата хранения; откат к ограничению SHA-256 отклоняется, пока в базе есть Argon2id-хеши.
 
-Цепочка вызова: ServiceAccounts.razor → IServiceAccountsGateway → ServiceAccountsApiClient → ServiceAccountsController → IServiceAccountService → Domain ServiceAccountService/Factory → Mapperly → ServiceAccountDbo/EF. Модели содержат состояние, правила создания и изменения вынесены отдельно. Имена имеют 3–64 Unicode scalar values после trim, без управляющих символов и повреждённого UTF-16; уникальный нормализованный вариант действует и для отключённых аккаунтов. GET-проекции выбирают только публичные поля, без хеша и версии безопасности.
+Цепочка вызова: ServiceAccounts.razor → IServiceAccountsGateway → ServiceAccountsApiClient → ServiceAccountsController → IServiceAccountService → ServiceAccountService (Application) → IServiceAccountRepository → ServiceAccountRepository (Infrastructure) → Mapperly → ServiceAccountDbo/EF. Прикладной сервис использует `ServiceAccountFactory` и `ServiceAccountDomainService` из Application, генератор API key и отзыв сессий подключает через интерфейсы. Модели содержат состояние, правила создания и изменения вынесены отдельно. Имена имеют 3–64 Unicode scalar values после trim, без управляющих символов и повреждённого UTF-16; уникальный нормализованный вариант действует и для отключённых аккаунтов. GET-проекции выбирают только публичные поля, без хеша и версии безопасности.
 
 Для изменения существующей записи обязателен version из DTO (PostgreSQL xmin). В транзакции сервис делает SELECT FOR UPDATE, сравнивает версию и затем изменяет запись; устаревшее подтверждение получает 409. Ротация меняет хеш и повышает AuthenticationVersion, отключение также повышает эту версию. Обе операции отзывают сохранённые сессии и добавляют аудит в той же транзакции. Ошибка после SQL или отказ аудита откатывает всё. Переименование не отзывает доступ, повтор установки того же статуса не меняет запись, активация не восстанавливает старые сессии.
 
@@ -705,7 +732,7 @@ Access — RS256 JWT с собственной audience MedSoft.Lis, account_kin
 
 ### 7.10.2. Атомарный импорт пациента и диагнозов лабораторной 4
 
-`ImportPatientCommandHandler` передаёт `ImportPatientCommand` в `IImportedPatientService`, реализованный классом `ImportedPatientService`. Команда содержит `MessageControlId`, регистрационные данные пациента, строковые `SourceSystem`/`ExternalPatientId`, список диагнозов и проверенный контекст соединения. Источник профиля равен `LAB4_XML`. Внешний ID хранится строкой с ведущими нулями, пара `(SourceSystem, ExternalPatientId)` служит первичным ключом таблицы `patient_external_identifiers`.
+`ImportPatientCommand` остаётся запросом MediatR внутри Application. `ImportPatientCommandHandler` создаёт из его полей нейтральный `ImportPatientRequest` из Models и передаёт его в `IImportedPatientService` из Contracts. Реализация `ImportedPatientService` находится в Application и использует `IImportedPatientRepository` и `ITransactionManager` из Abstractions; EF/SQL реализованы в Infrastructure. `ImportPatientRequest` содержит `MessageControlId`, `ImportedPatientInput` и `ImportConnectionContext`. Данные пациента включают строковые `SourceSystem`/`ExternalPatientId` и список диагнозов, контекст — проверенный сервисный аккаунт, клиентский сертификат и время приёма. Поэтому контракт сервиса не зависит от MediatR. Источник профиля равен `LAB4_XML`. Внешний ID хранится строкой с ведущими нулями, пара `(SourceSystem, ExternalPatientId)` служит первичным ключом таблицы `patient_external_identifiers`.
 
 Сервис начинает отдельную транзакцию для пациента и повторно проверяет активность сервисного аккаунта, роль `HL7Import` и версию безопасности под блокировкой строки аккаунта. Транзакционная advisory-блокировка сериализует обращения к одной паре внешних ID. Повтор такой пары возвращает `PatientImportRejection.Duplicate`. При успехе одной транзакцией сохраняются пациент, внешний ID, ЭМК, все вхождения диагнозов, новые определения справочника, клиническая история и успешный аудит. Ошибка любого диагноза откатывает всю транзакцию пациента, включая определения, добавленные при обработке предыдущих диагнозов.
 
@@ -1105,7 +1132,7 @@ CORS не заменяет аутентификацию, авторизацию 
 
 События покрывают семь обязательных групп: вход администратора, вход сотрудника, неуспешный вход, изменения сотрудников, пациентов, ЭМК и аккаунтов. Дополнительно отражаются служебные действия setup и сессий.
 
-`AuditWriter` добавляет запись в тот же DbContext. `TrackedSecurityChanges` создаёт аудит предметных изменений и каскадов. У EF запрещены изменение/удаление сохранённых audit/history, а PostgreSQL дополнительно запрещает UPDATE/DELETE/TRUNCATE таблицы security audit. API предоставляет только чтение журнала. Это защита средствами приложения и БД, но не обещание защиты от владельца PostgreSQL, способного изменить DDL и отключить триггеры.
+`AuditWriter` в Application формирует событие через `AuditEntryFactory` и передаёт его в `IAuditRepository`. Реализация `AuditRepository` в Infrastructure добавляет DBO в тот же DbContext; общий `SaveChangesAsync` сохраняет аудит вместе с изменением. `AuditQueryService` проверяет параметры чтения и вызывает тот же порт репозитория. `TrackedSecurityChanges` создаёт аудит предметных изменений и каскадов. У EF запрещены изменение/удаление сохранённых audit/history, а PostgreSQL дополнительно запрещает UPDATE/DELETE/TRUNCATE таблицы security audit. API предоставляет только чтение журнала. Это защита средствами приложения и БД, но не обещание защиты от владельца PostgreSQL, способного изменить DDL и отключить триггеры.
 
 События показываются от новых к старым, с фильтрами и страницами. Первая страница опрашивается раз в секунду через REST, без параллельных запросов; при возврате на вкладку выполняется отдельное обновление. WebSocket/SignalR не используются. В интерфейсе видны секунды и точное число отозванных refresh-токенов, включая ноль.
 
@@ -1268,7 +1295,7 @@ UiMock — отдельный development-режим с синтетически
 
 | Вопрос | Ответ |
 |---|---|
-| Где выполняется бизнес-логика? | В Application handlers и Domain services/factories; HTTP и SQL вынесены в свои слои |
+| Где выполняется бизнес-логика? | В handlers, сервисах и фабриках Application; данные находятся в Models, HTTP — в Presentation, SQL и Identity — в Infrastructure |
 | Зачем MediatR? | Разделяет HTTP и конкретный use case, подключает общий pipeline валидации |
 | Почему auth без MediatR? | Для него используются специализированные сервисы Identity/setup/session; это выбранная граница реализации |
 | Зачем DTO и DBO? | Контракт API не должен совпадать с EF-моделью и раскрывать её внутренние поля |
@@ -1349,6 +1376,10 @@ dotnet run --project src/Presentation/HospitalInformationSystem.Maintenance -- \
 
 ## 13. Проверки и границы результата
 
+После архитектурного рефакторинга issue #42 (23.11.2026) прошли **1733 unit-теста, 655 интеграционных тестов и 25 Linux-проверок TLS 1.3/mTLS и обновления Lab3 → Lab4**, без пропусков. Проверки миграций подтверждают отсутствие расхождений EF-модели со снимком. В migration designer/snapshot изменены только CLR-пространства имён; схема БД и идентификаторы миграций сохранены. Рабочая БД в прогонах не используется.
+
+`ArchitectureBoundaryTests` закрепляет зависимости проектов: Models не зависит от остальных слоёв и серверных адаптеров, Contracts/Abstractions содержат интерфейсы и зависят только от Models, Application не ссылается на Infrastructure или адаптерные фреймворки. Отдельные проверки фиксируют принадлежность DBO проекту Models и прежний JSON-формат пола пациента. Эти архитектурные проверки дополняют функциональные и интеграционные тесты.
+
 Основные команды:
 
 ```bash
@@ -1416,7 +1447,7 @@ python3 scripts/check-lab2-publish.py --api artifacts/publish/api --web artifact
 
 `Lab3AcceptanceTests` проходит связанный сценарий с настоящими human/service JWT: администратор создаёт врача и аккаунты читателей, врач назначает три исследования и повторяет одно с новым ID, LIS фиксирует результат через FHIR, все четыре медицинские роли читают текущую ЭМК, историю и снимки до/после результата. Читающие роли не могут назначать анализы, администратор не получает клинический доступ. Переименование/мягкое удаление врача и изменение справочника не переписывают исторические снимки; Practitioner остаётся разрешимым.
 
-Матрица с именами отдельных проверок находится в разделе «Что проверено в L9» [карточки Льва](lab3-lev-tasks-v2.md). Она также включает конкурирующие POST, неизменность соседних записей карты, безопасные ошибки, human/service границы, отзыв credentials и строгие FHIR/технические fixtures. Это проверка HIS на одноразовой PostgreSQL. Отдельный прогон L10 проверяет доверенную TLS-цепочку и внешний Go-клиент.
+Матрица приёмки закреплена в [Lab3AcceptanceTests](../tests/HospitalInformationSystem.IntegrationTests/Lab3AcceptanceTests.cs) и связанных интеграционных проверках. Она также включает конкурирующие POST, неизменность соседних записей карты, безопасные ошибки, human/service границы, отзыв credentials и строгие FHIR/технические fixtures. Это проверка HIS на одноразовой PostgreSQL. Отдельный прогон L10 проверяет доверенную TLS-цепочку и внешний Go-клиент.
 
 ### 13.2. Миграции и обмен с Go LIS
 
@@ -1505,14 +1536,21 @@ python3 scripts/check-lab2-publish.py --api artifacts/publish/api --web artifact
 |---|---|
 | Настройка HTTP и порядок middleware | [API Program](../src/Presentation/HospitalInformationSystem.Api/Program.cs) |
 | Политики, JWT validation, CORS, CSRF и rate limit | [ApiSecurityRegistration](../src/Presentation/HospitalInformationSystem.Api/Security/ApiSecurityRegistration.cs) |
-| Команды/запросы и их валидация | [Application](../src/Application/HospitalInformationSystem.Application) |
-| Предметные модели, фабрики и сервисы | [Domain](../src/Application/HospitalInformationSystem.Domain) |
-| Общие DTO и права | [Contracts](../src/Application/HospitalInformationSystem.Contracts) |
+| Предметные модели, DTO, enum и payload истории | [Models](../src/Application/HospitalInformationSystem.Models) |
+| Интерфейсы сервисов и контекста | [Contracts](../src/Application/HospitalInformationSystem.Contracts) |
+| Порты хранения, Unit of Work и транзакций | [Abstractions](../src/Application/HospitalInformationSystem.Abstractions) |
+| Команды/запросы, валидаторы, фабрики и бизнес-сервисы | [Application](../src/Application/HospitalInformationSystem.Application) |
+| Управление аккаунтами и первоначальной настройкой | [Application/Auth/Services](../src/Application/HospitalInformationSystem.Application/Auth/Services) |
+| Управление сервисными аккаунтами | [Application/ServiceAccounts/Services](../src/Application/HospitalInformationSystem.Application/ServiceAccounts/Services) |
+| Подготовка и чтение аудита | [Application/Audit/Services](../src/Application/HospitalInformationSystem.Application/Audit/Services) |
+| Сценарий импорта и MediatR-обёртка | [Application/Hl7Import](../src/Application/HospitalInformationSystem.Application/Hl7Import) |
+| DBO с namespace Models.Persistence | [Models/Persistence](../src/Application/HospitalInformationSystem.Models/Persistence) |
 | Сохранение и согласованность | [HospitalDbContext](../src/Infrastructure/HospitalInformationSystem.Infrastructure/Contexts/HospitalDbContext.cs) |
-| DBO, конфигурации, репозитории и миграции | [Persistence](../src/Infrastructure/HospitalInformationSystem.Infrastructure/Persistence) |
-| Пароли, setup, аккаунты и токены | [Identity](../src/Infrastructure/HospitalInformationSystem.Infrastructure/Identity) |
-| Аудит | [Infrastructure/Audit](../src/Infrastructure/HospitalInformationSystem.Infrastructure/Audit) |
+| EF-конфигурации, мапперы, миграции и транзакции | [Infrastructure/Persistence](../src/Infrastructure/HospitalInformationSystem.Infrastructure/Persistence) |
+| Адаптеры ASP.NET Identity, setup, паролей и токенов | [Infrastructure/Identity](../src/Infrastructure/HospitalInformationSystem.Infrastructure/Identity) |
+| Хранилище и контекст аудита | [Infrastructure/Audit](../src/Infrastructure/HospitalInformationSystem.Infrastructure/Audit) |
+| Хранилище импорта | [ImportedPatientRepository](../src/Infrastructure/HospitalInformationSystem.Infrastructure/Hl7Import/ImportedPatientRepository.cs) |
+| Регрессионные проверки архитектурных границ | [ArchitectureBoundaryTests](../tests/HospitalInformationSystem.UnitTests/ArchitectureBoundaryTests.cs) |
 | Браузерная сессия и блокировки | [Web/Authentication](../src/Presentation/HospitalInformationSystem.Web/Authentication) |
 | Страницы и клиентские операции | [Web](../src/Presentation/HospitalInformationSystem.Web) |
 | Обслуживание старой БД | [Maintenance](../src/Presentation/HospitalInformationSystem.Maintenance) |
-

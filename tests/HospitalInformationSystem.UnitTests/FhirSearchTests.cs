@@ -1,7 +1,7 @@
 using FluentAssertions;
 using HospitalInformationSystem.Api.Fhir;
-using HospitalInformationSystem.Application.Fhir;
-using HospitalInformationSystem.Domain.MedicalRecords;
+using HospitalInformationSystem.Application.Models.Fhir;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;
@@ -218,7 +218,7 @@ public sealed class FhirSearchTests
         new FhirEndpointOptions(new ConfigurationBuilder().Build()).PublicBaseUrl
             .Should().Be("https://localhost:5201/fhir");
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-            { [FhirEndpointOptions.ConfigurationKey] = "https://hospital.example.edu/prefix/fhir" }).Build();
+        { [FhirEndpointOptions.ConfigurationKey] = "https://hospital.example.edu/prefix/fhir" }).Build();
 
         new FhirEndpointOptions(configuration).PublicBaseUrl.Should().Be("https://hospital.example.edu/prefix/fhir");
     }

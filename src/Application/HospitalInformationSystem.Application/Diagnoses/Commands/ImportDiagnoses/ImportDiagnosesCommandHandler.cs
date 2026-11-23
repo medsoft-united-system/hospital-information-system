@@ -1,13 +1,12 @@
 using FluentValidation;
 using FluentValidation.Results;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.Diagnoses.Factories;
 using HospitalInformationSystem.Application.Diagnoses.Import;
-using HospitalInformationSystem.Contracts.Diagnoses;
-using HospitalInformationSystem.Domain.Common;
-using HospitalInformationSystem.Domain.Diagnoses;
-using HospitalInformationSystem.Domain.Diagnoses.Factories;
-using HospitalInformationSystem.Domain.Diagnoses.Services;
+using HospitalInformationSystem.Application.Diagnoses.Services;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Diagnoses;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.Diagnoses.Commands.ImportDiagnoses;

@@ -5,12 +5,13 @@ using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Identity;
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -168,9 +169,13 @@ public sealed class TokenSessionServiceTests(SecureHospitalApiFactory factory)
         var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
         var worker = new MedicalWorkerDbo
         {
-            Id = Guid.NewGuid(), FirstName = "Лев", LastName = "Проверочный", Position = "Врач",
-            Role = Domain.MedicalWorkers.MedicalWorkerRole.Doctor,
-            CreatedAtUtc = DateTimeOffset.UtcNow, UpdatedAtUtc = DateTimeOffset.UtcNow
+            Id = Guid.NewGuid(),
+            FirstName = "Лев",
+            LastName = "Проверочный",
+            Position = "Врач",
+            Role = Application.Models.MedicalWorkers.MedicalWorkerRole.Doctor,
+            CreatedAtUtc = DateTimeOffset.UtcNow,
+            UpdatedAtUtc = DateTimeOffset.UtcNow
         };
         db.MedicalWorkers.Add(worker);
         await db.SaveChangesAsync(CancellationToken.None);

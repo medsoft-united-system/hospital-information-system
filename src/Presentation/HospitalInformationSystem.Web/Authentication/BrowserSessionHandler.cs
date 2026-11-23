@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Web.ApiClients;
 using Microsoft.AspNetCore.Components.WebAssembly.Http;
 
@@ -196,7 +196,8 @@ public sealed class BrowserSessionHandler(SessionState session, AntiforgeryToken
     {
         var copy = new HttpRequestMessage(request.Method, request.RequestUri)
         {
-            Version = request.Version, VersionPolicy = request.VersionPolicy
+            Version = request.Version,
+            VersionPolicy = request.VersionPolicy
         };
         foreach (var header in request.Headers) copy.Headers.TryAddWithoutValidation(header.Key, header.Value);
         foreach (var option in request.Options) copy.Options.Set(new HttpRequestOptionsKey<object?>(option.Key), option.Value);

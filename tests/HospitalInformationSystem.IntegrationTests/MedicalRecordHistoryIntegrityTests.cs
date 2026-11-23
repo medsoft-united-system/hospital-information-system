@@ -1,8 +1,8 @@
 using System;
 using System.Threading.Tasks;
 using FluentAssertions;
+using HospitalInformationSystem.Application.Models.Persistence;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -42,9 +42,15 @@ public sealed class MedicalRecordHistoryIntegrityTests
 
     private static MedicalRecordHistoryEventDbo ExistingEvent() => new()
     {
-        Id = Guid.NewGuid(), MedicalRecordId = Guid.NewGuid(), Version = 1,
-        OccurredAtUtc = DateTimeOffset.UnixEpoch, PerformedByMedicalWorkerId = Guid.NewGuid(),
-        PerformedByNameSnapshot = "Иванов Алексей", PerformedByPositionSnapshot = "Врач",
-        EventType = "MedicalRecordCreated", EntityId = Guid.NewGuid(), PayloadJson = "{}"
+        Id = Guid.NewGuid(),
+        MedicalRecordId = Guid.NewGuid(),
+        Version = 1,
+        OccurredAtUtc = DateTimeOffset.UnixEpoch,
+        PerformedByMedicalWorkerId = Guid.NewGuid(),
+        PerformedByNameSnapshot = "Иванов Алексей",
+        PerformedByPositionSnapshot = "Врач",
+        EventType = "MedicalRecordCreated",
+        EntityId = Guid.NewGuid(),
+        PayloadJson = "{}"
     };
 }

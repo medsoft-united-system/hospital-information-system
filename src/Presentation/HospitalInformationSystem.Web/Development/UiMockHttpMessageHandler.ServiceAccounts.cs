@@ -1,5 +1,5 @@
 using System.Net;
-using HospitalInformationSystem.Contracts.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 
 namespace HospitalInformationSystem.Web.Development;
 
@@ -47,7 +47,7 @@ public sealed partial class UiMockHttpMessageHandler
             var input = Read<SetServiceAccountActiveRequest>(body);
             if (input.Version != current.Version) return Error(HttpStatusCode.Conflict, "Версия изменилась.");
             var saved = current.IsActive == input.IsActive ? current : current with
-                { IsActive = input.IsActive, Version = checked(current.Version + 1), UpdatedAtUtc = DateTimeOffset.UtcNow };
+            { IsActive = input.IsActive, Version = checked(current.Version + 1), UpdatedAtUtc = DateTimeOffset.UtcNow };
             state.ServiceAccounts[current.Id] = saved;
             if (saved != current) state.AddAudit("AccountChanged", "Изменён статус демонстрационного сервисного аккаунта.", current.Id);
             return Json(new ServiceAccountActivityResultDto(saved, 0));

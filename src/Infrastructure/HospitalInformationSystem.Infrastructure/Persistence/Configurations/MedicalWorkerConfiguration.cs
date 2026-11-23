@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Application.Models.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -23,7 +23,7 @@ public sealed class MedicalWorkerConfiguration : IEntityTypeConfiguration<Medica
         builder.Property(x => x.Position).HasColumnName("position").HasMaxLength(24).IsRequired();
         builder.Property(x => x.Role).HasColumnName("role").HasMaxLength(24)
             .HasConversion(role => MedicalWorkerRoleStorage.Write(role), value => MedicalWorkerRoleStorage.Read(value))
-            .HasDefaultValue(HospitalInformationSystem.Domain.MedicalWorkers.MedicalWorkerRole.Other).IsRequired();
+            .HasDefaultValue(Application.Models.MedicalWorkers.MedicalWorkerRole.Other).IsRequired();
         builder.Property(x => x.IsDeleted).HasColumnName("is_deleted");
         builder.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc");

@@ -4,7 +4,7 @@ using HospitalInformationSystem.Application.LaboratoryTests.Commands.SetLaborato
 using HospitalInformationSystem.Application.LaboratoryTests.Commands.UpdateLaboratoryTest;
 using HospitalInformationSystem.Application.LaboratoryTests.Queries.GetLaboratoryTest;
 using HospitalInformationSystem.Application.LaboratoryTests.Queries.GetLaboratoryTests;
-using HospitalInformationSystem.Contracts.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

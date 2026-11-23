@@ -3,11 +3,11 @@ using FluentAssertions;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
 using HospitalInformationSystem.Api.Fhir;
-using HospitalInformationSystem.Application.Fhir;
-using DomainPatient = HospitalInformationSystem.Domain.Patients.Patient;
-using DomainSex = HospitalInformationSystem.Domain.Patients.AdministrativeSex;
-using DomainWorker = HospitalInformationSystem.Domain.MedicalWorkers.MedicalWorker;
-using DomainStatus = HospitalInformationSystem.Domain.MedicalRecords.LaboratoryAnalysisRequestStatus;
+using HospitalInformationSystem.Application.Models.Fhir;
+using DomainPatient = HospitalInformationSystem.Application.Models.Patients.Patient;
+using DomainSex = HospitalInformationSystem.Application.Models.Patients.AdministrativeSex;
+using DomainStatus = HospitalInformationSystem.Application.Models.MedicalRecords.LaboratoryAnalysisRequestStatus;
+using DomainWorker = HospitalInformationSystem.Application.Models.MedicalWorkers.MedicalWorker;
 
 namespace HospitalInformationSystem.UnitTests;
 
@@ -27,8 +27,13 @@ public sealed class FhirResourceMappingTests
     {
         var patient = new DomainPatient
         {
-            Id = PatientId, FirstName = "Анна", LastName = "Петрова", MiddleName = "Игоревна",
-            BirthDate = new DateOnly(1990, 2, 3), Sex = sex, Comment = "Не передавать в интеграцию"
+            Id = PatientId,
+            FirstName = "Анна",
+            LastName = "Петрова",
+            MiddleName = "Игоревна",
+            BirthDate = new DateOnly(1990, 2, 3),
+            Sex = sex,
+            Comment = "Не передавать в интеграцию"
         };
 
         var json = Json(FhirResourceMapper.ToPatient(patient));
@@ -55,7 +60,10 @@ public sealed class FhirResourceMappingTests
     {
         var patient = new DomainPatient
         {
-            Id = PatientId, FirstName = "Иван", LastName = "Петров", MiddleName = middle,
+            Id = PatientId,
+            FirstName = "Иван",
+            LastName = "Петров",
+            MiddleName = middle,
             BirthDate = new DateOnly(1990, 1, 1)
         };
 
@@ -67,7 +75,11 @@ public sealed class FhirResourceMappingTests
     {
         var doctor = new DomainWorker
         {
-            Id = WorkerId, FirstName = "Алексей", LastName = "Иванов", Position = "Врач-терапевт", IsDeleted = true
+            Id = WorkerId,
+            FirstName = "Алексей",
+            LastName = "Иванов",
+            Position = "Врач-терапевт",
+            IsDeleted = true
         };
 
         var json = Json(FhirResourceMapper.ToPractitioner(doctor));

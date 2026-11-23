@@ -1,19 +1,21 @@
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Audit;
-using HospitalInformationSystem.Application.ServiceAccounts;
-using HospitalInformationSystem.Contracts.ServiceAccounts;
-using HospitalInformationSystem.Domain.Common;
-using HospitalInformationSystem.Domain.ServiceAccounts;
-using HospitalInformationSystem.Domain.ServiceAccounts.Factories;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.Transactions;
+using HospitalInformationSystem.Application.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Contracts.Audit;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
+using HospitalInformationSystem.Application.ServiceAccounts.Factories;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Persistence.Configurations;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 using Moq;
-using DomainService = HospitalInformationSystem.Domain.ServiceAccounts.Services.ServiceAccountService;
-using ManagementService = HospitalInformationSystem.Infrastructure.ServiceAccounts.ServiceAccountService;
+using DomainService = HospitalInformationSystem.Application.ServiceAccounts.Services.ServiceAccountDomainService;
+using ManagementService = HospitalInformationSystem.Application.ServiceAccounts.Services.ServiceAccountService;
 
 namespace HospitalInformationSystem.UnitTests;
 
@@ -79,16 +81,22 @@ public sealed class Lab4ServiceAccountRoleTests
     [InlineData("Administrator")]
     public async Task ManagementCreate_InvalidRole_ShouldRejectBeforeDatabaseOrKeyGeneration(string? role)
     {
-        await using var db = new HospitalDbContext(new DbContextOptionsBuilder<HospitalDbContext>().Options);
+        var repository = new Mock<IServiceAccountRepository>(MockBehavior.Strict);
+        var unitOfWork = new Mock<IUnitOfWork>(MockBehavior.Strict);
+        var transactions = new Mock<ITransactionManager>(MockBehavior.Strict);
         var keys = new Mock<IServiceApiKeyGenerator>(MockBehavior.Strict);
         var sessions = new Mock<IServiceSessionRevoker>(MockBehavior.Strict);
         var audit = new Mock<IAuditWriter>(MockBehavior.Strict);
-        var service = new ManagementService(db, TimeProvider.System, keys.Object, sessions.Object, audit.Object);
+        var service = new ManagementService(repository.Object, unitOfWork.Object, transactions.Object,
+            TimeProvider.System, keys.Object, sessions.Object, audit.Object);
 
         var create = () => service.CreateAsync(new CreateServiceAccountRequest("go-service", role!),
             CancellationToken.None);
 
         await create.Should().ThrowAsync<DomainValidationException>();
+        repository.VerifyNoOtherCalls();
+        unitOfWork.VerifyNoOtherCalls();
+        transactions.VerifyNoOtherCalls();
         keys.VerifyNoOtherCalls();
         sessions.VerifyNoOtherCalls();
         audit.VerifyNoOtherCalls();

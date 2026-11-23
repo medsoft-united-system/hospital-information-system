@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-using HospitalInformationSystem.Application.Hl7Import;
+using HospitalInformationSystem.Application.Models.Hl7Import;
 
 namespace HospitalInformationSystem.Api.Hl7;
 

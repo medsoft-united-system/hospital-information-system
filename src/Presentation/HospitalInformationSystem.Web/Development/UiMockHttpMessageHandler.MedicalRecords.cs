@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text.Json;
-using HospitalInformationSystem.Contracts.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.Web.Development;
 
@@ -66,7 +66,7 @@ public sealed partial class UiMockHttpMessageHandler
             var item = record.Current.Diagnoses.FirstOrDefault(x => x.Id == Id(path[4]));
             if (item is null) return NotFound();
             record.Current = record.Current with
-                { Diagnoses = record.Current.Diagnoses.Where(x => x.Id != item.Id).ToArray() };
+            { Diagnoses = record.Current.Diagnoses.Where(x => x.Id != item.Id).ToArray() };
             state.AppendEvent(record, "DiagnosisRemoved", item.Id, Payload(new { item.Id, item.Code, item.Name }), now);
         }
         else if (path.Length == 4 && path[3] == "prescriptions" && request.Method == HttpMethod.Post)
@@ -86,11 +86,11 @@ public sealed partial class UiMockHttpMessageHandler
             var input = Read<SavePrescriptionRequest>(body);
             if (!ValidText(input.Text, 3, 128)) return BadRequest("Текст назначения: 3–128 символов.");
             record.Current = record.Current with
-                { Prescriptions = record.Current.Prescriptions.Where(x => x.Id != old.Id).ToArray() };
+            { Prescriptions = record.Current.Prescriptions.Where(x => x.Id != old.Id).ToArray() };
             state.AppendEvent(record, "PrescriptionCancelled", old.Id, Payload(new { old.Id, old.Text }), now);
             var replacement = new PrescriptionDto(Guid.NewGuid(), input.Text.Trim(), now, authorId, old.Id);
             record.Current = record.Current with
-                { Prescriptions = record.Current.Prescriptions.Append(replacement).ToArray() };
+            { Prescriptions = record.Current.Prescriptions.Append(replacement).ToArray() };
             state.AppendEvent(record, "PrescriptionAdded", replacement.Id,
                 Payload(new { replacement.Id, replacement.Text, replacement.ReplacesPrescriptionId }), now);
             response = Json(replacement);
@@ -101,7 +101,7 @@ public sealed partial class UiMockHttpMessageHandler
             var item = record.Current.Prescriptions.FirstOrDefault(x => x.Id == Id(path[4]));
             if (item is null) return NotFound();
             record.Current = record.Current with
-                { Prescriptions = record.Current.Prescriptions.Where(x => x.Id != item.Id).ToArray() };
+            { Prescriptions = record.Current.Prescriptions.Where(x => x.Id != item.Id).ToArray() };
             state.AppendEvent(record, "PrescriptionCancelled", item.Id, Payload(new { item.Id, item.Text }), now);
         }
         else return NotFound();

@@ -1,16 +1,16 @@
+using System.Security.Authentication;
+using HospitalInformationSystem.Api.Fhir;
+using HospitalInformationSystem.Api.Hl7;
+using HospitalInformationSystem.Api.Hl7.Transport;
 using HospitalInformationSystem.Api.Middleware;
 using HospitalInformationSystem.Api.Security;
 using HospitalInformationSystem.Application.DI;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.DI;
-using HospitalInformationSystem.Infrastructure.Initializers;
 using HospitalInformationSystem.Infrastructure.Identity;
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
+using HospitalInformationSystem.Infrastructure.Initializers;
 using HospitalInformationSystem.Infrastructure.ServiceAccounts.Tokens;
-using System.Security.Authentication;
-using HospitalInformationSystem.Api.Fhir;
-using HospitalInformationSystem.Api.Hl7;
-using HospitalInformationSystem.Api.Hl7.Transport;
 
 var builder = WebApplication.CreateBuilder(args);
 if (builder.Environment.IsDevelopment())

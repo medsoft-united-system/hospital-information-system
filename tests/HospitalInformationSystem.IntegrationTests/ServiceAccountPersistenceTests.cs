@@ -1,8 +1,8 @@
 using FluentAssertions;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Domain.ServiceAccounts.Factories;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.ServiceAccounts.Factories;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -111,10 +111,15 @@ public sealed class ServiceAccountPersistenceTests(HospitalApiFactory factory) :
             System.Security.Cryptography.SHA256.HashData("test-service-key"u8), DateTimeOffset.UtcNow);
         return new ServiceAccountDbo
         {
-            Id = account.Id, Name = account.Name, NormalizedName = account.NormalizedName,
-            Role = account.Role, IsActive = account.IsActive, ApiKeyHash = account.ApiKeyHash,
+            Id = account.Id,
+            Name = account.Name,
+            NormalizedName = account.NormalizedName,
+            Role = account.Role,
+            IsActive = account.IsActive,
+            ApiKeyHash = account.ApiKeyHash,
             AuthenticationVersion = account.AuthenticationVersion,
-            CreatedAtUtc = account.CreatedAtUtc, UpdatedAtUtc = account.UpdatedAtUtc
+            CreatedAtUtc = account.CreatedAtUtc,
+            UpdatedAtUtc = account.UpdatedAtUtc
         };
     }
 }

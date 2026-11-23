@@ -1,11 +1,13 @@
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
 using HospitalInformationSystem.Application.Fhir;
-using HospitalInformationSystem.Domain.Common;
-using HospitalInformationSystem.Domain.MedicalRecords;
-using HospitalInformationSystem.Domain.MedicalWorkers;
-using HospitalInformationSystem.Domain.Patients;
+using HospitalInformationSystem.Application.Fhir.Handlers;
+using HospitalInformationSystem.Application.Fhir.Queries;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Fhir;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Patients;
 using Moq;
 
 namespace HospitalInformationSystem.UnitTests;
@@ -22,12 +24,19 @@ public sealed class FhirReadQueryTests
         var token = cancellation.Token;
         var patient = new Patient
         {
-            Id = id, FirstName = "Иван", LastName = "Петров", BirthDate = new DateOnly(1990, 1, 1),
+            Id = id,
+            FirstName = "Иван",
+            LastName = "Петров",
+            BirthDate = new DateOnly(1990, 1, 1),
             Sex = AdministrativeSex.Male
         };
         var practitioner = new MedicalWorker
         {
-            Id = id, FirstName = "Алексей", LastName = "Иванов", Position = "Врач", IsDeleted = true
+            Id = id,
+            FirstName = "Алексей",
+            LastName = "Иванов",
+            Position = "Врач",
+            IsDeleted = true
         };
         var request = new FhirServiceRequestReadModel(id, Guid.NewGuid(), practitioner.Id, "2345-7", "Глюкоза",
             "Сохранённый комментарий", At, LaboratoryAnalysisRequestStatus.Completed);

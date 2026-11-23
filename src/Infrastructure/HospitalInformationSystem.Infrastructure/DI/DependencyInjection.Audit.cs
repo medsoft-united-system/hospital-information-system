@@ -1,6 +1,7 @@
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Audit;
-using HospitalInformationSystem.Application.Hl7Import;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Contracts.Audit;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Hl7Import;
 using HospitalInformationSystem.Infrastructure.Audit;
 using HospitalInformationSystem.Infrastructure.Hl7Import;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,8 +16,7 @@ public static partial class DependencyInjection
         services.TryAddSingleton<IAuditActorAccessor, SystemAuditActorAccessor>();
         services.AddSingleton<AuditEventFactory>();
         services.AddScoped<ImportAuditContext>();
-        services.AddScoped<IAuditWriter, AuditWriter>();
-        services.AddScoped<IHl7ImportFailureAuditor, Hl7ImportFailureAuditor>();
-        services.AddScoped<IAuditQueryService, AuditQueryService>();
+        services.AddScoped<IAuditRepository, AuditRepository>();
+        services.AddScoped<IAuditActorScope>(provider => provider.GetRequiredService<ImportAuditContext>());
     }
 }

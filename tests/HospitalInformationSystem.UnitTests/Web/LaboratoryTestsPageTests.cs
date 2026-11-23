@@ -1,7 +1,7 @@
 using System.Net;
 using System.Reflection;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Forms;
 using HospitalInformationSystem.Web.Gateways;

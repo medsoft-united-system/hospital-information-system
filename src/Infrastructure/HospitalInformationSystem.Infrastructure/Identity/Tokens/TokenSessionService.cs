@@ -2,12 +2,13 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Audit;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Contracts.Audit;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -15,7 +16,7 @@ using Microsoft.IdentityModel.Tokens;
 namespace HospitalInformationSystem.Infrastructure.Identity.Tokens;
 
 public sealed class TokenSessionService(HospitalDbContext db, IAccountService accounts, JwtKeyMaterial keys,
-    IOptions<JwtTokenOptions> options, TimeProvider timeProvider, IAuditWriter audit, IAuditActorAccessor actors)
+    IOptions<JwtTokenOptions> options, TimeProvider timeProvider, IAuditWriter audit, IAuditActorAccessor actors) : ITokenSessionService
 {
     public async Task<TokenSessionResult?> IssueAsync(Guid userId, string expectedAuthenticationVersion,
         CancellationToken cancellationToken)
@@ -29,8 +30,14 @@ public sealed class TokenSessionService(HospitalDbContext db, IAccountService ac
         var result = AddSession(user, session, Guid.NewGuid(), out _);
         audit.Append(session.Role == ApplicationRoles.Administrator ? AuditEventType.AdministratorLogin :
                 AuditEventType.UserLogin, "Пользователь вошёл в систему.",
-            new AuditMetadata { Action = "login", AccountId = user.Id, TargetId = user.Id,
-                MedicalWorkerId = session.MedicalWorkerId, Outcome = "success" },
+            new AuditMetadata
+            {
+                Action = "login",
+                AccountId = user.Id,
+                TargetId = user.Id,
+                MedicalWorkerId = session.MedicalWorkerId,
+                Outcome = "success"
+            },
             VerifiedActor(user));
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
@@ -57,8 +64,14 @@ public sealed class TokenSessionService(HospitalDbContext db, IAccountService ac
             var reason = previous.RevokedAtUtc is not null ? "refresh-reuse" : "refresh-rejected";
             var revoked = await RevokeFamilyRowsAsync(user.Id, previous.FamilyId, reason, cancellationToken);
             audit.Append(AuditEventType.AccountChanged, "Отозвано семейство сессии после отказа обновления.",
-                new AuditMetadata { Action = reason, AccountId = user.Id, TargetId = user.Id,
-                    RevokeReason = reason, RevokedRefreshTokenCount = revoked });
+                new AuditMetadata
+                {
+                    Action = reason,
+                    AccountId = user.Id,
+                    TargetId = user.Id,
+                    RevokeReason = reason,
+                    RevokedRefreshTokenCount = revoked
+                });
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return null;
@@ -83,8 +96,14 @@ public sealed class TokenSessionService(HospitalDbContext db, IAccountService ac
         if (await LockUserAsync(userId, cancellationToken) is null) return 0;
         var revoked = await RevokeFamilyRowsAsync(userId, familyId, "logout", cancellationToken);
         audit.Append(AuditEventType.UserLogout, "Завершена сессия пользователя.",
-            new AuditMetadata { Action = "logout", AccountId = userId, TargetId = userId,
-                RevokeReason = "logout", RevokedRefreshTokenCount = revoked });
+            new AuditMetadata
+            {
+                Action = "logout",
+                AccountId = userId,
+                TargetId = userId,
+                RevokeReason = "logout",
+                RevokedRefreshTokenCount = revoked
+            });
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return revoked;
@@ -107,8 +126,14 @@ public sealed class TokenSessionService(HospitalDbContext db, IAccountService ac
             await accounts.GetSessionAsync(user.Id, cancellationToken) is not null;
         var revoked = await RevokeFamilyRowsAsync(known.UserId, known.FamilyId, "logout", cancellationToken);
         audit.Append(AuditEventType.UserLogout, "Завершена сессия пользователя.",
-            new AuditMetadata { Action = "logout", AccountId = known.UserId, TargetId = known.UserId,
-                RevokeReason = "logout", RevokedRefreshTokenCount = revoked },
+            new AuditMetadata
+            {
+                Action = "logout",
+                AccountId = known.UserId,
+                TargetId = known.UserId,
+                RevokeReason = "logout",
+                RevokedRefreshTokenCount = revoked
+            },
             verified ? VerifiedActor(user) : actors.GetCurrentActor());
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
@@ -150,9 +175,13 @@ public sealed class TokenSessionService(HospitalDbContext db, IAccountService ac
         var refresh = Base64UrlEncoder.Encode(RandomNumberGenerator.GetBytes(32));
         var refreshSession = new RefreshSessionDbo
         {
-            Id = Guid.NewGuid(), UserId = user.Id, FamilyId = familyId,
-            TokenHash = HashRefreshToken(refresh)!, AuthenticationVersion = user.SecurityStamp,
-            CreatedAtUtc = now, ExpiresAtUtc = refreshExpires
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            FamilyId = familyId,
+            TokenHash = HashRefreshToken(refresh)!,
+            AuthenticationVersion = user.SecurityStamp,
+            CreatedAtUtc = now,
+            ExpiresAtUtc = refreshExpires
         };
         db.RefreshSessions.Add(refreshSession);
         sessionId = refreshSession.Id;
@@ -186,7 +215,10 @@ public sealed class TokenSessionService(HospitalDbContext db, IAccountService ac
 
     private AuditActor VerifiedActor(HospitalUser user) => actors.GetCurrentActor() with
     {
-        Kind = AuditActorKind.User, UserId = user.Id, DisplayName = user.UserName!, Component = null
+        Kind = AuditActorKind.User,
+        UserId = user.Id,
+        DisplayName = user.UserName!,
+        Component = null
     };
 
     private async Task<int> RevokeFamilyRowsAsync(Guid userId, Guid familyId, string reason,

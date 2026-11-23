@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
-using HospitalInformationSystem.Contracts.Auth;
+using HospitalInformationSystem.Application.Models.Auth;
 
 namespace HospitalInformationSystem.IntegrationTests;
 

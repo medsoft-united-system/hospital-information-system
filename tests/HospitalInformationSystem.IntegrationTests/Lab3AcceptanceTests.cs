@@ -5,15 +5,16 @@ using System.Text;
 using System.Text.Json.Nodes;
 using FluentAssertions;
 using Hl7.Fhir.Serialization;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.LaboratoryTests;
-using HospitalInformationSystem.Contracts.MedicalRecords;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
-using HospitalInformationSystem.Contracts.Patients;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Patients;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using MedicalWorkerRole = HospitalInformationSystem.Application.Models.Security.MedicalWorkerRole;
 using Observation = Hl7.Fhir.Model.Observation;
 using Practitioner = Hl7.Fhir.Model.Practitioner;
 using Resource = Hl7.Fhir.Model.Resource;
@@ -205,9 +206,13 @@ public sealed class Lab3AcceptanceTests(ServiceAuthenticationApiFactory factory)
         var issued = factory.Services.GetRequiredService<TimeProvider>().GetUtcNow();
         var body = new JsonObject
         {
-            ["resourceType"] = "Observation", ["status"] = "final",
-            ["code"] = new JsonObject { ["coding"] = new JsonArray(new JsonObject
-                { ["system"] = "http://loinc.org", ["code"] = request.LoincCode }) },
+            ["resourceType"] = "Observation",
+            ["status"] = "final",
+            ["code"] = new JsonObject
+            {
+                ["coding"] = new JsonArray(new JsonObject
+                { ["system"] = "http://loinc.org", ["code"] = request.LoincCode })
+            },
             ["subject"] = new JsonObject { ["reference"] = $"Patient/{request.PatientId:D}" },
             ["basedOn"] = new JsonArray(new JsonObject { ["reference"] = $"ServiceRequest/{request.Id:D}" }),
             ["issued"] = issued.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture),

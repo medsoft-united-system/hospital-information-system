@@ -1,11 +1,12 @@
 using System.Text;
 using FluentAssertions;
 using HospitalInformationSystem.Api.Hl7;
-using HospitalInformationSystem.Application.Common;
+using HospitalInformationSystem.Application.Contracts.Hl7Import;
 using HospitalInformationSystem.Application.Hl7Import;
-using HospitalInformationSystem.Application.ServiceAccounts;
-using HospitalInformationSystem.Domain.Patients;
-using HospitalInformationSystem.Domain.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Hl7Import;
+using HospitalInformationSystem.Application.Models.Patients;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -345,15 +346,25 @@ public sealed class Lab4Hl7MessageProcessorTests
 
     private static Hl7MessageHeader Header(bool probe = false) => new()
     {
-        MessageType = probe ? "NMD" : "ADT", TriggerEvent = probe ? "N02" : "A28",
-        MessageStructure = probe ? "NMD_N02" : "ADT_A05", ControlId = "message-001",
-        SendingApplication = "MEDSOFT_IMPORT", SendingFacility = "LAB4_XML",
-        ReceivingApplication = "HIS", ReceivingFacility = "MEDSOFT", SentAt = Now
+        MessageType = probe ? "NMD" : "ADT",
+        TriggerEvent = probe ? "N02" : "A28",
+        MessageStructure = probe ? "NMD_N02" : "ADT_A05",
+        ControlId = "message-001",
+        SendingApplication = "MEDSOFT_IMPORT",
+        SendingFacility = "LAB4_XML",
+        ReceivingApplication = "HIS",
+        ReceivingFacility = "MEDSOFT",
+        SentAt = Now
     };
 
     private static ImportedPatientInput Patient() => new()
     {
-        SourceSystem = "LAB4_XML", ExternalPatientId = "000042", FirstName = "Иван", LastName = "Иванов",
-        BirthDate = new DateOnly(2000, 1, 2), Sex = AdministrativeSex.Male, Diagnoses = []
+        SourceSystem = "LAB4_XML",
+        ExternalPatientId = "000042",
+        FirstName = "Иван",
+        LastName = "Иванов",
+        BirthDate = new DateOnly(2000, 1, 2),
+        Sex = AdministrativeSex.Male,
+        Diagnoses = []
     };
 }

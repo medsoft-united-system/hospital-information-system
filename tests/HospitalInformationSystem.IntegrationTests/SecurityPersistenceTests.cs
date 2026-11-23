@@ -3,12 +3,12 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Contracts.Auth;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Persistence;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Identity;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -120,7 +120,7 @@ public sealed class SecurityPersistenceTests(HospitalApiFactory factory) : IClas
             var roles = setupScope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
             if (!await roles.RoleExistsAsync(ApplicationRoles.Administrator))
                 (await roles.CreateAsync(new IdentityRole<Guid>(ApplicationRoles.Administrator)
-                    { Id = Guid.NewGuid() })).Succeeded.Should().BeTrue();
+                { Id = Guid.NewGuid() })).Succeeded.Should().BeTrue();
         }
         var names = new[] { "adm" + Guid.NewGuid().ToString("N")[..10], "adm" + Guid.NewGuid().ToString("N")[..10] };
         var results = await Task.WhenAll(names.Select(async name =>
@@ -228,9 +228,12 @@ public sealed class SecurityPersistenceTests(HospitalApiFactory factory) : IClas
             string.Join("; ", creation.Errors.Select(error => error.Description)));
         var session = new RefreshSessionDbo
         {
-            Id = Guid.NewGuid(), UserId = user.Id, FamilyId = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            FamilyId = Guid.NewGuid(),
             TokenHash = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
-            CreatedAtUtc = DateTimeOffset.UtcNow, ExpiresAtUtc = DateTimeOffset.UtcNow.AddDays(7)
+            CreatedAtUtc = DateTimeOffset.UtcNow,
+            ExpiresAtUtc = DateTimeOffset.UtcNow.AddDays(7)
         };
         db.RefreshSessions.Add(session);
         await db.SaveChangesAsync();
@@ -260,12 +263,18 @@ public sealed class SecurityPersistenceTests(HospitalApiFactory factory) : IClas
 
     private static HospitalUser NewUser() => new()
     {
-        Id = Guid.NewGuid(), UserName = "sec" + Guid.NewGuid().ToString("N")[..10], LockoutEnabled = true
+        Id = Guid.NewGuid(),
+        UserName = "sec" + Guid.NewGuid().ToString("N")[..10],
+        LockoutEnabled = true
     };
 
     private static AuditEventDbo NewAuditEvent() => new()
     {
-        EventId = Guid.NewGuid(), EventTimeUtc = DateTimeOffset.UtcNow, EventType = "security.persistence-test",
-        ActorKind = "system", ActorDisplayName = "Integration test", Message = "Synthetic security persistence test"
+        EventId = Guid.NewGuid(),
+        EventTimeUtc = DateTimeOffset.UtcNow,
+        EventType = "security.persistence-test",
+        ActorKind = "system",
+        ActorDisplayName = "Integration test",
+        Message = "Synthetic security persistence test"
     };
 }

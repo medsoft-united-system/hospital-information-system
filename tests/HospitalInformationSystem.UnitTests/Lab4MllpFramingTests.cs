@@ -1,7 +1,7 @@
 using System.Text;
 using FluentAssertions;
 using HospitalInformationSystem.Api.Hl7.Transport;
-using HospitalInformationSystem.Contracts.Hl7Import;
+using HospitalInformationSystem.Application.Models.Hl7Import;
 
 namespace HospitalInformationSystem.UnitTests;
 

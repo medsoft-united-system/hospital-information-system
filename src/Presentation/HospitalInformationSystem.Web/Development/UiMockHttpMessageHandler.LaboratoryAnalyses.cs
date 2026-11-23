@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text;
-using HospitalInformationSystem.Contracts.LaboratoryTests;
-using HospitalInformationSystem.Contracts.MedicalRecords;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.Web.Development;
 
@@ -58,7 +58,9 @@ public sealed partial class UiMockHttpMessageHandler
             return Error(HttpStatusCode.Conflict, "Анализ с таким кодом LOINC уже существует.");
         var saved = current with
         {
-            LoincCode = updatedCode, DisplayName = update.DisplayName.Trim(), UpdatedAtUtc = DateTimeOffset.UtcNow,
+            LoincCode = updatedCode,
+            DisplayName = update.DisplayName.Trim(),
+            UpdatedAtUtc = DateTimeOffset.UtcNow,
             Version = current.Version + 1
         };
         state.LaboratoryTests[current.Id] = saved;
@@ -100,9 +102,15 @@ public sealed partial class UiMockHttpMessageHandler
             };
             state.AppendEvent(record, "LaboratoryAnalysisRequested", request.Id, Payload(new
             {
-                LaboratoryAnalysisRequestId = request.Id, request.MedicalRecordId, request.PatientId,
-                request.RequestedByMedicalWorkerId, request.LaboratoryTestDefinitionId, request.LoincCode,
-                request.DisplayName, request.Comment, request.AuthoredAtUtc
+                LaboratoryAnalysisRequestId = request.Id,
+                request.MedicalRecordId,
+                request.PatientId,
+                request.RequestedByMedicalWorkerId,
+                request.LaboratoryTestDefinitionId,
+                request.LoincCode,
+                request.DisplayName,
+                request.Comment,
+                request.AuthoredAtUtc
             }), now);
         }
         state.AddAudit("MedicalRecordChanged", "Назначены демонстрационные лабораторные анализы.", record.Current.Id);

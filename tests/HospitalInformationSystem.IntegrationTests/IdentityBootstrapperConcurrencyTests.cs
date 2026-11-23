@@ -3,8 +3,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Contracts.Auth;
+using HospitalInformationSystem.Application.Auth.Services;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.DI;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Common;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.DI;
 using HospitalInformationSystem.Infrastructure.Identity;
@@ -26,6 +29,7 @@ public sealed class IdentityBootstrapperConcurrencyTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton(TimeProvider.System);
+        services.AddApplication();
         services.AddInfrastructure(postgres.GetConnectionString());
         await using var provider = services.BuildServiceProvider();
         await using (var scope = provider.CreateAsyncScope())
@@ -35,7 +39,9 @@ public sealed class IdentityBootstrapperConcurrencyTests
             var users = scope.ServiceProvider.GetRequiredService<UserManager<HospitalUser>>();
             var createOrphan = () => users.CreateAsync(new HospitalUser
             {
-                Id = Guid.NewGuid(), UserName = "orphan.admin", IsAdministrator = true
+                Id = Guid.NewGuid(),
+                UserName = "orphan.admin",
+                IsAdministrator = true
             }, "Integration.Guard-Only.6249!");
 
             await createOrphan.Should().ThrowAsync<BusinessConflictException>();
@@ -65,7 +71,7 @@ public sealed class IdentityBootstrapperConcurrencyTests
             user.IsAdministrator.Should().BeTrue();
             (await db.Roles.CountAsync()).Should().Be(2);
             (await db.UserRoles.CountAsync()).Should().Be(1);
-            var session = await scope.ServiceProvider.GetRequiredService<AccountService>().GetSessionAsync(user.Id, default);
+            var session = await scope.ServiceProvider.GetRequiredService<IAccountService>().GetSessionAsync(user.Id, default);
             session!.Role.Should().Be(ApplicationRoles.Administrator);
         }
     }
@@ -78,6 +84,7 @@ public sealed class IdentityBootstrapperConcurrencyTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton(TimeProvider.System);
+        services.AddApplication();
         services.AddInfrastructure(postgres.GetConnectionString());
         await using var provider = services.BuildServiceProvider();
         var firstUserId = Guid.NewGuid();
@@ -107,7 +114,7 @@ public sealed class IdentityBootstrapperConcurrencyTests
             var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
             (await db.UserRoles.CountAsync()).Should().Be(1);
             var administrator = await db.Users.SingleAsync(user => user.IsAdministrator);
-            var session = await scope.ServiceProvider.GetRequiredService<AccountService>()
+            var session = await scope.ServiceProvider.GetRequiredService<IAccountService>()
                 .GetSessionAsync(administrator.Id, default);
             session.Should().NotBeNull();
             session!.Role.Should().Be(ApplicationRoles.Administrator);
@@ -138,6 +145,7 @@ public sealed class IdentityBootstrapperConcurrencyTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton(TimeProvider.System);
+        services.AddApplication();
         services.AddInfrastructure(postgres.GetConnectionString());
         await using var provider = services.BuildServiceProvider();
         await using (var scope = provider.CreateAsyncScope())

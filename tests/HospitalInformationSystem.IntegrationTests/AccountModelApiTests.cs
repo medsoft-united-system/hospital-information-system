@@ -5,15 +5,16 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Security;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using MedicalWorkerRole = HospitalInformationSystem.Application.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
@@ -77,7 +78,8 @@ public sealed class AccountModelApiTests(SecureHospitalApiFactory factory) : ICl
 
         var result = await users.CreateAsync(new HospitalUser
         {
-            Id = Guid.NewGuid(), UserName = "abcdefghijklmnopq"
+            Id = Guid.NewGuid(),
+            UserName = "abcdefghijklmnopq"
         }, Password);
 
         result.Succeeded.Should().BeFalse();
@@ -100,10 +102,10 @@ public sealed class AccountModelApiTests(SecureHospitalApiFactory factory) : ICl
     }
 
     [Theory]
-    [InlineData(MedicalWorkerRole.Doctor)]
-    [InlineData(MedicalWorkerRole.Nurse)]
-    [InlineData(MedicalWorkerRole.LaboratoryTechnician)]
-    [InlineData(MedicalWorkerRole.Other)]
+    [InlineData(Application.Models.Security.MedicalWorkerRole.Doctor)]
+    [InlineData(Application.Models.Security.MedicalWorkerRole.Nurse)]
+    [InlineData(Application.Models.Security.MedicalWorkerRole.LaboratoryTechnician)]
+    [InlineData(Application.Models.Security.MedicalWorkerRole.Other)]
     public async Task LoginAndGetSession_LinkedWorkerRole_ShouldReturnPersistedMedicalRole(MedicalWorkerRole role)
     {
         using var administrator = await CreateAdminClientAsync();
@@ -169,7 +171,7 @@ public sealed class AccountModelApiTests(SecureHospitalApiFactory factory) : ICl
     }
 
     private static async Task<MedicalWorkerDto> CreateWorkerAsync(HttpClient administrator,
-        MedicalWorkerRole role = MedicalWorkerRole.Doctor)
+        MedicalWorkerRole role = Application.Models.Security.MedicalWorkerRole.Doctor)
     {
         using var response = await administrator.PostAsJsonAsync("/api/medical-workers",
             new SaveMedicalWorkerRequest("Л", "Т", "Врач", Role: role));

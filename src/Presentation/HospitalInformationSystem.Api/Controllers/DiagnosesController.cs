@@ -1,15 +1,15 @@
-using HospitalInformationSystem.Application.Diagnoses.Commands.CreateDiagnosis;
-using HospitalInformationSystem.Application.Diagnoses.Commands.UpdateDiagnosis;
-using HospitalInformationSystem.Application.Diagnoses.Commands.DeleteDiagnosis;
-using HospitalInformationSystem.Application.Diagnoses.Queries.GetDiagnosis;
-using HospitalInformationSystem.Application.Diagnoses.Queries.GetDiagnoses;
-using HospitalInformationSystem.Contracts.Diagnoses;
-using MediatR;
-using Microsoft.AspNetCore.Mvc;
 using System.Text;
-using HospitalInformationSystem.Application.Diagnoses.Commands.ImportDiagnoses;
 using HospitalInformationSystem.Api.Security;
+using HospitalInformationSystem.Application.Diagnoses.Commands.CreateDiagnosis;
+using HospitalInformationSystem.Application.Diagnoses.Commands.DeleteDiagnosis;
+using HospitalInformationSystem.Application.Diagnoses.Commands.ImportDiagnoses;
+using HospitalInformationSystem.Application.Diagnoses.Commands.UpdateDiagnosis;
+using HospitalInformationSystem.Application.Diagnoses.Queries.GetDiagnoses;
+using HospitalInformationSystem.Application.Diagnoses.Queries.GetDiagnosis;
+using HospitalInformationSystem.Application.Models.Diagnoses;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace HospitalInformationSystem.Api.Controllers;
 

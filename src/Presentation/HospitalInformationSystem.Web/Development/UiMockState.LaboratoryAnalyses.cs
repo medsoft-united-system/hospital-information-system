@@ -1,7 +1,7 @@
 using System.Text.Json;
-using HospitalInformationSystem.Contracts.LaboratoryTests;
-using HospitalInformationSystem.Contracts.MedicalRecords;
-using HospitalInformationSystem.Contracts.Patients;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.Patients;
 
 namespace HospitalInformationSystem.Web.Development;
 
@@ -62,12 +62,18 @@ public sealed partial class UiMockState
         record.History.Add(new MedicalRecordHistoryEventDto(record.Current.Version, received, null, "lis.demo", "LIS",
             "LaboratoryAnalysisResultRecorded", result.Id, LaboratoryPayload(new
             {
-                LaboratoryAnalysisRequestId = completed.Id, LaboratoryAnalysisResultId = result.Id,
-                result.PatientId, completed.LoincCode, result.Value, result.IssuedAtUtc, result.ReceivedAtUtc,
+                LaboratoryAnalysisRequestId = completed.Id,
+                LaboratoryAnalysisResultId = result.Id,
+                result.PatientId,
+                completed.LoincCode,
+                result.Value,
+                result.IssuedAtUtc,
+                result.ReceivedAtUtc,
                 result.CreatedByServiceAccountId
             }))
         {
-            AuthorKind = MedicalRecordAuthorKind.ServiceAccount, PerformedByServiceAccountId = LaboratoryServiceId
+            AuthorKind = MedicalRecordAuthorKind.ServiceAccount,
+            PerformedByServiceAccountId = LaboratoryServiceId
         });
         record.States.Add((received, record.Current));
 
@@ -85,9 +91,15 @@ public sealed partial class UiMockState
             AppendEvent(record, "LaboratoryAnalysisRequested", request.Id,
                 LaboratoryPayload(new
                 {
-                    LaboratoryAnalysisRequestId = request.Id, request.MedicalRecordId, request.PatientId,
-                    request.RequestedByMedicalWorkerId, request.LaboratoryTestDefinitionId, request.LoincCode,
-                    request.DisplayName, request.Comment, request.AuthoredAtUtc
+                    LaboratoryAnalysisRequestId = request.Id,
+                    request.MedicalRecordId,
+                    request.PatientId,
+                    request.RequestedByMedicalWorkerId,
+                    request.LaboratoryTestDefinitionId,
+                    request.LoincCode,
+                    request.DisplayName,
+                    request.Comment,
+                    request.AuthoredAtUtc
                 }), request.AuthoredAtUtc);
         }
     }

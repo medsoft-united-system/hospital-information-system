@@ -1,7 +1,8 @@
-using HospitalInformationSystem.Application.Audit;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Application.Contracts.Audit;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace HospitalInformationSystem.Infrastructure.Audit;
@@ -46,7 +47,9 @@ public sealed class TrackedSecurityChanges(HospitalDbContext db, TimeProvider ti
                 roleChanged ? "Изменена медицинская роль медработника." : "Изменены данные медработника.", actor,
                 new AuditMetadata
                 {
-                    Action = action, TargetId = worker.Id, MedicalWorkerId = worker.Id,
+                    Action = action,
+                    TargetId = worker.Id,
+                    MedicalWorkerId = worker.Id,
                     RevokeReason = deleted ? "worker-deleted" : roleChanged ? "medical-role-changed" : null,
                     RevokedRefreshTokenCount = revokedSessions
                 }));
@@ -75,8 +78,10 @@ public sealed class TrackedSecurityChanges(HospitalDbContext db, TimeProvider ti
                     AuditEventType.MedicalRecordChanged, created ? "Создана ЭМК." : "Изменена ЭМК.", actor,
                 new AuditMetadata
                 {
-                    Action = history.EventType, TargetId = history.MedicalRecordId,
-                    RecordEntryId = history.EntityId, MedicalWorkerId = history.PerformedByMedicalWorkerId,
+                    Action = history.EventType,
+                    TargetId = history.MedicalRecordId,
+                    RecordEntryId = history.EntityId,
+                    MedicalWorkerId = history.PerformedByMedicalWorkerId,
                     ServiceAccountId = history.PerformedByServiceAccountId
                 }));
         }
@@ -106,8 +111,12 @@ public sealed class TrackedSecurityChanges(HospitalDbContext db, TimeProvider ti
             deleted ? "Аккаунт отключён после удаления медработника." : "Доступ отозван после смены медицинской роли.",
             actor, new AuditMetadata
             {
-                Action = reason, TargetId = user.Id, AccountId = user.Id, MedicalWorkerId = workerId,
-                RevokeReason = reason, RevokedRefreshTokenCount = sessions.Count
+                Action = reason,
+                TargetId = user.Id,
+                AccountId = user.Id,
+                MedicalWorkerId = workerId,
+                RevokeReason = reason,
+                RevokedRefreshTokenCount = sessions.Count
             }));
         return sessions.Count;
     }

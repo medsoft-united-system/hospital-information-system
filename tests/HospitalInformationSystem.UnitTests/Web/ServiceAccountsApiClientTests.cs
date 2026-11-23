@@ -3,9 +3,9 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Security;
-using HospitalInformationSystem.Contracts.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Security;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Authentication;
 
@@ -42,12 +42,16 @@ public sealed class ServiceAccountsApiClientTests
         var account = Account();
         var broken = invalid switch
         {
-            "id" => account with { Id = Guid.Empty }, "version" => account with { Version = 0 },
-            "name" => account with { Name = "ab" }, "role" => account with { Role = "Administrator" },
-            "null-role" => account with { Role = null! }, "empty-role" => account with { Role = "" },
+            "id" => account with { Id = Guid.Empty },
+            "version" => account with { Version = 0 },
+            "name" => account with { Name = "ab" },
+            "role" => account with { Role = "Administrator" },
+            "null-role" => account with { Role = null! },
+            "empty-role" => account with { Role = "" },
             "wrong-case-role" => account with { Role = "Hl7Import" },
             "prefix" => account with { KeyPrefix = "msa_wrong." },
-            "date" => account with { UpdatedAtUtc = account.CreatedAtUtc.AddSeconds(-1) }, _ => account
+            "date" => account with { UpdatedAtUtc = account.CreatedAtUtc.AddSeconds(-1) },
+            _ => account
         };
         using var http = Client((_, _) => Task.FromResult(Json(invalid == "duplicate" ? new[] { broken, broken } : [broken])));
         var request = () => new ServiceAccountsApiClient(http).ListAsync(CancellationToken.None);
@@ -96,7 +100,7 @@ public sealed class ServiceAccountsApiClientTests
         var create = () => new ServiceAccountsApiClient(incorrectStatus).CreateAsync(new CreateServiceAccountRequest(account.Name), CancellationToken.None);
         (await create.Should().ThrowAsync<ApiException>()).Which.ToString().Should().NotContain(secret);
         using var failure = Client((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)
-            { Content = JsonContent.Create(new { detail = secret, title = secret }) }));
+        { Content = JsonContent.Create(new { detail = secret, title = secret }) }));
         var rejected = () => new ServiceAccountsApiClient(failure).CreateAsync(new CreateServiceAccountRequest(account.Name), CancellationToken.None);
         (await rejected.Should().ThrowAsync<ApiException>()).Which.ToString().Should().NotContain(secret);
     }
@@ -179,7 +183,7 @@ public sealed class ServiceAccountsApiClientTests
         Convert.ToBase64String(Enumerable.Range(0, 32).Select(x => (byte)x).ToArray()).TrimEnd('=').Replace('+', '-').Replace('/', '_');
     private static HttpResponseMessage Json<T>(T value) => new(HttpStatusCode.OK) { Content = JsonContent.Create(value) };
     private static HttpResponseMessage Raw(string json, HttpStatusCode status = HttpStatusCode.OK) => new(status)
-        { Content = new StringContent(json, Encoding.UTF8, "application/json") };
+    { Content = new StringContent(json, Encoding.UTF8, "application/json") };
     private static HttpClient Client(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send) =>
         new(new ResponseHandler(send)) { BaseAddress = new Uri("https://localhost/") };
     private sealed class ResponseHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send) : HttpMessageHandler

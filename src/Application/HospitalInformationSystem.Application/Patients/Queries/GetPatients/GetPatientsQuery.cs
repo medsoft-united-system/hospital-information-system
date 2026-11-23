@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Contracts.Patients;
+using HospitalInformationSystem.Application.Models.Patients;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.Patients.Queries.GetPatients;

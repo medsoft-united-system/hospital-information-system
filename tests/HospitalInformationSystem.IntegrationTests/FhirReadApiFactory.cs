@@ -1,13 +1,13 @@
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Contracts.ServiceAuth;
-using HospitalInformationSystem.Domain.LaboratoryTests;
-using HospitalInformationSystem.Domain.MedicalRecords.Factories;
-using HospitalInformationSystem.Domain.MedicalRecords.Services;
-using HospitalInformationSystem.Domain.MedicalWorkers;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.MedicalRecords.Factories;
+using HospitalInformationSystem.Application.MedicalRecords.Services;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.ServiceAuth;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -52,7 +52,8 @@ public sealed class FhirReadApiFactory : WebApplicationFactory<Program>, IAsyncL
     {
         var client = CreateClient(new WebApplicationFactoryClientOptions
         {
-            BaseAddress = new Uri("https://his-api:5201"), AllowAutoRedirect = false
+            BaseAddress = new Uri("https://his-api:5201"),
+            AllowAutoRedirect = false
         });
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("FhirTest", credential);
         client.DefaultRequestHeaders.Accept.ParseAdd("application/fhir+json");
@@ -66,31 +67,56 @@ public sealed class FhirReadApiFactory : WebApplicationFactory<Program>, IAsyncL
         var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
         db.Patients.Add(new PatientDbo
         {
-            Id = PatientId, FirstName = "Алексей", LastName = "Петров", MiddleName = "Андреевич",
-            BirthDate = new DateOnly(1985, 3, 12), Sex = 0, Comment = "PRIVATE-PATIENT-COMMENT",
-            CreatedAtUtc = At, UpdatedAtUtc = At
+            Id = PatientId,
+            FirstName = "Алексей",
+            LastName = "Петров",
+            MiddleName = "Андреевич",
+            BirthDate = new DateOnly(1985, 3, 12),
+            Sex = 0,
+            Comment = "PRIVATE-PATIENT-COMMENT",
+            CreatedAtUtc = At,
+            UpdatedAtUtc = At
         });
         var doctor = new MedicalWorker
         {
-            Id = PractitionerId, FirstName = "Иван", LastName = "Иванов", Position = "Врач-терапевт",
-            Role = MedicalWorkerRole.Doctor, CreatedAtUtc = At, UpdatedAtUtc = At
+            Id = PractitionerId,
+            FirstName = "Иван",
+            LastName = "Иванов",
+            Position = "Врач-терапевт",
+            Role = MedicalWorkerRole.Doctor,
+            CreatedAtUtc = At,
+            UpdatedAtUtc = At
         };
         db.MedicalWorkers.Add(new MedicalWorkerDbo
         {
-            Id = doctor.Id, FirstName = doctor.FirstName, LastName = doctor.LastName, Position = doctor.Position,
-            Role = doctor.Role, CreatedAtUtc = At, UpdatedAtUtc = At
+            Id = doctor.Id,
+            FirstName = doctor.FirstName,
+            LastName = doctor.LastName,
+            Position = doctor.Position,
+            Role = doctor.Role,
+            CreatedAtUtc = At,
+            UpdatedAtUtc = At
         });
         db.ServiceAccounts.Add(new ServiceAccountDbo
         {
-            Id = ServiceId, Name = "lis.read-tests", NormalizedName = "LIS.READ-TESTS", ApiKeyHash = RandomNumberGenerator.GetBytes(32),
-            IsActive = true, AuthenticationVersion = 1, CreatedAtUtc = At, UpdatedAtUtc = At
+            Id = ServiceId,
+            Name = "lis.read-tests",
+            NormalizedName = "LIS.READ-TESTS",
+            ApiKeyHash = RandomNumberGenerator.GetBytes(32),
+            IsActive = true,
+            AuthenticationVersion = 1,
+            CreatedAtUtc = At,
+            UpdatedAtUtc = At
         });
         await db.SaveChangesAsync();
         var row = await db.LaboratoryTestDefinitions.AsNoTracking().SingleAsync(x => x.LoincCode == "2345-7");
         var definition = new LaboratoryTestDefinition
         {
-            Id = row.Id, LoincCode = row.LoincCode, DisplayName = row.DisplayName,
-            CreatedAtUtc = row.CreatedAtUtc, UpdatedAtUtc = row.UpdatedAtUtc
+            Id = row.Id,
+            LoincCode = row.LoincCode,
+            DisplayName = row.DisplayName,
+            CreatedAtUtc = row.CreatedAtUtc,
+            UpdatedAtUtc = row.UpdatedAtUtc
         };
         var record = MedicalRecordFactory.Create(PatientId, doctor, At);
         for (var index = 0; index < 25; index++)

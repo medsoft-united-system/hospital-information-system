@@ -1,5 +1,5 @@
 using HospitalInformationSystem.Api.Security;
-using HospitalInformationSystem.Application.Abstractions;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace HospitalInformationSystem.Api.Fhir;

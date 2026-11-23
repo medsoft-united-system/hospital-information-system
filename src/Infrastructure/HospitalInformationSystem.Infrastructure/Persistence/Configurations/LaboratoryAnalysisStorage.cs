@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Domain.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.Infrastructure.Persistence.Configurations;
 

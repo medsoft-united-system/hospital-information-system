@@ -1,10 +1,10 @@
 using System.Security.Cryptography;
 using System.Text;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Domain.ServiceAccounts.Factories;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.ServiceAccounts.Factories;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using HospitalInformationSystem.Infrastructure.ServiceAccounts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -194,16 +194,24 @@ public sealed class ServiceSessionPersistenceTests(HospitalApiFactory factory) :
             RandomNumberGenerator.GetBytes(32), At.AddDays(-1));
         return new ServiceAccountDbo
         {
-            Id = account.Id, Name = account.Name, NormalizedName = account.NormalizedName,
-            ApiKeyHash = account.ApiKeyHash, AuthenticationVersion = 1,
-            CreatedAtUtc = account.CreatedAtUtc, UpdatedAtUtc = account.UpdatedAtUtc
+            Id = account.Id,
+            Name = account.Name,
+            NormalizedName = account.NormalizedName,
+            ApiKeyHash = account.ApiKeyHash,
+            AuthenticationVersion = 1,
+            CreatedAtUtc = account.CreatedAtUtc,
+            UpdatedAtUtc = account.UpdatedAtUtc
         };
     }
 
     private static ServiceRefreshSessionDbo Session(Guid accountId, Guid? familyId = null) => new()
     {
-        Id = Guid.NewGuid(), ServiceAccountId = accountId, FamilyId = familyId ?? Guid.NewGuid(),
+        Id = Guid.NewGuid(),
+        ServiceAccountId = accountId,
+        FamilyId = familyId ?? Guid.NewGuid(),
         TokenHash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(Guid.NewGuid().ToString("N")))),
-        AuthenticationVersion = 1, CreatedAtUtc = At.AddHours(-1), ExpiresAtUtc = At.AddDays(7)
+        AuthenticationVersion = 1,
+        CreatedAtUtc = At.AddHours(-1),
+        ExpiresAtUtc = At.AddDays(7)
     };
 }

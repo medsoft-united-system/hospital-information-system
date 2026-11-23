@@ -2,11 +2,13 @@
   <ItemGroup>
     <PackageReference Include="Riok.Mapperly" PrivateAssets="all" />
     <PackageReference Include="MediatR" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../HospitalInformationSystem.Domain/HospitalInformationSystem.Domain.csproj" />
-    <ProjectReference Include="../HospitalInformationSystem.Contracts/HospitalInformationSystem.Contracts.csproj" />
+    <ProjectReference Include="..\HospitalInformationSystem.Application.Abstractions\HospitalInformationSystem.Application.Abstractions.csproj" />
+    <ProjectReference Include="..\HospitalInformationSystem.Application.Models\HospitalInformationSystem.Application.Models.csproj" />
+    <ProjectReference Include="..\HospitalInformationSystem.Application.Contracts\HospitalInformationSystem.Application.Contracts.csproj" />
   </ItemGroup>
 </Project>

@@ -1,5 +1,5 @@
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Domain.Common;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Models.Common;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using Microsoft.EntityFrameworkCore;
 

@@ -1,7 +1,7 @@
-using HospitalInformationSystem.Domain.Diagnoses.Factories;
-using HospitalInformationSystem.Domain.MedicalWorkers.Factories;
-using HospitalInformationSystem.Domain.MedicalWorkers;
-using HospitalInformationSystem.Domain.MedicalWorkers.Services;
+using HospitalInformationSystem.Application.Diagnoses.Factories;
+using HospitalInformationSystem.Application.MedicalWorkers.Factories;
+using HospitalInformationSystem.Application.MedicalWorkers.Services;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Persistence.Mappings;
 using Microsoft.EntityFrameworkCore;
