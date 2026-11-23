@@ -1,5 +1,7 @@
 using FluentValidation;
+using HospitalInformationSystem.Application.Audit.Factories;
 using HospitalInformationSystem.Application.Audit.Services;
+using HospitalInformationSystem.Application.Audit.Writers;
 using HospitalInformationSystem.Application.Auth.Services;
 using HospitalInformationSystem.Application.Common;
 using HospitalInformationSystem.Application.Contracts.Abstractions;

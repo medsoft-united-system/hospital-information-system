@@ -1,4 +1,5 @@
 using HospitalInformationSystem.Application.Fhir;
+using HospitalInformationSystem.Application.Fhir.Queries;
 using HospitalInformationSystem.Application.MedicalRecords.Commands.RecordLaboratoryAnalysisResult;
 using HospitalInformationSystem.Application.Models.Fhir;
 using HospitalInformationSystem.Application.Models.ServiceAuth;

@@ -1,6 +1,8 @@
 using FluentAssertions;
 using HospitalInformationSystem.Application.Abstractions.Repositories;
 using HospitalInformationSystem.Application.Fhir;
+using HospitalInformationSystem.Application.Fhir.Handlers;
+using HospitalInformationSystem.Application.Fhir.Queries;
 using HospitalInformationSystem.Application.Models.Common;
 using HospitalInformationSystem.Application.Models.Fhir;
 using HospitalInformationSystem.Application.Models.MedicalRecords;

@@ -1,6 +1,8 @@
 using System.Text.Json;
 using FluentAssertions;
+using HospitalInformationSystem.Application.Audit.Factories;
 using HospitalInformationSystem.Application.Audit.Services;
+using HospitalInformationSystem.Application.Audit.Writers;
 using HospitalInformationSystem.Application.Models.Audit;
 using HospitalInformationSystem.Application.Models.Common;
 using HospitalInformationSystem.Application.Models.Security;

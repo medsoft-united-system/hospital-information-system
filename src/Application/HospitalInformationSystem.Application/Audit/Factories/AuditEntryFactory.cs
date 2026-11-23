@@ -2,7 +2,7 @@ using HospitalInformationSystem.Application.Models.Audit;
 using HospitalInformationSystem.Application.Models.Common;
 using HospitalInformationSystem.Application.Models.Security;
 
-namespace HospitalInformationSystem.Application.Audit.Services;
+namespace HospitalInformationSystem.Application.Audit.Factories;
 
 public sealed class AuditEntryFactory(TimeProvider timeProvider)
 {

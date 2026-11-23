@@ -1,3 +1,4 @@
+using HospitalInformationSystem.Application.Audit.Factories;
 using HospitalInformationSystem.Application.Audit.Services;
 using HospitalInformationSystem.Application.Models.Audit;
 using HospitalInformationSystem.Application.Models.Persistence;
