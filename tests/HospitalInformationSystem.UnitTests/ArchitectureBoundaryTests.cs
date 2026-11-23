@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text.Json;
 using System.Xml.Linq;
 using FluentAssertions;
@@ -65,11 +64,11 @@ public sealed class ArchitectureBoundaryTests
     }
 
     [Theory]
-    [InlineData("Application", "Models", "")]
-    [InlineData("Application", "Contracts", "Models")]
-    [InlineData("Application", "Abstractions", "Models")]
-    [InlineData("Application", "Application", "Abstractions,Contracts,Models")]
-    [InlineData("Presentation", "Web", "Models")]
+    [InlineData("Application", "Application.Models", "")]
+    [InlineData("Application", "Application.Contracts", "Application.Models")]
+    [InlineData("Application", "Application.Abstractions", "Application.Models")]
+    [InlineData("Application", "Application", "Application.Abstractions,Application.Contracts,Application.Models")]
+    [InlineData("Presentation", "Web", "Application.Models")]
     public void ProjectReferencesRespectLayerBoundaries(string folder, string name, string allowedReferences)
     {
         var root = new DirectoryInfo(AppContext.BaseDirectory);
@@ -79,7 +78,7 @@ public sealed class ArchitectureBoundaryTests
         var projectName = $"HospitalInformationSystem.{name}";
         var project = XDocument.Load(Path.Combine(root!.FullName, "src", folder, projectName, projectName + ".csproj"));
         var references = project.Descendants("ProjectReference")
-            .Select(item => Path.GetFileNameWithoutExtension(item.Attribute("Include")!.Value)
+            .Select(item => Path.GetFileNameWithoutExtension(item.Attribute("Include")!.Value.Replace('\\', '/'))
                 .Replace("HospitalInformationSystem.", "", StringComparison.Ordinal)).Order().ToArray();
         references.Should().Equal(allowedReferences.Split(',', StringSplitOptions.RemoveEmptyEntries).Order());
         if (folder == "Application")
