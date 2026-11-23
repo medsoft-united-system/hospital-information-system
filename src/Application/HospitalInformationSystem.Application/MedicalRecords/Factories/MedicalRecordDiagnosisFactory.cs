@@ -1,5 +1,5 @@
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Factories;
 
@@ -18,9 +18,13 @@ public static class MedicalRecordDiagnosisFactory
             throw new DomainValidationException("Название диагноза: требуется от 3 до 256 символов.");
         return new MedicalRecordDiagnosis
         {
-            Id = Guid.NewGuid(), MedicalRecordId = medicalRecordId, DiagnosisDefinitionId = diagnosisDefinitionId,
-            DiagnosisCodeSnapshot = validCode!, DiagnosisNameSnapshot = validName!,
-            AddedAtUtc = at.ToUniversalTime(), AddedByMedicalWorkerId = authorId
+            Id = Guid.NewGuid(),
+            MedicalRecordId = medicalRecordId,
+            DiagnosisDefinitionId = diagnosisDefinitionId,
+            DiagnosisCodeSnapshot = validCode!,
+            DiagnosisNameSnapshot = validName!,
+            AddedAtUtc = at.ToUniversalTime(),
+            AddedByMedicalWorkerId = authorId
         };
     }
 
@@ -40,11 +44,17 @@ public static class MedicalRecordDiagnosisFactory
             throw new DomainValidationException("Укажите систему кодирования и тип диагноза длиной до 32 символов.");
         return new MedicalRecordDiagnosis
         {
-            Id = Guid.NewGuid(), MedicalRecordId = medicalRecordId, DiagnosisDefinitionId = diagnosisDefinitionId,
-            DiagnosisCodeSnapshot = code!, DiagnosisNameSnapshot = title!, AddedAtUtc = at.ToUniversalTime(),
-            AddedByServiceAccountId = serviceAccountId, DiagnosedAtUtc = diagnosedAt.ToUniversalTime(),
+            Id = Guid.NewGuid(),
+            MedicalRecordId = medicalRecordId,
+            DiagnosisDefinitionId = diagnosisDefinitionId,
+            DiagnosisCodeSnapshot = code!,
+            DiagnosisNameSnapshot = title!,
+            AddedAtUtc = at.ToUniversalTime(),
+            AddedByServiceAccountId = serviceAccountId,
+            DiagnosedAtUtc = diagnosedAt.ToUniversalTime(),
             DiagnosedAtOffsetMinutes = checked((int)diagnosedAt.Offset.TotalMinutes),
-            CodingSystem = system, DiagnosisType = type
+            CodingSystem = system,
+            DiagnosisType = type
         };
     }
 }

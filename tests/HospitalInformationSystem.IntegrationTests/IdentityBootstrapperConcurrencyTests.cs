@@ -4,13 +4,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using HospitalInformationSystem.Application.Auth.Services;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
 using HospitalInformationSystem.Application.DI;
-using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Common;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.DI;
 using HospitalInformationSystem.Infrastructure.Identity;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Common;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,7 +39,9 @@ public sealed class IdentityBootstrapperConcurrencyTests
             var users = scope.ServiceProvider.GetRequiredService<UserManager<HospitalUser>>();
             var createOrphan = () => users.CreateAsync(new HospitalUser
             {
-                Id = Guid.NewGuid(), UserName = "orphan.admin", IsAdministrator = true
+                Id = Guid.NewGuid(),
+                UserName = "orphan.admin",
+                IsAdministrator = true
             }, "Integration.Guard-Only.6249!");
 
             await createOrphan.Should().ThrowAsync<BusinessConflictException>();

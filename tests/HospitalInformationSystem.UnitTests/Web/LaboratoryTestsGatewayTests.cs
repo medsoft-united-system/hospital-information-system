@@ -1,9 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.LaboratoryTests;
-using HospitalInformationSystem.Models.Security;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Authentication;
 using HospitalInformationSystem.Web.Gateways;

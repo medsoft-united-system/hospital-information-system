@@ -1,5 +1,5 @@
+using HospitalInformationSystem.Application.Models.Persistence;
 using HospitalInformationSystem.Infrastructure.Identity;
-using HospitalInformationSystem.Models.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

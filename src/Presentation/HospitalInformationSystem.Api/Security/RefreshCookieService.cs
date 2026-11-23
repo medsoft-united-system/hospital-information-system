@@ -1,5 +1,5 @@
+using HospitalInformationSystem.Application.Models.Auth;
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
-using HospitalInformationSystem.Models.Auth;
 
 namespace HospitalInformationSystem.Api.Security;
 
@@ -19,7 +19,11 @@ public sealed class RefreshCookieService(IWebHostEnvironment environment)
 
     private CookieOptions Options(DateTimeOffset? expires) => new()
     {
-        HttpOnly = true, Secure = true, IsEssential = true, SameSite = SameSiteMode.Lax,
-        Path = "/", Expires = expires
+        HttpOnly = true,
+        Secure = true,
+        IsEssential = true,
+        SameSite = SameSiteMode.Lax,
+        Path = "/",
+        Expires = expires
     };
 }

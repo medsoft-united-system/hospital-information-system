@@ -1,6 +1,6 @@
-using HospitalInformationSystem.Contracts.Abstractions;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.ServiceAccounts;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 
 namespace HospitalInformationSystem.Application.ServiceAccounts;
 

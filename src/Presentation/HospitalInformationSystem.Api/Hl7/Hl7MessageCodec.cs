@@ -1,5 +1,5 @@
 using System.Text;
-using HospitalInformationSystem.Models.Hl7Import;
+using HospitalInformationSystem.Application.Models.Hl7Import;
 using static HospitalInformationSystem.Api.Hl7.Hl7Profile;
 
 namespace HospitalInformationSystem.Api.Hl7;

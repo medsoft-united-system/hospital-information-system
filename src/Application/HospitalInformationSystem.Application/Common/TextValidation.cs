@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Application.Models.Common;
 
 namespace HospitalInformationSystem.Application.Common;
 

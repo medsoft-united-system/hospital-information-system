@@ -1,9 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
 using FluentAssertions;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 using HospitalInformationSystem.Infrastructure.Identity;
 using HospitalInformationSystem.Infrastructure.ServiceAccounts;
-using HospitalInformationSystem.Models.ServiceAccounts;
 using Microsoft.Extensions.Options;
 
 namespace HospitalInformationSystem.UnitTests;

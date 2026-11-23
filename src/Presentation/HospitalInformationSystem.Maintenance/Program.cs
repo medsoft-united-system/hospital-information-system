@@ -1,8 +1,8 @@
 using System.Text.Json;
+using HospitalInformationSystem.Application.Models.Maintenance;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Maintenance;
 using HospitalInformationSystem.Maintenance;
-using HospitalInformationSystem.Models.Maintenance;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;

@@ -2,7 +2,7 @@ using System.Text;
 using System.Text.Json;
 using FluentAssertions;
 using HospitalInformationSystem.Api.Security;
-using HospitalInformationSystem.Models.ServiceAuth;
+using HospitalInformationSystem.Application.Models.ServiceAuth;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 

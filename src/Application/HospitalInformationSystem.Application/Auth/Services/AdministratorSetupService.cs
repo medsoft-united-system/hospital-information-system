@@ -1,13 +1,13 @@
-using HospitalInformationSystem.Abstractions.Identity;
-using HospitalInformationSystem.Abstractions.Transactions;
-using HospitalInformationSystem.Abstractions.UnitOfWork;
-using HospitalInformationSystem.Contracts.Abstractions;
-using HospitalInformationSystem.Contracts.Audit;
-using HospitalInformationSystem.Models.Audit;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.Persistence;
-using HospitalInformationSystem.Models.Security;
+using HospitalInformationSystem.Application.Abstractions.Identity;
+using HospitalInformationSystem.Application.Abstractions.Transactions;
+using HospitalInformationSystem.Application.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Contracts.Audit;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.Security;
 
 namespace HospitalInformationSystem.Application.Auth.Services;
 
@@ -46,9 +46,12 @@ public sealed class AdministratorSetupService(
         var now = timeProvider.GetUtcNow();
         var challenge = new AdministratorSetupChallengeDbo
         {
-            ChallengeId = Guid.NewGuid(), AdministratorUserId = administrator.Id, UserName = administrator.UserName!,
+            ChallengeId = Guid.NewGuid(),
+            AdministratorUserId = administrator.Id,
+            UserName = administrator.UserName!,
             PasswordHash = passwordHash,
-            TotpSecretProtected = cryptography.Protect(secret), CreatedAtUtc = now,
+            TotpSecretProtected = cryptography.Protect(secret),
+            CreatedAtUtc = now,
             ExpiresAtUtc = now.Add(settings.ChallengeLifetime)
         };
         await store.ReplaceChallengesAsync(challenge, cancellationToken);
@@ -105,7 +108,8 @@ public sealed class AdministratorSetupService(
         state.UpdatedAtUtc = now;
         store.AddVerification(new AdministratorTotpVerificationDbo
         {
-            UserId = administrator.Id, LastAcceptedStep = acceptedStep.Value
+            UserId = administrator.Id,
+            LastAcceptedStep = acceptedStep.Value
         });
         var revoked = await accounts.RevokeRefreshSessionsAsync(administrator.Id, "administrator-setup", now,
             cancellationToken);
@@ -113,8 +117,12 @@ public sealed class AdministratorSetupService(
             actors.GetCurrentActor().RequestId, null);
         var metadata = new AuditMetadata
         {
-            Action = "administrator-setup", TargetId = administrator.Id, AccountId = administrator.Id,
-            RevokedRefreshTokenCount = revoked, RevokeReason = "administrator-setup", Outcome = "completed"
+            Action = "administrator-setup",
+            TargetId = administrator.Id,
+            AccountId = administrator.Id,
+            RevokedRefreshTokenCount = revoked,
+            RevokeReason = "administrator-setup",
+            Outcome = "completed"
         };
         audit.Append(AuditEventType.AdministratorSetup, "Завершена первоначальная настройка администратора.", metadata, actor);
         audit.Append(created ? AuditEventType.AccountCreated : AuditEventType.AccountChanged,

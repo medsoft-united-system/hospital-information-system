@@ -1,6 +1,6 @@
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Models.Security;
+using HospitalInformationSystem.Application.Models.Security;
 
 namespace HospitalInformationSystem.UnitTests.Web;
 

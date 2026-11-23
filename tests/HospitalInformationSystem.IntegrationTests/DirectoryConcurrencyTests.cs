@@ -1,12 +1,8 @@
-using System;
-using System.Threading.Tasks;
 using FluentAssertions;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Persistence;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.Persistence;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
@@ -99,7 +95,10 @@ public sealed class DirectoryConcurrencyTests(HospitalApiFactory factory) : ICla
             case "foreign-key":
                 db.Add(new MedicalRecordDbo
                 {
-                    Id = id, PatientId = Guid.NewGuid(), CreatedAtUtc = now, Version = 1
+                    Id = id,
+                    PatientId = Guid.NewGuid(),
+                    CreatedAtUtc = now,
+                    Version = 1
                 });
                 break;
             default:
@@ -122,18 +121,29 @@ public sealed class DirectoryConcurrencyTests(HospitalApiFactory factory) : ICla
     {
         "worker" => (new MedicalWorkerDbo
         {
-            Id = id, FirstName = "Алексей", LastName = "Иванов", Position = "Врач",
-            CreatedAtUtc = now, UpdatedAtUtc = now
+            Id = id,
+            FirstName = "Алексей",
+            LastName = "Иванов",
+            Position = "Врач",
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
         }, nameof(MedicalWorkerDbo.FirstName)),
         "patient" => (new PatientDbo
         {
-            Id = id, FirstName = "Алексей", LastName = "Иванов", BirthDate = new DateOnly(1990, 1, 1),
-            CreatedAtUtc = now, UpdatedAtUtc = now
+            Id = id,
+            FirstName = "Алексей",
+            LastName = "Иванов",
+            BirthDate = new DateOnly(1990, 1, 1),
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
         }, nameof(PatientDbo.FirstName)),
         "diagnosis" => (new DiagnosisDefinitionDbo
         {
-            Id = id, Code = id.ToString("N")[..6], Name = "Диагноз " + id.ToString("N")[..12],
-            CreatedAtUtc = now, UpdatedAtUtc = now
+            Id = id,
+            Code = id.ToString("N")[..6],
+            Name = "Диагноз " + id.ToString("N")[..12],
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
         }, nameof(DiagnosisDefinitionDbo.Name)),
         _ => throw new ArgumentOutOfRangeException(nameof(kind))
     };

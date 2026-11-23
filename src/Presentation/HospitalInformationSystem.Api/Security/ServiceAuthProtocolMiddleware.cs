@@ -1,6 +1,6 @@
 using System.Text.Json;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.ServiceAuth;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.ServiceAuth;
 
 namespace HospitalInformationSystem.Api.Security;
 

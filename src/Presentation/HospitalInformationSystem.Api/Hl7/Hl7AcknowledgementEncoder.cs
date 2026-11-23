@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text;
-using HospitalInformationSystem.Models.Hl7Import;
+using HospitalInformationSystem.Application.Models.Hl7Import;
 
 namespace HospitalInformationSystem.Api.Hl7;
 

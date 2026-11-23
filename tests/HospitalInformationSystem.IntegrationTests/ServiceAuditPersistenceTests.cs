@@ -1,10 +1,10 @@
 using FluentAssertions;
 using HospitalInformationSystem.Application.Audit.Services;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Audit;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Models.Audit;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 

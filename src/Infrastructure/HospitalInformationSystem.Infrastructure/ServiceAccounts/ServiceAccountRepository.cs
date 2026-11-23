@@ -1,7 +1,7 @@
-using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Persistence.Mappings;
-using HospitalInformationSystem.Models.ServiceAccounts;
 using Microsoft.EntityFrameworkCore;
 
 namespace HospitalInformationSystem.Infrastructure.ServiceAccounts;
@@ -48,8 +48,12 @@ public sealed class ServiceAccountRepository(HospitalDbContext db) : IServiceAcc
     private IQueryable<ServiceAccountReadRow> PublicAccounts() => db.ServiceAccounts.AsNoTracking()
         .Select(row => new ServiceAccountReadRow
         {
-            Id = row.Id, Name = row.Name, Role = row.Role, IsActive = row.IsActive,
-            CreatedAtUtc = row.CreatedAtUtc, UpdatedAtUtc = row.UpdatedAtUtc,
+            Id = row.Id,
+            Name = row.Name,
+            Role = row.Role,
+            IsActive = row.IsActive,
+            CreatedAtUtc = row.CreatedAtUtc,
+            UpdatedAtUtc = row.UpdatedAtUtc,
             Version = EF.Property<uint>(row, "xmin")
         });
 

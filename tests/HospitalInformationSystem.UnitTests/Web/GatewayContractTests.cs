@@ -4,14 +4,14 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using FluentAssertions;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.MedicalRecords;
-using HospitalInformationSystem.Models.MedicalWorkers;
-using HospitalInformationSystem.Models.Security;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Authentication;
 using HospitalInformationSystem.Web.Gateways;
-using MedicalWorkerRole = HospitalInformationSystem.Models.Security.MedicalWorkerRole;
+using MedicalWorkerRole = HospitalInformationSystem.Application.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.UnitTests.Web;
 

@@ -9,6 +9,7 @@ public sealed class PasswordLengthValidator : IPasswordValidator<HospitalUser>
             ? IdentityResult.Success
             : IdentityResult.Failed(new IdentityError
             {
-                Code = "PasswordLength", Description = "Пароль должен содержать от 12 до 128 символов."
+                Code = "PasswordLength",
+                Description = "Пароль должен содержать от 12 до 128 символов."
             }));
 }

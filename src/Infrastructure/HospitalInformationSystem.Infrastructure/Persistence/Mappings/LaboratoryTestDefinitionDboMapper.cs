@@ -1,5 +1,5 @@
-using HospitalInformationSystem.Models.LaboratoryTests;
-using HospitalInformationSystem.Models.Persistence;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.Persistence;
 using Riok.Mapperly.Abstractions;
 
 namespace HospitalInformationSystem.Infrastructure.Persistence.Mappings;

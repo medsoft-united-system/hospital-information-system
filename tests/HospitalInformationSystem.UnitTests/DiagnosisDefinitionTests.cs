@@ -2,8 +2,8 @@ using System;
 using FluentAssertions;
 using HospitalInformationSystem.Application.Diagnoses.Factories;
 using HospitalInformationSystem.Application.Diagnoses.Services;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.Diagnoses;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Diagnoses;
 using Xunit;
 
 namespace HospitalInformationSystem.UnitTests;

@@ -1,12 +1,12 @@
-using System.Xml.Linq;
 using System.Reflection;
 using System.Text.Json;
+using System.Xml.Linq;
 using FluentAssertions;
-using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
 using HospitalInformationSystem.Application.DI;
-using HospitalInformationSystem.Contracts.Abstractions;
-using HospitalInformationSystem.Models.Patients;
-using HospitalInformationSystem.Models.Persistence;
+using HospitalInformationSystem.Application.Models.Patients;
+using HospitalInformationSystem.Application.Models.Persistence;
 
 namespace HospitalInformationSystem.UnitTests;
 
@@ -29,7 +29,7 @@ public sealed class ArchitectureBoundaryTests
         assembly.GetExportedTypes().Should().OnlyContain(type => type.IsInterface);
         assembly.GetReferencedAssemblies().Where(reference =>
                 reference.Name!.StartsWith("HospitalInformationSystem.", StringComparison.Ordinal))
-            .Select(reference => reference.Name).Should().Equal("HospitalInformationSystem.Models");
+            .Select(reference => reference.Name).Should().Equal("HospitalInformationSystem.Application.Models");
         assembly.GetReferencedAssemblies().Select(reference => reference.Name!).Should().NotContain(name => IsAdapterAssembly(name));
     }
 
@@ -49,7 +49,7 @@ public sealed class ArchitectureBoundaryTests
         typeof(ServiceAccountDbo).Assembly.Should().BeSameAs(models);
         typeof(MedicalRecordHistoryEventDbo).Assembly.Should().BeSameAs(models);
         models.GetExportedTypes().Where(type => type.Name.EndsWith("Dbo", StringComparison.Ordinal))
-            .Should().NotBeEmpty().And.OnlyContain(type => type.Namespace == "HospitalInformationSystem.Models.Persistence");
+            .Should().NotBeEmpty().And.OnlyContain(type => type.Namespace == "HospitalInformationSystem.Application.Models.Persistence");
     }
 
     [Theory]

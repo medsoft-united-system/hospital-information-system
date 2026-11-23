@@ -2,10 +2,10 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Identity;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -274,7 +274,9 @@ public sealed class AdministratorLoginApiTests(SecureHospitalApiFactory factory)
     {
         var client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
-            BaseAddress = new Uri("https://localhost"), HandleCookies = false, AllowAutoRedirect = false
+            BaseAddress = new Uri("https://localhost"),
+            HandleCookies = false,
+            AllowAutoRedirect = false
         });
         using var response = await client.GetAsync("/api/auth/csrf");
         var token = (await response.Content.ReadFromJsonAsync<AntiforgeryTokenDto>())!;

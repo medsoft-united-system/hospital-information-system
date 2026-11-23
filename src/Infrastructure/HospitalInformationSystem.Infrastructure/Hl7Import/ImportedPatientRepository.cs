@@ -1,12 +1,12 @@
-using HospitalInformationSystem.Abstractions.Hl7Import;
+using HospitalInformationSystem.Application.Abstractions.Hl7Import;
+using HospitalInformationSystem.Application.Models.Diagnoses;
+using HospitalInformationSystem.Application.Models.Hl7Import;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.Patients;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Persistence.Mappings;
-using HospitalInformationSystem.Models.Diagnoses;
-using HospitalInformationSystem.Models.Hl7Import;
-using HospitalInformationSystem.Models.MedicalRecords;
-using HospitalInformationSystem.Models.Patients;
-using HospitalInformationSystem.Models.Persistence;
-using HospitalInformationSystem.Models.ServiceAccounts;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -67,8 +67,10 @@ public sealed class ImportedPatientRepository(HospitalDbContext db) : IImportedP
         db.MedicalRecords.Add(record.ToDbo());
         db.PatientExternalIdentifiers.Add(new PatientExternalIdentifierDbo
         {
-            SourceSystem = sourceSystem, ExternalPatientId = externalPatientId,
-            PatientId = patient.Id, CreatedAtUtc = now
+            SourceSystem = sourceSystem,
+            ExternalPatientId = externalPatientId,
+            PatientId = patient.Id,
+            CreatedAtUtc = now
         });
     }
 

@@ -1,5 +1,5 @@
-using HospitalInformationSystem.Contracts.Audit;
-using HospitalInformationSystem.Models.Audit;
+using HospitalInformationSystem.Application.Contracts.Audit;
+using HospitalInformationSystem.Application.Models.Audit;
 
 namespace HospitalInformationSystem.Infrastructure.Audit;
 

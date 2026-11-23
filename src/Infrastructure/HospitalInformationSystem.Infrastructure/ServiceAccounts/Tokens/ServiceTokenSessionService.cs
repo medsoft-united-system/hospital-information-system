@@ -1,16 +1,16 @@
 using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using HospitalInformationSystem.Contracts.Abstractions;
-using HospitalInformationSystem.Contracts.Audit;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Contracts.Audit;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.Security;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.ServiceAuth;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
 using HospitalInformationSystem.Infrastructure.Persistence.Configurations;
-using HospitalInformationSystem.Models.Audit;
-using HospitalInformationSystem.Models.Persistence;
-using HospitalInformationSystem.Models.Security;
-using HospitalInformationSystem.Models.ServiceAccounts;
-using HospitalInformationSystem.Models.ServiceAuth;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -109,9 +109,13 @@ public sealed partial class ServiceTokenSessionService(HospitalDbContext db, Jwt
         sessionId = Guid.NewGuid();
         db.ServiceRefreshSessions.Add(new ServiceRefreshSessionDbo
         {
-            Id = sessionId, ServiceAccountId = account.Id, FamilyId = familyId,
-            TokenHash = ServiceRefreshTokenMaterial.Hash(refresh)!, AuthenticationVersion = account.AuthenticationVersion,
-            CreatedAtUtc = now, ExpiresAtUtc = familyExpires
+            Id = sessionId,
+            ServiceAccountId = account.Id,
+            FamilyId = familyId,
+            TokenHash = ServiceRefreshTokenMaterial.Hash(refresh)!,
+            AuthenticationVersion = account.AuthenticationVersion,
+            CreatedAtUtc = now,
+            ExpiresAtUtc = familyExpires
         });
         List<Claim> claims =
         [

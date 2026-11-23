@@ -1,6 +1,6 @@
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Patients;
 using HospitalInformationSystem.Application.Patients.Services;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.Patients;
 
 namespace HospitalInformationSystem.Application.Patients.Factories;
 
@@ -11,8 +11,10 @@ public static class PatientFactory
     {
         var patient = new Patient
         {
-            Id = Guid.NewGuid(), CreatedAtUtc = now.ToUniversalTime(),
-            FirstName = string.Empty, LastName = string.Empty
+            Id = Guid.NewGuid(),
+            CreatedAtUtc = now.ToUniversalTime(),
+            FirstName = string.Empty,
+            LastName = string.Empty
         };
         PatientService.Update(patient, firstName, lastName, middleName, birthDate, sex, comment, now);
         return patient;

@@ -1,7 +1,7 @@
 using System.Text;
 using FluentAssertions;
 using HospitalInformationSystem.Api.Hl7;
-using HospitalInformationSystem.Models.Hl7Import;
+using HospitalInformationSystem.Application.Models.Hl7Import;
 
 namespace HospitalInformationSystem.UnitTests;
 
@@ -72,7 +72,10 @@ public sealed class Lab4Hl7AcknowledgementTests
     {
         var request = Header() with
         {
-            MessageType = "NMD", TriggerEvent = "N02", MessageStructure = "NMD_N02", ControlId = "probe-001"
+            MessageType = "NMD",
+            TriggerEvent = "N02",
+            MessageStructure = "NMD_N02",
+            ControlId = "probe-001"
         };
 
         var actual = Text(_encoder.Encode(request, Hl7AcknowledgementFactory.ProbeAccepted()));
@@ -87,8 +90,12 @@ public sealed class Lab4Hl7AcknowledgementTests
     {
         var request = Header() with
         {
-            ControlId = "id|^~\\&", SendingApplication = "desktop|client", SendingFacility = "source^branch",
-            ReceivingApplication = "his&server", ReceivingFacility = "facility~room", TriggerEvent = "A|8"
+            ControlId = "id|^~\\&",
+            SendingApplication = "desktop|client",
+            SendingFacility = "source^branch",
+            ReceivingApplication = "his&server",
+            ReceivingFacility = "facility~room",
+            TriggerEvent = "A|8"
         };
 
         var actual = Text(_encoder.Encode(request, Hl7AcknowledgementFactory.ProtocolFailure()));
@@ -163,7 +170,9 @@ public sealed class Lab4Hl7AcknowledgementTests
     {
         var request = Header() with
         {
-            MessageType = type, TriggerEvent = trigger, MessageStructure = structure,
+            MessageType = type,
+            TriggerEvent = trigger,
+            MessageStructure = structure,
             ControlId = "request\rMSA|AA|injected"
         };
         var action = () => _encoder.Encode(request, Hl7AcknowledgementFactory.ProtocolFailure());
@@ -192,9 +201,15 @@ public sealed class Lab4Hl7AcknowledgementTests
 
     private static Hl7MessageHeader Header() => new()
     {
-        MessageType = "ADT", TriggerEvent = "A28", MessageStructure = "ADT_A05", ControlId = "request-001",
-        SendingApplication = "MEDSOFT_IMPORT", SendingFacility = "LAB4_XML", ReceivingApplication = "HIS",
-        ReceivingFacility = "MEDSOFT", SentAt = Now
+        MessageType = "ADT",
+        TriggerEvent = "A28",
+        MessageStructure = "ADT_A05",
+        ControlId = "request-001",
+        SendingApplication = "MEDSOFT_IMPORT",
+        SendingFacility = "LAB4_XML",
+        ReceivingApplication = "HIS",
+        ReceivingFacility = "MEDSOFT",
+        SentAt = Now
     };
 
     private sealed class FrozenTimeProvider : TimeProvider

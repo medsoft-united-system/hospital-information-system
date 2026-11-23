@@ -4,7 +4,7 @@ using HospitalInformationSystem.Application.MedicalWorkers.Commands.DeleteMedica
 using HospitalInformationSystem.Application.MedicalWorkers.Commands.UpdateMedicalWorker;
 using HospitalInformationSystem.Application.MedicalWorkers.Queries.GetMedicalWorker;
 using HospitalInformationSystem.Application.MedicalWorkers.Queries.GetMedicalWorkers;
-using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

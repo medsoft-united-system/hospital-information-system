@@ -6,7 +6,7 @@ using HospitalInformationSystem.Application.Diagnoses.Commands.ImportDiagnoses;
 using HospitalInformationSystem.Application.Diagnoses.Commands.UpdateDiagnosis;
 using HospitalInformationSystem.Application.Diagnoses.Queries.GetDiagnoses;
 using HospitalInformationSystem.Application.Diagnoses.Queries.GetDiagnosis;
-using HospitalInformationSystem.Models.Diagnoses;
+using HospitalInformationSystem.Application.Models.Diagnoses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

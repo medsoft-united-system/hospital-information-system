@@ -1,10 +1,10 @@
-using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
 using HospitalInformationSystem.Application.Fhir;
+using HospitalInformationSystem.Application.Models.Fhir;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Patients;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Models.Fhir;
-using HospitalInformationSystem.Models.MedicalRecords;
-using HospitalInformationSystem.Models.MedicalWorkers;
-using HospitalInformationSystem.Models.Patients;
 using Microsoft.EntityFrameworkCore;
 
 namespace HospitalInformationSystem.Infrastructure.Persistence.Repositories;
@@ -14,14 +14,21 @@ public sealed class FhirReadRepository(HospitalDbContext db) : IFhirReadReposito
     public Task<Patient?> GetPatientAsync(Guid id, CancellationToken cancellationToken) =>
         db.Patients.AsNoTracking().Where(x => x.Id == id).Select(x => new Patient
         {
-            Id = x.Id, FirstName = x.FirstName, LastName = x.LastName, MiddleName = x.MiddleName,
-            BirthDate = x.BirthDate, Sex = (AdministrativeSex)x.Sex
+            Id = x.Id,
+            FirstName = x.FirstName,
+            LastName = x.LastName,
+            MiddleName = x.MiddleName,
+            BirthDate = x.BirthDate,
+            Sex = (AdministrativeSex)x.Sex
         }).SingleOrDefaultAsync(cancellationToken);
 
     public Task<MedicalWorker?> GetPractitionerAsync(Guid id, CancellationToken cancellationToken) =>
         db.MedicalWorkers.AsNoTracking().Where(x => x.Id == id).Select(x => new MedicalWorker
         {
-            Id = x.Id, FirstName = x.FirstName, LastName = x.LastName, Position = x.Position,
+            Id = x.Id,
+            FirstName = x.FirstName,
+            LastName = x.LastName,
+            Position = x.Position,
             IsDeleted = x.IsDeleted
         }).SingleOrDefaultAsync(cancellationToken);
 
@@ -80,11 +87,11 @@ public sealed class FhirReadRepository(HospitalDbContext db) : IFhirReadReposito
                                      x.IssuedAtUtc == position.AtUtc && x.Id.CompareTo(position.Id) > 0);
         }
         var rows = await (from result in query
-            join request in db.LaboratoryAnalysisRequests.AsNoTracking()
-                on result.LaboratoryAnalysisRequestId equals request.Id
-            orderby result.IssuedAtUtc, result.Id
-            select new FhirObservationReadModel(result.Id, request.Id, result.PatientId,
-                request.LoincCodeSnapshot, request.DisplayNameSnapshot, result.Value, result.IssuedAtUtc))
+                          join request in db.LaboratoryAnalysisRequests.AsNoTracking()
+                              on result.LaboratoryAnalysisRequestId equals request.Id
+                          orderby result.IssuedAtUtc, result.Id
+                          select new FhirObservationReadModel(result.Id, request.Id, result.PatientId,
+                              request.LoincCodeSnapshot, request.DisplayNameSnapshot, result.Value, result.IssuedAtUtc))
             .Take(count + 1).ToListAsync(cancellationToken);
         var items = rows.Take(count).ToArray();
         var next = rows.Count > count ? new FhirPagePosition(items[^1].IssuedAtUtc, items[^1].Id) : null;

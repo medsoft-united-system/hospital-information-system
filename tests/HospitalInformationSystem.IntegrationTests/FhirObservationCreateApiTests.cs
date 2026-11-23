@@ -6,15 +6,15 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentAssertions;
 using Hl7.Fhir.Serialization;
-using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
 using HospitalInformationSystem.Application.MedicalRecords.Services;
 using HospitalInformationSystem.Application.MedicalRecords.Snapshot;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Persistence;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.MedicalRecords;
-using HospitalInformationSystem.Models.MedicalWorkers;
-using HospitalInformationSystem.Models.Persistence;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -340,7 +340,7 @@ public sealed class FhirObservationCreateApiTests(FhirObservationCreateApiFactor
         var state = await factory.CreateScenarioAsync();
         using var client = factory.CreateServiceClient();
         using var request = new HttpRequestMessage(HttpMethod.Post, "/fhir/Observation")
-            { Content = new StringContent(Body(state).ToJsonString(), Encoding.UTF8) };
+        { Content = new StringContent(Body(state).ToJsonString(), Encoding.UTF8) };
         request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(contentType);
 
         using var response = await client.SendAsync(request);
@@ -355,7 +355,7 @@ public sealed class FhirObservationCreateApiTests(FhirObservationCreateApiFactor
         var state = await factory.CreateScenarioAsync();
         using var client = factory.CreateServiceClient();
         using var request = new HttpRequestMessage(HttpMethod.Post, "/fhir/Observation")
-            { Content = new StringContent(new string(' ', 64 * 1024 + 1), Encoding.UTF8, "application/fhir+json") };
+        { Content = new StringContent(new string(' ', 64 * 1024 + 1), Encoding.UTF8, "application/fhir+json") };
 
         using var response = await client.SendAsync(request);
 
@@ -384,7 +384,7 @@ public sealed class FhirObservationCreateApiTests(FhirObservationCreateApiFactor
         var state = await factory.CreateScenarioAsync();
         using var client = factory.CreateServiceClient();
         using var request = new HttpRequestMessage(new HttpMethod(method), url)
-            { Content = new StringContent(Body(state).ToJsonString(), Encoding.UTF8, "application/fhir+json") };
+        { Content = new StringContent(Body(state).ToJsonString(), Encoding.UTF8, "application/fhir+json") };
 
         using var response = await client.SendAsync(request);
 
@@ -428,18 +428,23 @@ public sealed class FhirObservationCreateApiTests(FhirObservationCreateApiFactor
 
     private static JsonObject Body(FhirObservationCreateApiFactory.Scenario state) => new()
     {
-        ["resourceType"] = "Observation", ["status"] = "final",
-        ["code"] = new JsonObject { ["coding"] = new JsonArray(new JsonObject
-            { ["system"] = "http://loinc.org", ["code"] = state.LoincCode, ["display"] = "Не доверять названию из клиента" }) },
+        ["resourceType"] = "Observation",
+        ["status"] = "final",
+        ["code"] = new JsonObject
+        {
+            ["coding"] = new JsonArray(new JsonObject
+            { ["system"] = "http://loinc.org", ["code"] = state.LoincCode, ["display"] = "Не доверять названию из клиента" })
+        },
         ["subject"] = new JsonObject { ["reference"] = $"Patient/{state.PatientId:D}" },
         ["basedOn"] = new JsonArray(new JsonObject { ["reference"] = $"ServiceRequest/{state.RequestId:D}" }),
-        ["issued"] = "2026-11-09T10:04:05.123Z", ["valueString"] = "5.6"
+        ["issued"] = "2026-11-09T10:04:05.123Z",
+        ["valueString"] = "5.6"
     };
 
     private static async Task<HttpResponseMessage> PostAsync(HttpClient client, JsonObject body, string url = "/fhir/Observation")
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, url)
-            { Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/fhir+json") };
+        { Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/fhir+json") };
         request.Headers.TryAddWithoutValidation("Prefer", "return=representation");
         return await client.SendAsync(request);
     }

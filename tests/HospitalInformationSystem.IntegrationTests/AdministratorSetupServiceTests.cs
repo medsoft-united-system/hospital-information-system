@@ -3,14 +3,14 @@ using System.Text;
 using System.Text.Json;
 using FluentAssertions;
 using HospitalInformationSystem.Application.Auth.Services;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
 using HospitalInformationSystem.Application.DI;
-using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.DI;
 using HospitalInformationSystem.Infrastructure.Identity;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.Persistence;
-using HospitalInformationSystem.Models.Security;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -41,7 +41,7 @@ public sealed class AdministratorSetupServiceTests : IAsyncLifetime
         services.AddDataProtection().UseEphemeralDataProtectionProvider();
         services.AddSingleton<TotpCodeService>();
         services.AddScoped<IAdministratorSetupService, AdministratorSetupService>();
-        services.AddScoped<HospitalInformationSystem.Contracts.Abstractions.IAdministratorSetupCryptography,
+        services.AddScoped<IAdministratorSetupCryptography,
             AdministratorSetupCryptography>();
         services.AddSingleton(provider => provider.GetRequiredService<IOptions<AdministratorSetupOptions>>().Value);
         services.Configure<AdministratorSetupOptions>(options =>
@@ -213,9 +213,12 @@ public sealed class AdministratorSetupServiceTests : IAsyncLifetime
             administratorId = (await db.Users.SingleAsync(CancellationToken.None)).Id;
             db.RefreshSessions.Add(new RefreshSessionDbo
             {
-                Id = Guid.NewGuid(), FamilyId = Guid.NewGuid(), UserId = administratorId,
+                Id = Guid.NewGuid(),
+                FamilyId = Guid.NewGuid(),
+                UserId = administratorId,
                 TokenHash = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
-                CreatedAtUtc = _clock.GetUtcNow(), ExpiresAtUtc = _clock.GetUtcNow().AddDays(1)
+                CreatedAtUtc = _clock.GetUtcNow(),
+                ExpiresAtUtc = _clock.GetUtcNow().AddDays(1)
             });
             await db.SaveChangesAsync(CancellationToken.None);
         }

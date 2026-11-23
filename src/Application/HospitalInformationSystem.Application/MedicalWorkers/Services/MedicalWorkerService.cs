@@ -1,6 +1,6 @@
 using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
 
 namespace HospitalInformationSystem.Application.MedicalWorkers.Services;
 

@@ -1,17 +1,17 @@
-using HospitalInformationSystem.Abstractions.Hl7Import;
-using HospitalInformationSystem.Abstractions.Transactions;
+using HospitalInformationSystem.Application.Abstractions.Hl7Import;
+using HospitalInformationSystem.Application.Abstractions.Transactions;
+using HospitalInformationSystem.Application.Contracts.Audit;
+using HospitalInformationSystem.Application.Contracts.Hl7Import;
 using HospitalInformationSystem.Application.Diagnoses.Factories;
 using HospitalInformationSystem.Application.MedicalRecords.Factories;
 using HospitalInformationSystem.Application.MedicalRecords.Services;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Diagnoses;
+using HospitalInformationSystem.Application.Models.Hl7Import;
+using HospitalInformationSystem.Application.Models.Security;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 using HospitalInformationSystem.Application.Patients.Factories;
-using HospitalInformationSystem.Contracts.Audit;
-using HospitalInformationSystem.Contracts.Hl7Import;
-using HospitalInformationSystem.Models.Audit;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.Diagnoses;
-using HospitalInformationSystem.Models.Hl7Import;
-using HospitalInformationSystem.Models.Security;
-using HospitalInformationSystem.Models.ServiceAccounts;
 
 namespace HospitalInformationSystem.Application.Hl7Import;
 

@@ -1,5 +1,5 @@
-using HospitalInformationSystem.Abstractions.Repositories;
-using HospitalInformationSystem.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.UnitOfWork;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.Diagnoses.Commands.DeleteDiagnosis;

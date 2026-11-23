@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
 using HospitalInformationSystem.Infrastructure.Persistence.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 

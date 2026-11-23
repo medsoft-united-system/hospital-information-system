@@ -7,24 +7,24 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
-using HospitalInformationSystem.Abstractions.Identity;
-using HospitalInformationSystem.Abstractions.Repositories;
-using HospitalInformationSystem.Abstractions.Transactions;
-using HospitalInformationSystem.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.Abstractions.Identity;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.Transactions;
+using HospitalInformationSystem.Application.Abstractions.UnitOfWork;
 using HospitalInformationSystem.Application.Auth.Services;
-using HospitalInformationSystem.Contracts.Audit;
+using HospitalInformationSystem.Application.Contracts.Audit;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Identity;
-using HospitalInformationSystem.Models.Audit;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.MedicalWorkers;
-using HospitalInformationSystem.Models.Persistence;
-using HospitalInformationSystem.Models.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
-using MedicalWorkerRole = HospitalInformationSystem.Models.Security.MedicalWorkerRole;
+using MedicalWorkerRole = HospitalInformationSystem.Application.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
@@ -178,9 +178,12 @@ public sealed class AccountLifecycleApiTests(SecureHospitalApiFactory factory) :
         for (var index = 0; index < 4; index++)
             db.RefreshSessions.Add(new RefreshSessionDbo
             {
-                Id = Guid.NewGuid(), UserId = accountId, FamilyId = Guid.NewGuid(),
+                Id = Guid.NewGuid(),
+                UserId = accountId,
+                FamilyId = Guid.NewGuid(),
                 TokenHash = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
-                CreatedAtUtc = now.AddHours(-2), ExpiresAtUtc = index == 2 ? now.AddHours(-1) : now.AddHours(1),
+                CreatedAtUtc = now.AddHours(-2),
+                ExpiresAtUtc = index == 2 ? now.AddHours(-1) : now.AddHours(1),
                 RevokedAtUtc = index == 3 ? now.AddMinutes(-1) : null,
                 RevokeReason = index == 3 ? "logout" : null
             });

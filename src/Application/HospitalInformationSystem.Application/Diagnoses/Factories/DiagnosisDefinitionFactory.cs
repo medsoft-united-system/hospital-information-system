@@ -1,6 +1,6 @@
 using HospitalInformationSystem.Application.Diagnoses.Services;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.Diagnoses;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Diagnoses;
 
 namespace HospitalInformationSystem.Application.Diagnoses.Factories;
 
@@ -10,8 +10,10 @@ public static class DiagnosisDefinitionFactory
     {
         var diagnosis = new DiagnosisDefinition
         {
-            Id = Guid.NewGuid(), CreatedAtUtc = now.ToUniversalTime(),
-            Code = string.Empty, Name = string.Empty
+            Id = Guid.NewGuid(),
+            CreatedAtUtc = now.ToUniversalTime(),
+            Code = string.Empty,
+            Name = string.Empty
         };
         DiagnosisDefinitionService.Update(diagnosis, code, name, now);
         return diagnosis;

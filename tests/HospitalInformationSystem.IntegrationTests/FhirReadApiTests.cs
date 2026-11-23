@@ -157,7 +157,7 @@ public sealed class FhirReadApiTests(FhirReadApiFactory factory) : IClassFixture
     public async System.Threading.Tasks.Task MedicalEndpoints_ShouldSeparateAuthenticationFromAuthorizationAndKeepFhirErrors()
     {
         using var anonymous = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
-            { BaseAddress = new Uri("https://his-api:5201"), AllowAutoRedirect = false });
+        { BaseAddress = new Uri("https://his-api:5201"), AllowAutoRedirect = false });
         using var missingIdentity = await anonymous.GetAsync($"/fhir/Patient/{factory.PatientId:D}");
         var unauthorized = await ReadAsync<OperationOutcome>(missingIdentity, HttpStatusCode.Unauthorized);
         unauthorized.Issue.Single().Code.Should().Be(OperationOutcome.IssueType.Login);
@@ -172,7 +172,7 @@ public sealed class FhirReadApiTests(FhirReadApiFactory factory) : IClassFixture
     public async System.Threading.Tasks.Task Metadata_ShouldDescribeReadSearchAndObservationCreateAndRejectXml()
     {
         using var client = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
-            { BaseAddress = new Uri("https://his-api:5201"), AllowAutoRedirect = false });
+        { BaseAddress = new Uri("https://his-api:5201"), AllowAutoRedirect = false });
         using var response = await client.GetAsync("/fhir/metadata");
         var metadata = await ReadAsync<CapabilityStatement>(response);
         metadata.FhirVersion.Should().NotBeNull();

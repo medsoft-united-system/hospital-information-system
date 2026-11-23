@@ -1,13 +1,7 @@
-using System.Net.Http;
-using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
-using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Application.Models.Auth;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 

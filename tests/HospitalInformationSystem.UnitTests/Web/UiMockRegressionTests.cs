@@ -2,10 +2,10 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Threading;
 using FluentAssertions;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Diagnoses;
-using HospitalInformationSystem.Models.MedicalRecords;
-using HospitalInformationSystem.Models.Security;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Diagnoses;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Authentication;
 using HospitalInformationSystem.Web.Development;
@@ -149,7 +149,8 @@ public sealed class UiMockRegressionTests
             Http = new HttpClient(new BrowserSessionHandler(Session, Tokens, Operations)
             {
                 InnerHandler = new UiMockHttpMessageHandler(State)
-            }) { BaseAddress = new Uri("https://ui-mock.invalid/") };
+            })
+            { BaseAddress = new Uri("https://ui-mock.invalid/") };
             if (Session.Current?.MedicalWorkerId is { } id)
                 Http.DefaultRequestHeaders.Add("X-Medical-Worker-Id", id.ToString());
         }

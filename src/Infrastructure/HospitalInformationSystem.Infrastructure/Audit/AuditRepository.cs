@@ -1,7 +1,7 @@
-using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Models.Audit;
-using HospitalInformationSystem.Models.Security;
 using Microsoft.EntityFrameworkCore;
 
 namespace HospitalInformationSystem.Infrastructure.Audit;

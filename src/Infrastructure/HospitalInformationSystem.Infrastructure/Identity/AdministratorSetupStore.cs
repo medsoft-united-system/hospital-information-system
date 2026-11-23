@@ -1,8 +1,8 @@
-using HospitalInformationSystem.Abstractions.Identity;
+using HospitalInformationSystem.Application.Abstractions.Identity;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Persistence;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -70,7 +70,7 @@ public sealed class AdministratorSetupStore(HospitalDbContext db, UserManager<Ho
             RequireSuccess(await users.CreateAsync(user));
             if (!await roles.RoleExistsAsync(role))
                 RequireSuccess(await roles.CreateAsync(new IdentityRole<Guid>(role)
-                    { Id = Guid.NewGuid() }));
+                { Id = Guid.NewGuid() }));
             RequireSuccess(await users.AddToRoleAsync(user, role));
         }
         else
@@ -101,9 +101,14 @@ public sealed class AdministratorSetupStore(HospitalDbContext db, UserManager<Ho
 
     private static HospitalUser NewUser(AdministratorSetupAccount account) => new()
     {
-        Id = account.Id, UserName = account.UserName, IsAdministrator = account.IsAdministrator,
-        MedicalWorkerId = account.MedicalWorkerId, IsActive = account.IsActive, LockoutEnabled = true,
-        TwoFactorEnabled = account.TwoFactorEnabled, CreatedAtUtc = account.CreatedAtUtc,
+        Id = account.Id,
+        UserName = account.UserName,
+        IsAdministrator = account.IsAdministrator,
+        MedicalWorkerId = account.MedicalWorkerId,
+        IsActive = account.IsActive,
+        LockoutEnabled = true,
+        TwoFactorEnabled = account.TwoFactorEnabled,
+        CreatedAtUtc = account.CreatedAtUtc,
         UpdatedAtUtc = account.UpdatedAtUtc
     };
 

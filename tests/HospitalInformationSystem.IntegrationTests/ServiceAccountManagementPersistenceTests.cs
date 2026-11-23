@@ -4,11 +4,11 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
 using FluentAssertions;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.ServiceAccounts;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Persistence;
-using HospitalInformationSystem.Models.ServiceAccounts;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
@@ -290,9 +290,13 @@ public sealed class ServiceAccountManagementPersistenceTests(SecureHospitalApiFa
 
     private static ServiceRefreshSessionDbo Session(Guid accountId, Guid familyId, DateTimeOffset now) => new()
     {
-        Id = Guid.NewGuid(), ServiceAccountId = accountId, FamilyId = familyId,
+        Id = Guid.NewGuid(),
+        ServiceAccountId = accountId,
+        FamilyId = familyId,
         TokenHash = Convert.ToHexStringLower(SHA256.HashData(RandomNumberGenerator.GetBytes(32))),
-        AuthenticationVersion = 1, CreatedAtUtc = now.AddDays(-2), ExpiresAtUtc = now.AddDays(7)
+        AuthenticationVersion = 1,
+        CreatedAtUtc = now.AddDays(-2),
+        ExpiresAtUtc = now.AddDays(7)
     };
 
     private static async Task AssertRevokedAsync(HospitalDbContext db, Sessions expected, string reason)

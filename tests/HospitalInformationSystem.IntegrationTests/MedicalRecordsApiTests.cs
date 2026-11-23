@@ -476,8 +476,12 @@ public sealed class MedicalRecordsApiTests(MedicalRecordsApiFactory factory)
     private async Task<Guid> CreatePatient() => (await Read<IdView>(await _client.PostAsJsonAsync("/api/patients",
         new
         {
-            FirstName = "Елена", LastName = "Соколова", MiddleName = "Петровна", BirthDate = "1985-03-12",
-            Sex = "Female", Comment = (string?)null
+            FirstName = "Елена",
+            LastName = "Соколова",
+            MiddleName = "Петровна",
+            BirthDate = "1985-03-12",
+            Sex = "Female",
+            Comment = (string?)null
         }), HttpStatusCode.Created)).Id;
 
     private async Task<Guid> CreateDiagnosis() => (await Read<IdView>(await _client.PostAsJsonAsync("/api/diagnoses",

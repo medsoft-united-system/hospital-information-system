@@ -1,6 +1,6 @@
 using System.Net;
 using FluentAssertions;
-using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 using HospitalInformationSystem.Web.Components.MedicalRecords;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -40,8 +40,11 @@ public sealed class LaboratoryAnalysesTableTests
     public async Task HistoricalTable_ShouldUseOnlyPassedSnapshotAndNeverInventAResult()
     {
         var request = Request();
-        var live = request with { Result = new LaboratoryAnalysisResultDto(Guid.NewGuid(), request.Id,
-            request.PatientId, "UNIQUE_FUTURE_RESULT", At.AddDays(1), At.AddDays(1), Guid.NewGuid()) };
+        var live = request with
+        {
+            Result = new LaboratoryAnalysisResultDto(Guid.NewGuid(), request.Id,
+            request.PatientId, "UNIQUE_FUTURE_RESULT", At.AddDays(1), At.AddDays(1), Guid.NewGuid())
+        };
 
         var html = WebUtility.HtmlDecode(await RenderAsync([request], historical: true));
 
@@ -55,7 +58,8 @@ public sealed class LaboratoryAnalysesTableTests
     {
         var request = Request() with
         {
-            DisplayName = "<script>alert(1)</script>", Comment = "<b>Комментарий</b>",
+            DisplayName = "<script>alert(1)</script>",
+            Comment = "<b>Комментарий</b>",
             RequestedByNameSnapshot = "<b>Имя врача</b>"
         };
         var html = await RenderAsync([request]);

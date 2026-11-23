@@ -1,7 +1,7 @@
 using HospitalInformationSystem.Application.Hl7Import;
-using HospitalInformationSystem.Models.Audit;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.Hl7Import;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Hl7Import;
 
 namespace HospitalInformationSystem.Application.Hl7Import;
 

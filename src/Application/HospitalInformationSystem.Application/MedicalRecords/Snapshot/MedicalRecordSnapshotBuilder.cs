@@ -1,7 +1,7 @@
-using HospitalInformationSystem.Abstractions.Repositories;
-using HospitalInformationSystem.Contracts.Abstractions;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Snapshot;
 

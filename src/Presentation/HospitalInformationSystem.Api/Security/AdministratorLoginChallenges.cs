@@ -25,7 +25,8 @@ public sealed class AdministratorLoginChallenges(IDataProtectionProvider protect
         lock (_gate)
             _pending.Set(attempt.Id, attempt, new MemoryCacheEntryOptions
             {
-                AbsoluteExpirationRelativeToNow = Lifetime, Size = 1
+                AbsoluteExpirationRelativeToNow = Lifetime,
+                Size = 1
             });
         context.Response.Cookies.Append(BrowserTabCookieNames.ForRequest(context, CookieName),
             _protector.Protect(attempt.Id), Options(attempt.ExpiresAtUtc));
@@ -80,7 +81,8 @@ public sealed class AdministratorLoginChallenges(IDataProtectionProvider protect
             _pending.Set(attempt.Id, current with { FailedAttempts = current.FailedAttempts + 1 },
                 new MemoryCacheEntryOptions
                 {
-                    AbsoluteExpirationRelativeToNow = remaining, Size = 1
+                    AbsoluteExpirationRelativeToNow = remaining,
+                    Size = 1
                 });
             return true;
         }
@@ -121,8 +123,12 @@ public sealed class AdministratorLoginChallenges(IDataProtectionProvider protect
 
     private static CookieOptions Options(DateTimeOffset? expires) => new()
     {
-        HttpOnly = true, Secure = true, IsEssential = true, SameSite = SameSiteMode.Lax,
-        Path = "/", Expires = expires
+        HttpOnly = true,
+        Secure = true,
+        IsEssential = true,
+        SameSite = SameSiteMode.Lax,
+        Path = "/",
+        Expires = expires
     };
 
     public void Dispose() => _pending.Dispose();

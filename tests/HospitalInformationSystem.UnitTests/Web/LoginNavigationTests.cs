@@ -1,5 +1,5 @@
 using FluentAssertions;
-using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Application.Models.Auth;
 using HospitalInformationSystem.Web.Components.Authentication;
 
 namespace HospitalInformationSystem.UnitTests.Web;

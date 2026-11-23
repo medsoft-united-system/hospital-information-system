@@ -5,17 +5,17 @@ using System.Text;
 using System.Text.Json;
 using FluentAssertions;
 using HospitalInformationSystem.Api.Hl7;
-using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Hl7Import;
+using HospitalInformationSystem.Application.Models.Patients;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.Security;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Hl7Import;
-using HospitalInformationSystem.Models.Patients;
-using HospitalInformationSystem.Models.Persistence;
-using HospitalInformationSystem.Models.Security;
-using HospitalInformationSystem.Models.ServiceAccounts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using WorkerRole = HospitalInformationSystem.Models.MedicalWorkers.MedicalWorkerRole;
+using WorkerRole = HospitalInformationSystem.Application.Models.MedicalWorkers.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
@@ -281,8 +281,13 @@ public sealed class Lab4Hl7MessageProcessingTests(ServiceAuthenticationApiFactor
             var now = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow();
             var worker = new MedicalWorkerDbo
             {
-                Id = Guid.NewGuid(), FirstName = "Проверка", LastName = "Сообщений", Position = "Сотрудник",
-                Role = WorkerRole.Doctor, CreatedAtUtc = now, UpdatedAtUtc = now
+                Id = Guid.NewGuid(),
+                FirstName = "Проверка",
+                LastName = "Сообщений",
+                Position = "Сотрудник",
+                Role = WorkerRole.Doctor,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
             };
             db.MedicalWorkers.Add(worker);
             await db.SaveChangesAsync();

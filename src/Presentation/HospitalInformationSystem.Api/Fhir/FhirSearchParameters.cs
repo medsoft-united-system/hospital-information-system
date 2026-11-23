@@ -1,5 +1,5 @@
-using HospitalInformationSystem.Models.Fhir;
-using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.Fhir;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.Api.Fhir;
 

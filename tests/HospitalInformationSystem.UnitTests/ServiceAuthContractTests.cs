@@ -1,8 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentAssertions;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.ServiceAuth;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.ServiceAuth;
 
 namespace HospitalInformationSystem.UnitTests;
 

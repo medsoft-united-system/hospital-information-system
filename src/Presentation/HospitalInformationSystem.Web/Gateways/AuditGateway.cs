@@ -1,5 +1,5 @@
 using System.Globalization;
-using HospitalInformationSystem.Models.Security;
+using HospitalInformationSystem.Application.Models.Security;
 
 namespace HospitalInformationSystem.Web.Gateways;
 

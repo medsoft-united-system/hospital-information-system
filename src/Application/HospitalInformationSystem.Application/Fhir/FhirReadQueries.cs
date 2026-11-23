@@ -1,7 +1,7 @@
-using HospitalInformationSystem.Models.Fhir;
-using HospitalInformationSystem.Models.MedicalRecords;
-using HospitalInformationSystem.Models.MedicalWorkers;
-using HospitalInformationSystem.Models.Patients;
+using HospitalInformationSystem.Application.Models.Fhir;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Patients;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.Fhir;

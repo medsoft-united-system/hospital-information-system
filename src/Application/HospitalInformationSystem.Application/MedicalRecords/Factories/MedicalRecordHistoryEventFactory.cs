@@ -1,8 +1,8 @@
 using System.Text.Json;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.MedicalRecords;
-using HospitalInformationSystem.Models.MedicalWorkers;
-using HospitalInformationSystem.Models.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Factories;
 
@@ -18,10 +18,15 @@ public static class MedicalRecordHistoryEventFactory
             throw new DomainValidationException("Результат анализа регистрируется от имени сервисного аккаунта.");
         return new MedicalRecordHistoryEvent
         {
-            Id = Guid.NewGuid(), MedicalRecordId = medicalRecordId, Version = version,
-            OccurredAtUtc = at.ToUniversalTime(), PerformedByMedicalWorkerId = author.Id,
+            Id = Guid.NewGuid(),
+            MedicalRecordId = medicalRecordId,
+            Version = version,
+            OccurredAtUtc = at.ToUniversalTime(),
+            PerformedByMedicalWorkerId = author.Id,
             PerformedByNameSnapshot = $"{author.LastName} {author.FirstName}",
-            PerformedByPositionSnapshot = author.Position, EventType = type, EntityId = entityId,
+            PerformedByPositionSnapshot = author.Position,
+            EventType = type,
+            EntityId = entityId,
             PayloadJson = JsonSerializer.Serialize(payload, PayloadOptions)
         };
     }
@@ -36,11 +41,17 @@ public static class MedicalRecordHistoryEventFactory
         var name = ValidateServiceAuthor(serviceAccountId, serviceAccountName);
         return new MedicalRecordHistoryEvent
         {
-            Id = Guid.NewGuid(), MedicalRecordId = medicalRecordId, Version = version,
-            OccurredAtUtc = at.ToUniversalTime(), AuthorKind = MedicalRecordAuthorKind.ServiceAccount,
-            PerformedByServiceAccountId = serviceAccountId, PerformedByNameSnapshot = name,
+            Id = Guid.NewGuid(),
+            MedicalRecordId = medicalRecordId,
+            Version = version,
+            OccurredAtUtc = at.ToUniversalTime(),
+            AuthorKind = MedicalRecordAuthorKind.ServiceAccount,
+            PerformedByServiceAccountId = serviceAccountId,
+            PerformedByNameSnapshot = name,
             PerformedByPositionSnapshot = type == MedicalRecordEventType.LaboratoryAnalysisResultRecorded
-                ? "LIS" : "HL7 Import", EventType = type, EntityId = entityId,
+                ? "LIS" : "HL7 Import",
+            EventType = type,
+            EntityId = entityId,
             PayloadJson = JsonSerializer.Serialize(payload, PayloadOptions)
         };
     }

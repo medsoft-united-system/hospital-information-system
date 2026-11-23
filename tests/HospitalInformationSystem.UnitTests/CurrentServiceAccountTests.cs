@@ -1,8 +1,8 @@
 using FluentAssertions;
 using HospitalInformationSystem.Application.DI;
-using HospitalInformationSystem.Contracts.Abstractions;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace HospitalInformationSystem.UnitTests;
@@ -16,7 +16,7 @@ public sealed class CurrentServiceAccountTests
         using var scope = services.CreateScope();
         var accessor = scope.ServiceProvider.GetRequiredService<ICurrentServiceAccount>();
 
-        var getIdentity = () => accessor.RequireIdentity();
+        var getIdentity = accessor.RequireIdentity;
 
         getIdentity.Should().Throw<ServiceAccountAccessDeniedException>();
     }

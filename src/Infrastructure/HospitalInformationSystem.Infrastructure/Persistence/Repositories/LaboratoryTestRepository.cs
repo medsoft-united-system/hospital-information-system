@@ -1,8 +1,8 @@
-using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Persistence.Mappings;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.LaboratoryTests;
 using Microsoft.EntityFrameworkCore;
 
 namespace HospitalInformationSystem.Infrastructure.Persistence.Repositories;

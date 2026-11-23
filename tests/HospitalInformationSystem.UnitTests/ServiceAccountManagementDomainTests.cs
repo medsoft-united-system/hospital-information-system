@@ -1,7 +1,7 @@
 using FluentAssertions;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 using HospitalInformationSystem.Application.ServiceAccounts.Factories;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.ServiceAccounts;
 using DomainService = HospitalInformationSystem.Application.ServiceAccounts.Services.ServiceAccountDomainService;
 
 namespace HospitalInformationSystem.UnitTests;

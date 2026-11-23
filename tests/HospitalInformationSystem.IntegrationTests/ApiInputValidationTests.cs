@@ -1,20 +1,12 @@
-using System;
-using System.Collections.Generic;
 using System.Net;
-using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
-using System.Threading.Tasks;
 using FluentAssertions;
-using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Models.MedicalRecords;
-using HospitalInformationSystem.Models.MedicalWorkers;
-using HospitalInformationSystem.Models.Patients;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Patients;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
@@ -64,7 +56,7 @@ public sealed class ApiInputValidationTests(HospitalApiFactory factory) : IClass
         var listBefore = await _client.GetStringAsync("/api/patients");
         data.Remove(field);
         using var request = new HttpRequestMessage(new HttpMethod(method), route)
-            { Content = JsonContent.Create(data) };
+        { Content = JsonContent.Create(data) };
         var response = await _client.SendAsync(request);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await _client.GetStringAsync("/api/patients")).Should().Be(listBefore);
@@ -75,7 +67,10 @@ public sealed class ApiInputValidationTests(HospitalApiFactory factory) : IClass
     {
         var response = await _client.PostAsJsonAsync("/api/patients", new
         {
-            firstName = "Тест", lastName = "Пациент", birthDate = "2000-01-01", sex = "Unknown"
+            firstName = "Тест",
+            lastName = "Пациент",
+            birthDate = "2000-01-01",
+            sex = "Unknown"
         });
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var patient = (await response.Content.ReadFromJsonAsync<PatientDto>())!;
@@ -150,7 +145,10 @@ public sealed class ApiInputValidationTests(HospitalApiFactory factory) : IClass
         "diagnoses" => new() { ["code"] = "N00.00", ["name"] = "Проверка" },
         _ => new()
         {
-            ["firstName"] = "Елена", ["lastName"] = "Проверочная", ["birthDate"] = "2000-01-01", ["sex"] = "Female"
+            ["firstName"] = "Елена",
+            ["lastName"] = "Проверочная",
+            ["birthDate"] = "2000-01-01",
+            ["sex"] = "Female"
         }
     };
 }

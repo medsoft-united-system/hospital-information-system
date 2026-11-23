@@ -1,5 +1,5 @@
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 
 namespace HospitalInformationSystem.Application.ServiceAccounts.Factories;
 

@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Models.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.LaboratoryTests.Commands.SetLaboratoryTestActive;

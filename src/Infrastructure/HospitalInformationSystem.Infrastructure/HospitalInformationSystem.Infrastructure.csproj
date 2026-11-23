@@ -11,9 +11,9 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../../Application/HospitalInformationSystem.Models/HospitalInformationSystem.Models.csproj" />
+    <ProjectReference Include="..\..\Application\HospitalInformationSystem.Application.Models\HospitalInformationSystem.Application.Models.csproj" />
     <ProjectReference Include="../../Application/HospitalInformationSystem.Application/HospitalInformationSystem.Application.csproj" />
-    <ProjectReference Include="../../Application/HospitalInformationSystem.Abstractions/HospitalInformationSystem.Abstractions.csproj" />
-    <ProjectReference Include="../../Application/HospitalInformationSystem.Contracts/HospitalInformationSystem.Contracts.csproj" />
+    <ProjectReference Include="..\..\Application\HospitalInformationSystem.Application.Abstractions\HospitalInformationSystem.Application.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Application\HospitalInformationSystem.Application.Contracts\HospitalInformationSystem.Application.Contracts.csproj" />
   </ItemGroup>
 </Project>

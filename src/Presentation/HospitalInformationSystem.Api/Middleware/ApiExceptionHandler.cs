@@ -1,6 +1,6 @@
 using FluentValidation;
 using HospitalInformationSystem.Api.Security;
-using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Application.Models.Common;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,24 +20,28 @@ public sealed class ApiExceptionHandler(
                 .GroupBy(x => x.PropertyName)
                 .ToDictionary(group => group.Key, group => group.Select(x => x.ErrorMessage).Distinct().ToArray()))
             {
-                Status = 400, Title = "Проверьте введённые данные."
+                Status = 400,
+                Title = "Проверьте введённые данные."
             },
             DomainValidationException => new ProblemDetails
-                { Status = 400, Title = "Некорректные данные.", Detail = exception.Message },
+            { Status = 400, Title = "Некорректные данные.", Detail = exception.Message },
             BadHttpRequestException badRequest => new ProblemDetails
             {
-                Status = badRequest.StatusCode, Title = "Некорректный HTTP-запрос."
+                Status = badRequest.StatusCode,
+                Title = "Некорректный HTTP-запрос."
             },
             ForbiddenOperationException or SetupAccessDeniedException or ServiceAccountAccessDeniedException
                 or ClinicalAccessDeniedException => new ProblemDetails
                 { Status = 403, Title = "Недостаточно прав для выполнения операции." },
             EntityNotFoundException => new ProblemDetails
-                { Status = 404, Title = "Запись не найдена.", Detail = exception.Message },
+            { Status = 404, Title = "Запись не найдена.", Detail = exception.Message },
             DomainEntityNotFoundException => new ProblemDetails
-                { Status = 404, Title = "Запись не найдена.", Detail = exception.Message },
+            { Status = 404, Title = "Запись не найдена.", Detail = exception.Message },
             BusinessConflictException or BusinessRuleConflictException => new ProblemDetails
             {
-                Status = 409, Title = "Операция конфликтует с текущим состоянием данных.", Detail = exception.Message
+                Status = 409,
+                Title = "Операция конфликтует с текущим состоянием данных.",
+                Detail = exception.Message
             },
             _ => new ProblemDetails { Status = 500, Title = "Не удалось выполнить запрос." }
         };
@@ -48,7 +52,7 @@ public sealed class ApiExceptionHandler(
         problem.Instance = context.Request.Path;
         problem.Extensions["traceId"] = context.TraceIdentifier;
         if (!await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
-                { HttpContext = context, ProblemDetails = problem }))
+        { HttpContext = context, ProblemDetails = problem }))
         {
             await context.Response.WriteAsJsonAsync((object)problem, options: null,
                 contentType: "application/problem+json", cancellationToken: cancellationToken);

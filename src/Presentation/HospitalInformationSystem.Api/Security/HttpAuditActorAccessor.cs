@@ -1,9 +1,9 @@
 using System.Security.Claims;
-using HospitalInformationSystem.Contracts.Audit;
+using HospitalInformationSystem.Application.Contracts.Audit;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Security;
+using HospitalInformationSystem.Application.Models.ServiceAuth;
 using HospitalInformationSystem.Infrastructure.Audit;
-using HospitalInformationSystem.Models.Audit;
-using HospitalInformationSystem.Models.Security;
-using HospitalInformationSystem.Models.ServiceAuth;
 
 namespace HospitalInformationSystem.Api.Security;
 

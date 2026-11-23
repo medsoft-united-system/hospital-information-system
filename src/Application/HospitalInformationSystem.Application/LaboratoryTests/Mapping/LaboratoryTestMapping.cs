@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Models.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
 using Riok.Mapperly.Abstractions;
 
 namespace HospitalInformationSystem.Application.LaboratoryTests.Mapping;

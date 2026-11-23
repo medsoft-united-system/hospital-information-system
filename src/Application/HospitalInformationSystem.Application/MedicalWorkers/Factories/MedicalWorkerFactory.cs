@@ -1,6 +1,6 @@
 using HospitalInformationSystem.Application.MedicalWorkers.Services;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
 
 namespace HospitalInformationSystem.Application.MedicalWorkers.Factories;
 
@@ -11,8 +11,11 @@ public static class MedicalWorkerFactory
     {
         var worker = new MedicalWorker
         {
-            Id = Guid.NewGuid(), CreatedAtUtc = now.ToUniversalTime(),
-            FirstName = string.Empty, LastName = string.Empty, Position = string.Empty
+            Id = Guid.NewGuid(),
+            CreatedAtUtc = now.ToUniversalTime(),
+            FirstName = string.Empty,
+            LastName = string.Empty,
+            Position = string.Empty
         };
         MedicalWorkerService.Update(worker, firstName, lastName, position, now, role);
         return worker;

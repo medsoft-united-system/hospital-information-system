@@ -1,9 +1,9 @@
 using System.Text.Json;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.LaboratoryTests;
-using HospitalInformationSystem.Models.MedicalRecords;
-using ContractAnalysisStatus = HospitalInformationSystem.Models.MedicalRecords.LaboratoryAnalysisRequestStatus;
-using DomainAuthorKind = HospitalInformationSystem.Models.MedicalRecords.MedicalRecordAuthorKind;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using ContractAnalysisStatus = HospitalInformationSystem.Application.Models.MedicalRecords.LaboratoryAnalysisRequestStatus;
+using DomainAuthorKind = HospitalInformationSystem.Application.Models.MedicalRecords.MedicalRecordAuthorKind;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Snapshot;
 
@@ -47,138 +47,138 @@ public static class MedicalRecordSnapshotReplay
             switch (item.EventType)
             {
                 case MedicalRecordEventType.MedicalRecordCreated:
-                {
-                    var payload = Read<MedicalRecordCreatedPayload>(item);
-                    Require(
-                        version == 0 && payload.PatientId == record.PatientId &&
-                        item.OccurredAtUtc == record.CreatedAtUtc,
-                        "некорректное событие создания карты");
-                    RequireEntityId(item, record.Id);
-                    break;
-                }
-                case MedicalRecordEventType.DiagnosisAdded:
-                {
-                    var payload = Read<DiagnosisAddedPayload>(item);
-                    RequireEntityId(item, payload.MedicalRecordDiagnosisId);
-                    Require(payload.DiagnosisDefinitionId != Guid.Empty &&
-                            MedicalRecordDiagnosisRules.IsValidCode(payload.Code) &&
-                            MedicalRecordDiagnosisRules.IsValidName(payload.Name),
-                        "неполные данные добавленного диагноза");
-                    Require(MedicalRecordDiagnosisRules.IsValidClinicalTime(payload.DiagnosedAtUtc,
-                            payload.DiagnosedAtOffsetMinutes),
-                        "некорректное клиническое время диагноза");
-                    Require((payload.CodingSystem is null || MedicalRecordDiagnosisRules.IsValidMetadata(payload.CodingSystem)) &&
-                            (payload.DiagnosisType is null || MedicalRecordDiagnosisRules.IsValidMetadata(payload.DiagnosisType)),
-                        "некорректная система кодирования или тип диагноза");
-                    RequireDiagnosisAuthor(item, payload);
-                    Require(serviceAuthor is null || (payload.DiagnosedAtUtc is not null &&
-                            payload.CodingSystem is not null && payload.DiagnosisType is not null),
-                        "неполные данные импортированного диагноза");
-                    Require(diagnosisIds.Add(payload.MedicalRecordDiagnosisId),
-                        "повторное добавление той же записи диагноза");
-                    diagnoses.Add(payload.MedicalRecordDiagnosisId, new MedicalRecordDiagnosisDto(
-                        payload.MedicalRecordDiagnosisId, payload.Code, payload.Name, item.OccurredAtUtc,
-                        humanAuthor, serviceAuthor, payload.DiagnosedAtUtc, payload.DiagnosedAtOffsetMinutes,
-                        payload.CodingSystem, payload.DiagnosisType));
-                    break;
-                }
-                case MedicalRecordEventType.DiagnosisRemoved:
-                {
-                    var payload = Read<DiagnosisRemovedPayload>(item);
-                    RequireEntityId(item, payload.MedicalRecordDiagnosisId);
-                    Require(diagnoses.TryGetValue(payload.MedicalRecordDiagnosisId, out var diagnosis),
-                        "удаление отсутствующего диагноза");
-                    Require(diagnosis!.Code == payload.Code && diagnosis.Name == payload.Name,
-                        "изменён исторический диагноз");
-                    diagnoses.Remove(payload.MedicalRecordDiagnosisId);
-                    break;
-                }
-                case MedicalRecordEventType.PrescriptionAdded:
-                {
-                    var payload = Read<PrescriptionAddedPayload>(item);
-                    RequireEntityId(item, payload.PrescriptionId);
-                    Require(!string.IsNullOrWhiteSpace(payload.Text), "отсутствует текст назначения");
-                    Require(prescriptionIds.Add(payload.PrescriptionId), "повторное добавление того же назначения");
-                    Require(
-                        payload.ReplacesPrescriptionId is null ||
-                        (cancelledPrescriptionIds.Contains(payload.ReplacesPrescriptionId.Value) &&
-                         replacedPrescriptionIds.Add(payload.ReplacesPrescriptionId.Value)),
-                        "заменяемое назначение не было отменено или уже заменено");
-                    prescriptions.Add(payload.PrescriptionId, new PrescriptionDto(payload.PrescriptionId, payload.Text,
-                        item.OccurredAtUtc, humanAuthor!.Value, payload.ReplacesPrescriptionId));
-                    break;
-                }
-                case MedicalRecordEventType.PrescriptionCancelled:
-                {
-                    var payload = Read<PrescriptionCancelledPayload>(item);
-                    RequireEntityId(item, payload.PrescriptionId);
-                    Require(prescriptions.TryGetValue(payload.PrescriptionId, out var prescription),
-                        "отмена отсутствующего назначения");
-                    Require(prescription!.Text == payload.Text, "изменён исторический текст назначения");
-                    prescriptions.Remove(payload.PrescriptionId);
-                    cancelledPrescriptionIds.Add(payload.PrescriptionId);
-                    break;
-                }
-                case MedicalRecordEventType.LaboratoryAnalysisRequested:
-                {
-                    var payload = Read<LaboratoryAnalysisRequestedPayload>(item);
-                    RequireEntityId(item, payload.LaboratoryAnalysisRequestId);
-                    Require(payload.MedicalRecordId == record.Id && payload.PatientId == record.PatientId,
-                        "назначение анализа относится к другой карте или пациенту");
-                    Require(payload.RequestedByMedicalWorkerId == humanAuthor &&
-                            payload.LaboratoryTestDefinitionId != Guid.Empty,
-                        "неверный автор или отсутствующий анализ справочника");
-                    Require(LaboratoryTestDefinitionRules.IsWellFormedCode(payload.LoincCode) &&
-                            payload.LoincCode.Trim() == payload.LoincCode &&
-                            LaboratoryTestDefinitionRules.IsValidDisplayName(payload.DisplayName) &&
-                            payload.DisplayName.Trim() == payload.DisplayName,
-                        "некорректные исторические код или название анализа");
-                    Require(LaboratoryAnalysisRules.IsValidComment(payload.Comment) &&
-                            LaboratoryAnalysisRules.NormalizeComment(payload.Comment) == payload.Comment,
-                        "некорректный комментарий анализа");
-                    Require(payload.AuthoredAtUtc == item.OccurredAtUtc,
-                        "время назначения анализа не совпадает со временем события");
-                    Require(!laboratoryResultIds.Contains(payload.LaboratoryAnalysisRequestId) &&
-                            laboratoryRequests.TryAdd(payload.LaboratoryAnalysisRequestId,
-                                new LaboratoryAnalysisRequestDto(payload.LaboratoryAnalysisRequestId,
-                                    payload.MedicalRecordId, payload.PatientId, payload.RequestedByMedicalWorkerId,
-                                    payload.LaboratoryTestDefinitionId, payload.LoincCode, payload.DisplayName,
-                                    payload.Comment, payload.AuthoredAtUtc, ContractAnalysisStatus.Active, null,
-                                    item.PerformedByNameSnapshot)),
-                        "повторный идентификатор назначения анализа");
-                    break;
-                }
-                case MedicalRecordEventType.LaboratoryAnalysisResultRecorded:
-                {
-                    var payload = Read<LaboratoryAnalysisResultRecordedPayload>(item);
-                    RequireEntityId(item, payload.LaboratoryAnalysisResultId);
-                    Require(laboratoryRequests.TryGetValue(payload.LaboratoryAnalysisRequestId, out var request),
-                        "результат для отсутствующего назначения анализа");
-                    Require(request!.PatientId == payload.PatientId && payload.PatientId == record.PatientId &&
-                            request.LoincCode == payload.LoincCode,
-                        "пациент или код результата не совпадают с назначением");
-                    Require(request.Status == ContractAnalysisStatus.Active && request.Result is null,
-                        "повторная регистрация результата анализа");
-                    Require(payload.LaboratoryAnalysisResultId != payload.LaboratoryAnalysisRequestId &&
-                            !laboratoryRequests.ContainsKey(payload.LaboratoryAnalysisResultId) &&
-                            laboratoryResultIds.Add(payload.LaboratoryAnalysisResultId),
-                        "повторный идентификатор результата анализа");
-                    Require(payload.CreatedByServiceAccountId == serviceAuthor,
-                        "сервисный автор результата не совпадает с автором события");
-                    Require(LaboratoryAnalysisRules.IsValidValue(payload.Value) && payload.Value.Trim() == payload.Value &&
-                            LaboratoryAnalysisRules.IsValidIssuedAt(payload.IssuedAtUtc),
-                        "некорректное значение или время фиксации результата");
-                    Require(payload.ReceivedAtUtc == item.OccurredAtUtc,
-                        "время регистрации результата не совпадает со временем события");
-                    laboratoryRequests[payload.LaboratoryAnalysisRequestId] = request with
                     {
-                        Status = ContractAnalysisStatus.Completed,
-                        Result = new LaboratoryAnalysisResultDto(payload.LaboratoryAnalysisResultId,
-                            payload.LaboratoryAnalysisRequestId, payload.PatientId, payload.Value, payload.IssuedAtUtc,
-                            payload.ReceivedAtUtc, payload.CreatedByServiceAccountId)
-                    };
-                    break;
-                }
+                        var payload = Read<MedicalRecordCreatedPayload>(item);
+                        Require(
+                            version == 0 && payload.PatientId == record.PatientId &&
+                            item.OccurredAtUtc == record.CreatedAtUtc,
+                            "некорректное событие создания карты");
+                        RequireEntityId(item, record.Id);
+                        break;
+                    }
+                case MedicalRecordEventType.DiagnosisAdded:
+                    {
+                        var payload = Read<DiagnosisAddedPayload>(item);
+                        RequireEntityId(item, payload.MedicalRecordDiagnosisId);
+                        Require(payload.DiagnosisDefinitionId != Guid.Empty &&
+                                MedicalRecordDiagnosisRules.IsValidCode(payload.Code) &&
+                                MedicalRecordDiagnosisRules.IsValidName(payload.Name),
+                            "неполные данные добавленного диагноза");
+                        Require(MedicalRecordDiagnosisRules.IsValidClinicalTime(payload.DiagnosedAtUtc,
+                                payload.DiagnosedAtOffsetMinutes),
+                            "некорректное клиническое время диагноза");
+                        Require((payload.CodingSystem is null || MedicalRecordDiagnosisRules.IsValidMetadata(payload.CodingSystem)) &&
+                                (payload.DiagnosisType is null || MedicalRecordDiagnosisRules.IsValidMetadata(payload.DiagnosisType)),
+                            "некорректная система кодирования или тип диагноза");
+                        RequireDiagnosisAuthor(item, payload);
+                        Require(serviceAuthor is null || (payload.DiagnosedAtUtc is not null &&
+                                payload.CodingSystem is not null && payload.DiagnosisType is not null),
+                            "неполные данные импортированного диагноза");
+                        Require(diagnosisIds.Add(payload.MedicalRecordDiagnosisId),
+                            "повторное добавление той же записи диагноза");
+                        diagnoses.Add(payload.MedicalRecordDiagnosisId, new MedicalRecordDiagnosisDto(
+                            payload.MedicalRecordDiagnosisId, payload.Code, payload.Name, item.OccurredAtUtc,
+                            humanAuthor, serviceAuthor, payload.DiagnosedAtUtc, payload.DiagnosedAtOffsetMinutes,
+                            payload.CodingSystem, payload.DiagnosisType));
+                        break;
+                    }
+                case MedicalRecordEventType.DiagnosisRemoved:
+                    {
+                        var payload = Read<DiagnosisRemovedPayload>(item);
+                        RequireEntityId(item, payload.MedicalRecordDiagnosisId);
+                        Require(diagnoses.TryGetValue(payload.MedicalRecordDiagnosisId, out var diagnosis),
+                            "удаление отсутствующего диагноза");
+                        Require(diagnosis!.Code == payload.Code && diagnosis.Name == payload.Name,
+                            "изменён исторический диагноз");
+                        diagnoses.Remove(payload.MedicalRecordDiagnosisId);
+                        break;
+                    }
+                case MedicalRecordEventType.PrescriptionAdded:
+                    {
+                        var payload = Read<PrescriptionAddedPayload>(item);
+                        RequireEntityId(item, payload.PrescriptionId);
+                        Require(!string.IsNullOrWhiteSpace(payload.Text), "отсутствует текст назначения");
+                        Require(prescriptionIds.Add(payload.PrescriptionId), "повторное добавление того же назначения");
+                        Require(
+                            payload.ReplacesPrescriptionId is null ||
+                            (cancelledPrescriptionIds.Contains(payload.ReplacesPrescriptionId.Value) &&
+                             replacedPrescriptionIds.Add(payload.ReplacesPrescriptionId.Value)),
+                            "заменяемое назначение не было отменено или уже заменено");
+                        prescriptions.Add(payload.PrescriptionId, new PrescriptionDto(payload.PrescriptionId, payload.Text,
+                            item.OccurredAtUtc, humanAuthor!.Value, payload.ReplacesPrescriptionId));
+                        break;
+                    }
+                case MedicalRecordEventType.PrescriptionCancelled:
+                    {
+                        var payload = Read<PrescriptionCancelledPayload>(item);
+                        RequireEntityId(item, payload.PrescriptionId);
+                        Require(prescriptions.TryGetValue(payload.PrescriptionId, out var prescription),
+                            "отмена отсутствующего назначения");
+                        Require(prescription!.Text == payload.Text, "изменён исторический текст назначения");
+                        prescriptions.Remove(payload.PrescriptionId);
+                        cancelledPrescriptionIds.Add(payload.PrescriptionId);
+                        break;
+                    }
+                case MedicalRecordEventType.LaboratoryAnalysisRequested:
+                    {
+                        var payload = Read<LaboratoryAnalysisRequestedPayload>(item);
+                        RequireEntityId(item, payload.LaboratoryAnalysisRequestId);
+                        Require(payload.MedicalRecordId == record.Id && payload.PatientId == record.PatientId,
+                            "назначение анализа относится к другой карте или пациенту");
+                        Require(payload.RequestedByMedicalWorkerId == humanAuthor &&
+                                payload.LaboratoryTestDefinitionId != Guid.Empty,
+                            "неверный автор или отсутствующий анализ справочника");
+                        Require(LaboratoryTestDefinitionRules.IsWellFormedCode(payload.LoincCode) &&
+                                payload.LoincCode.Trim() == payload.LoincCode &&
+                                LaboratoryTestDefinitionRules.IsValidDisplayName(payload.DisplayName) &&
+                                payload.DisplayName.Trim() == payload.DisplayName,
+                            "некорректные исторические код или название анализа");
+                        Require(LaboratoryAnalysisRules.IsValidComment(payload.Comment) &&
+                                LaboratoryAnalysisRules.NormalizeComment(payload.Comment) == payload.Comment,
+                            "некорректный комментарий анализа");
+                        Require(payload.AuthoredAtUtc == item.OccurredAtUtc,
+                            "время назначения анализа не совпадает со временем события");
+                        Require(!laboratoryResultIds.Contains(payload.LaboratoryAnalysisRequestId) &&
+                                laboratoryRequests.TryAdd(payload.LaboratoryAnalysisRequestId,
+                                    new LaboratoryAnalysisRequestDto(payload.LaboratoryAnalysisRequestId,
+                                        payload.MedicalRecordId, payload.PatientId, payload.RequestedByMedicalWorkerId,
+                                        payload.LaboratoryTestDefinitionId, payload.LoincCode, payload.DisplayName,
+                                        payload.Comment, payload.AuthoredAtUtc, ContractAnalysisStatus.Active, null,
+                                        item.PerformedByNameSnapshot)),
+                            "повторный идентификатор назначения анализа");
+                        break;
+                    }
+                case MedicalRecordEventType.LaboratoryAnalysisResultRecorded:
+                    {
+                        var payload = Read<LaboratoryAnalysisResultRecordedPayload>(item);
+                        RequireEntityId(item, payload.LaboratoryAnalysisResultId);
+                        Require(laboratoryRequests.TryGetValue(payload.LaboratoryAnalysisRequestId, out var request),
+                            "результат для отсутствующего назначения анализа");
+                        Require(request!.PatientId == payload.PatientId && payload.PatientId == record.PatientId &&
+                                request.LoincCode == payload.LoincCode,
+                            "пациент или код результата не совпадают с назначением");
+                        Require(request.Status == ContractAnalysisStatus.Active && request.Result is null,
+                            "повторная регистрация результата анализа");
+                        Require(payload.LaboratoryAnalysisResultId != payload.LaboratoryAnalysisRequestId &&
+                                !laboratoryRequests.ContainsKey(payload.LaboratoryAnalysisResultId) &&
+                                laboratoryResultIds.Add(payload.LaboratoryAnalysisResultId),
+                            "повторный идентификатор результата анализа");
+                        Require(payload.CreatedByServiceAccountId == serviceAuthor,
+                            "сервисный автор результата не совпадает с автором события");
+                        Require(LaboratoryAnalysisRules.IsValidValue(payload.Value) && payload.Value.Trim() == payload.Value &&
+                                LaboratoryAnalysisRules.IsValidIssuedAt(payload.IssuedAtUtc),
+                            "некорректное значение или время фиксации результата");
+                        Require(payload.ReceivedAtUtc == item.OccurredAtUtc,
+                            "время регистрации результата не совпадает со временем события");
+                        laboratoryRequests[payload.LaboratoryAnalysisRequestId] = request with
+                        {
+                            Status = ContractAnalysisStatus.Completed,
+                            Result = new LaboratoryAnalysisResultDto(payload.LaboratoryAnalysisResultId,
+                                payload.LaboratoryAnalysisRequestId, payload.PatientId, payload.Value, payload.IssuedAtUtc,
+                                payload.ReceivedAtUtc, payload.CreatedByServiceAccountId)
+                        };
+                        break;
+                    }
                 default:
                     throw Corrupted($"неизвестный тип события {item.EventType}");
             }

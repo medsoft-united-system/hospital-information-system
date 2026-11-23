@@ -2,17 +2,17 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
-using HospitalInformationSystem.Abstractions.Repositories;
-using HospitalInformationSystem.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.UnitOfWork;
 using HospitalInformationSystem.Application.MedicalWorkers.Commands.CreateMedicalWorker;
 using HospitalInformationSystem.Application.MedicalWorkers.Commands.DeleteMedicalWorker;
 using HospitalInformationSystem.Application.MedicalWorkers.Commands.UpdateMedicalWorker;
 using HospitalInformationSystem.Application.MedicalWorkers.Factories;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
 using Moq;
 using Xunit;
-using ContractRole = HospitalInformationSystem.Models.Security.MedicalWorkerRole;
+using ContractRole = HospitalInformationSystem.Application.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.UnitTests;
 

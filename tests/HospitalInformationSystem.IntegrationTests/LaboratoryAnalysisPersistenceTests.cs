@@ -1,18 +1,18 @@
 using System.Security.Cryptography;
 using FluentAssertions;
-using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
 using HospitalInformationSystem.Application.LaboratoryTests.Factories;
 using HospitalInformationSystem.Application.MedicalRecords.Factories;
 using HospitalInformationSystem.Application.MedicalRecords.Services;
 using HospitalInformationSystem.Application.MedicalRecords.Snapshot;
 using HospitalInformationSystem.Application.MedicalWorkers.Factories;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Persistence;
 using HospitalInformationSystem.Application.ServiceAccounts.Factories;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.LaboratoryTests;
-using HospitalInformationSystem.Models.MedicalRecords;
-using HospitalInformationSystem.Models.MedicalWorkers;
-using HospitalInformationSystem.Models.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -96,9 +96,13 @@ public sealed class LaboratoryAnalysisPersistenceTests(HospitalApiFactory factor
         await db.SaveChangesAsync();
         db.LaboratoryAnalysisRequests.Add(new LaboratoryAnalysisRequestDbo
         {
-            Id = Guid.NewGuid(), MedicalRecordId = state.RecordId, PatientId = other.Id,
-            RequestedByMedicalWorkerId = state.Doctor.Id, LaboratoryTestDefinitionId = state.Definition.Id,
-            LoincCodeSnapshot = state.Definition.LoincCode, DisplayNameSnapshot = state.Definition.DisplayName,
+            Id = Guid.NewGuid(),
+            MedicalRecordId = state.RecordId,
+            PatientId = other.Id,
+            RequestedByMedicalWorkerId = state.Doctor.Id,
+            LaboratoryTestDefinitionId = state.Definition.Id,
+            LoincCodeSnapshot = state.Definition.LoincCode,
+            DisplayNameSnapshot = state.Definition.DisplayName,
             AuthoredAtUtc = T0.AddMinutes(1)
         });
 
@@ -179,10 +183,16 @@ public sealed class LaboratoryAnalysisPersistenceTests(HospitalApiFactory factor
         var state = await CreateStateAsync(scope.ServiceProvider);
         var history = new MedicalRecordHistoryEventDbo
         {
-            Id = Guid.NewGuid(), MedicalRecordId = state.RecordId, Version = 2, OccurredAtUtc = T0.AddMinutes(1),
-            AuthorKind = MedicalRecordAuthorKind.ServiceAccount, PerformedByServiceAccountId = state.ServiceId,
-            PerformedByNameSnapshot = state.ServiceName, PerformedByPositionSnapshot = "LIS",
-            EventType = "LaboratoryAnalysisResultRecorded", PayloadJson = "{}"
+            Id = Guid.NewGuid(),
+            MedicalRecordId = state.RecordId,
+            Version = 2,
+            OccurredAtUtc = T0.AddMinutes(1),
+            AuthorKind = MedicalRecordAuthorKind.ServiceAccount,
+            PerformedByServiceAccountId = state.ServiceId,
+            PerformedByNameSnapshot = state.ServiceName,
+            PerformedByPositionSnapshot = "LIS",
+            EventType = "LaboratoryAnalysisResultRecorded",
+            PayloadJson = "{}"
         };
         switch (invalid)
         {
@@ -237,23 +247,37 @@ public sealed class LaboratoryAnalysisPersistenceTests(HospitalApiFactory factor
             SHA256.HashData("test-only-laboratory-key"u8), T0);
         db.MedicalWorkers.Add(new MedicalWorkerDbo
         {
-            Id = doctor.Id, FirstName = doctor.FirstName, LastName = doctor.LastName, Position = doctor.Position,
-            Role = doctor.Role, CreatedAtUtc = T0, UpdatedAtUtc = T0
+            Id = doctor.Id,
+            FirstName = doctor.FirstName,
+            LastName = doctor.LastName,
+            Position = doctor.Position,
+            Role = doctor.Role,
+            CreatedAtUtc = T0,
+            UpdatedAtUtc = T0
         });
         db.Patients.Add(patient);
         db.ServiceAccounts.Add(new ServiceAccountDbo
         {
-            Id = service.Id, Name = service.Name, NormalizedName = service.NormalizedName, Role = service.Role,
-            ApiKeyHash = service.ApiKeyHash, AuthenticationVersion = service.AuthenticationVersion,
-            CreatedAtUtc = T0, UpdatedAtUtc = T0
+            Id = service.Id,
+            Name = service.Name,
+            NormalizedName = service.NormalizedName,
+            Role = service.Role,
+            ApiKeyHash = service.ApiKeyHash,
+            AuthenticationVersion = service.AuthenticationVersion,
+            CreatedAtUtc = T0,
+            UpdatedAtUtc = T0
         });
         var domainDefinition = LaboratoryTestDefinitionFactory.Create(
             NewCode(),
             "Синтетическое исследование для проверки хранения", T0);
         db.LaboratoryTestDefinitions.Add(new LaboratoryTestDefinitionDbo
         {
-            Id = domainDefinition.Id, LoincCode = domainDefinition.LoincCode, DisplayName = domainDefinition.DisplayName,
-            IsActive = true, CreatedAtUtc = T0, UpdatedAtUtc = T0
+            Id = domainDefinition.Id,
+            LoincCode = domainDefinition.LoincCode,
+            DisplayName = domainDefinition.DisplayName,
+            IsActive = true,
+            CreatedAtUtc = T0,
+            UpdatedAtUtc = T0
         });
         await db.SaveChangesAsync();
         var record = MedicalRecordFactory.Create(patient.Id, doctor, T0);
@@ -276,8 +300,12 @@ public sealed class LaboratoryAnalysisPersistenceTests(HospitalApiFactory factor
 
     private static LaboratoryAnalysisResultDbo NewResult(Guid requestId, State state) => new()
     {
-        Id = Guid.NewGuid(), LaboratoryAnalysisRequestId = requestId, PatientId = state.PatientId,
-        Value = "142", IssuedAtUtc = T0.AddMinutes(2), ReceivedAtUtc = T0.AddMinutes(3),
+        Id = Guid.NewGuid(),
+        LaboratoryAnalysisRequestId = requestId,
+        PatientId = state.PatientId,
+        Value = "142",
+        IssuedAtUtc = T0.AddMinutes(2),
+        ReceivedAtUtc = T0.AddMinutes(3),
         CreatedByServiceAccountId = state.ServiceId
     };
 
@@ -298,8 +326,13 @@ public sealed class LaboratoryAnalysisPersistenceTests(HospitalApiFactory factor
 
     private static PatientDbo NewPatient() => new()
     {
-        Id = Guid.NewGuid(), FirstName = "Пациент", LastName = "Лаборатории", BirthDate = new DateOnly(1990, 1, 1),
-        Sex = 1, CreatedAtUtc = T0, UpdatedAtUtc = T0
+        Id = Guid.NewGuid(),
+        FirstName = "Пациент",
+        LastName = "Лаборатории",
+        BirthDate = new DateOnly(1990, 1, 1),
+        Sex = 1,
+        CreatedAtUtc = T0,
+        UpdatedAtUtc = T0
     };
 
     private static async Task AssertSaveConflictAsync(HospitalDbContext db, string sqlState)

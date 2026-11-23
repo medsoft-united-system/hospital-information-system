@@ -1,8 +1,8 @@
 using System.Net;
 using System.Reflection;
 using FluentAssertions;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Security;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Components.Authentication;
 using HospitalInformationSystem.Web.Gateways;

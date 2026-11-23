@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Abstractions.Transactions;
+using HospitalInformationSystem.Application.Abstractions.Transactions;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;

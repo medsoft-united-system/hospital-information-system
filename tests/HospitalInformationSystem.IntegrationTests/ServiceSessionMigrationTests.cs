@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using FluentAssertions;
+using HospitalInformationSystem.Application.Models.Persistence;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Models.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -29,8 +29,13 @@ public sealed class ServiceSessionMigrationTests
         var hash = SHA256.HashData("existing-l6-service-key"u8);
         var account = new ServiceAccountDbo
         {
-            Id = Guid.NewGuid(), Name = "lis.before-sessions", NormalizedName = "LIS.BEFORE-SESSIONS",
-            ApiKeyHash = hash, AuthenticationVersion = 7, CreatedAtUtc = at, UpdatedAtUtc = at
+            Id = Guid.NewGuid(),
+            Name = "lis.before-sessions",
+            NormalizedName = "LIS.BEFORE-SESSIONS",
+            ApiKeyHash = hash,
+            AuthenticationVersion = 7,
+            CreatedAtUtc = at,
+            UpdatedAtUtc = at
         };
         db.ServiceAccounts.Add(account);
         await db.SaveChangesAsync();
@@ -52,9 +57,13 @@ public sealed class ServiceSessionMigrationTests
         await migrator.MigrateAsync(SessionMigration);
         var session = new ServiceRefreshSessionDbo
         {
-            Id = Guid.NewGuid(), ServiceAccountId = account.Id, FamilyId = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
+            ServiceAccountId = account.Id,
+            FamilyId = Guid.NewGuid(),
             TokenHash = Convert.ToHexStringLower(SHA256.HashData("migration-test-refresh"u8)),
-            AuthenticationVersion = 7, CreatedAtUtc = at.AddMinutes(1), ExpiresAtUtc = at.AddDays(7)
+            AuthenticationVersion = 7,
+            CreatedAtUtc = at.AddMinutes(1),
+            ExpiresAtUtc = at.AddDays(7)
         };
         db.ServiceRefreshSessions.Add(session);
         await db.SaveChangesAsync();

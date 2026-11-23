@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Security;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Authentication;
 
@@ -206,7 +206,8 @@ public sealed class BrowserTabSessionHandlerTests
         new(new BrowserSessionHandler(state, csrf, operations, ApiOrigin, tab)
         {
             InnerHandler = new ResponseHandler(send)
-        }) { BaseAddress = ApiOrigin };
+        })
+        { BaseAddress = ApiOrigin };
 
     private static HttpResponseMessage Json<T>(T value) => new(HttpStatusCode.OK) { Content = JsonContent.Create(value) };
 

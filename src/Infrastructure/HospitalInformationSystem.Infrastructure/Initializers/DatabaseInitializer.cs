@@ -1,9 +1,9 @@
 using HospitalInformationSystem.Application.Diagnoses.Factories;
 using HospitalInformationSystem.Application.MedicalWorkers.Factories;
 using HospitalInformationSystem.Application.MedicalWorkers.Services;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Persistence.Mappings;
-using HospitalInformationSystem.Models.MedicalWorkers;
 using Microsoft.EntityFrameworkCore;
 
 namespace HospitalInformationSystem.Infrastructure.Initializers;

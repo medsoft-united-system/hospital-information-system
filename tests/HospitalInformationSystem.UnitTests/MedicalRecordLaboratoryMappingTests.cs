@@ -4,7 +4,7 @@ using HospitalInformationSystem.Application.MedicalRecords.Factories;
 using HospitalInformationSystem.Application.MedicalRecords.Mapping;
 using HospitalInformationSystem.Application.MedicalRecords.Services;
 using HospitalInformationSystem.Application.MedicalWorkers.Factories;
-using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
 
 namespace HospitalInformationSystem.UnitTests;
 

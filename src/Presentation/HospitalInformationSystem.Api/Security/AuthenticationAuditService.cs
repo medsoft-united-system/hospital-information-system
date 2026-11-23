@@ -1,7 +1,7 @@
-using HospitalInformationSystem.Contracts.Audit;
+using HospitalInformationSystem.Application.Contracts.Audit;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Models.Audit;
-using HospitalInformationSystem.Models.Security;
 
 namespace HospitalInformationSystem.Api.Security;
 
@@ -17,8 +17,10 @@ public sealed class AuthenticationAuditService(IAuditWriter audit, HospitalDbCon
         audit.Append(AuditEventType.LoginFailed, "Вход отклонён.",
             new AuditMetadata
             {
-                Action = "login", AttemptedUserName = Sanitize(attemptedUserName, 128),
-                RemoteIp = RemoteIp(), Outcome = "invalid-credentials"
+                Action = "login",
+                AttemptedUserName = Sanitize(attemptedUserName, 128),
+                RemoteIp = RemoteIp(),
+                Outcome = "invalid-credentials"
             }, AnonymousActor());
         await db.SaveChangesAsync(cancellationToken);
     }

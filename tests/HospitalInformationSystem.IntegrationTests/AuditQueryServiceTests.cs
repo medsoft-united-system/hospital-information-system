@@ -2,10 +2,10 @@ using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 using HospitalInformationSystem.Application.Audit.Services;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Audit;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Models.Audit;
-using HospitalInformationSystem.Models.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -97,7 +97,7 @@ public sealed class AuditQueryServiceTests(HospitalApiFactory factory) : IClassF
         {
             writer.Append(AuditEventType.AccountChanged, "Активность аккаунта изменена.",
                 new AuditMetadata { Action = "activity-change", TargetId = Guid.NewGuid() });
-            eventId = db.ChangeTracker.Entries<HospitalInformationSystem.Models.Persistence.AuditEventDbo>()
+            eventId = db.ChangeTracker.Entries<Application.Models.Persistence.AuditEventDbo>()
                 .Single().Entity.EventId;
             await db.SaveChangesAsync(CancellationToken.None);
             await transaction.RollbackAsync(CancellationToken.None);

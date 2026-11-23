@@ -39,7 +39,11 @@ internal static class Hl7Text
                     throw new Hl7DecodeException(Hl7FailureKind.Protocol);
                 result.Append(value[index + 1] switch
                 {
-                    'F' => '|', 'S' => '^', 'R' => '~', 'E' => '\\', 'T' => '&',
+                    'F' => '|',
+                    'S' => '^',
+                    'R' => '~',
+                    'E' => '\\',
+                    'T' => '&',
                     _ => throw new Hl7DecodeException(Hl7FailureKind.Protocol)
                 });
                 index += 2;
@@ -60,7 +64,11 @@ internal static class Hl7Text
         foreach (var c in value)
             result.Append(c switch
             {
-                '|' => "\\F\\", '^' => "\\S\\", '~' => "\\R\\", '\\' => "\\E\\", '&' => "\\T\\",
+                '|' => "\\F\\",
+                '^' => "\\S\\",
+                '~' => "\\R\\",
+                '\\' => "\\E\\",
+                '&' => "\\T\\",
                 _ when char.IsControl(c) => throw new ArgumentException("HL7 text contains a control character."),
                 _ => c.ToString()
             });

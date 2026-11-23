@@ -1,7 +1,7 @@
 using FluentAssertions;
+using HospitalInformationSystem.Application.Models.Fhir;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Persistence.Repositories;
-using HospitalInformationSystem.Models.Fhir;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -62,7 +62,9 @@ public sealed class FhirReadPaginationMigrationTests
         var stored = await db.LaboratoryAnalysisRequests.AsNoTracking().OrderBy(x => x.Id)
             .Select(x => new
             {
-                x.Id, x.AuthoredAtUtc, WireAtUtc = EF.Property<DateTimeOffset>(x, "AuthoredAtFhirUtc")
+                x.Id,
+                x.AuthoredAtUtc,
+                WireAtUtc = EF.Property<DateTimeOffset>(x, "AuthoredAtFhirUtc")
             }).ToArrayAsync();
         stored.Select(x => x.AuthoredAtUtc).Should().Equal(requests.Select(x => x.AuthoredAtUtc));
         stored.Select(x => x.WireAtUtc).Should().Equal(at, at, at.AddMilliseconds(1));

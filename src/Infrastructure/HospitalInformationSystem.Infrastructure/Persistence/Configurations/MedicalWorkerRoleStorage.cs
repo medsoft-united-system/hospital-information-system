@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
 
 namespace HospitalInformationSystem.Infrastructure.Persistence.Configurations;
 

@@ -1,6 +1,6 @@
 using System.Globalization;
-using HospitalInformationSystem.Models.Hl7Import;
-using HospitalInformationSystem.Models.Patients;
+using HospitalInformationSystem.Application.Models.Hl7Import;
+using HospitalInformationSystem.Application.Models.Patients;
 using static HospitalInformationSystem.Api.Hl7.Hl7Profile;
 
 namespace HospitalInformationSystem.Api.Hl7;
@@ -36,7 +36,9 @@ internal static class Hl7PatientMapper
             throw new Hl7DecodeException(Hl7FailureKind.Validation);
         var sex = Hl7Text.Atom(Field(pid, 8)) switch
         {
-            "M" => AdministrativeSex.Male, "F" => AdministrativeSex.Female, "U" => AdministrativeSex.Unknown,
+            "M" => AdministrativeSex.Male,
+            "F" => AdministrativeSex.Female,
+            "U" => AdministrativeSex.Unknown,
             _ => throw new Hl7DecodeException(Hl7FailureKind.Validation)
         };
         var diagnoses = new List<ImportedDiagnosisInput>(dg1.Length);
@@ -51,15 +53,23 @@ internal static class Hl7PatientMapper
                 string.Join('^', type) == "U^Unspecified^99MEDSOFT");
             diagnoses.Add(new ImportedDiagnosisInput
             {
-                Code = RequiredClinical(diagnosis[0], 32, 3), Title = RequiredClinical(diagnosis[1], 256, 3),
-                CodingSystem = diagnosis[2], DiagnosedAt = ReadTime(Field(segment, 5), Hl7FailureKind.Validation),
+                Code = RequiredClinical(diagnosis[0], 32, 3),
+                Title = RequiredClinical(diagnosis[1], 256, 3),
+                CodingSystem = diagnosis[2],
+                DiagnosedAt = ReadTime(Field(segment, 5), Hl7FailureKind.Validation),
                 DiagnosisType = type[0]
             });
         }
         return new ImportedPatientInput
         {
-            SourceSystem = sourceSystem, ExternalPatientId = externalId, LastName = lastName, FirstName = firstName,
-            MiddleName = name[2].Length == 0 ? null : name[2], BirthDate = birthDate, Sex = sex, Diagnoses = diagnoses
+            SourceSystem = sourceSystem,
+            ExternalPatientId = externalId,
+            LastName = lastName,
+            FirstName = firstName,
+            MiddleName = name[2].Length == 0 ? null : name[2],
+            BirthDate = birthDate,
+            Sex = sex,
+            Diagnoses = diagnoses
         };
     }
 

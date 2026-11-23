@@ -1,7 +1,7 @@
-using HospitalInformationSystem.Abstractions.Repositories;
-using HospitalInformationSystem.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.UnitOfWork;
 using HospitalInformationSystem.Application.MedicalWorkers.Factories;
-using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.MedicalWorkers.Commands.CreateMedicalWorker;

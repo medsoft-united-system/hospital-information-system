@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 using Riok.Mapperly.Abstractions;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Mapping;

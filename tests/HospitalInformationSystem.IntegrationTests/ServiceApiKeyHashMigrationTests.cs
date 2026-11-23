@@ -1,9 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
 using FluentAssertions;
+using HospitalInformationSystem.Application.Models.Persistence;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.ServiceAccounts;
-using HospitalInformationSystem.Models.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -87,8 +87,13 @@ public sealed class ServiceApiKeyHashMigrationTests
 
     private static ServiceAccountDbo Account(string name, byte[] hash, DateTimeOffset at) => new()
     {
-        Id = Guid.NewGuid(), Name = name, NormalizedName = name.ToUpperInvariant(),
-        ApiKeyHash = hash, AuthenticationVersion = 7, CreatedAtUtc = at, UpdatedAtUtc = at
+        Id = Guid.NewGuid(),
+        Name = name,
+        NormalizedName = name.ToUpperInvariant(),
+        ApiKeyHash = hash,
+        AuthenticationVersion = 7,
+        CreatedAtUtc = at,
+        UpdatedAtUtc = at
     };
 
     private static async Task AssertUnchangedAsync(HospitalDbContext db, ServiceAccountDbo expected)

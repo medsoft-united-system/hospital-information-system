@@ -5,9 +5,9 @@ using HospitalInformationSystem.Application.MedicalRecords.Factories;
 using HospitalInformationSystem.Application.MedicalRecords.Services;
 using HospitalInformationSystem.Application.MedicalRecords.Snapshot;
 using HospitalInformationSystem.Application.MedicalWorkers.Factories;
-using HospitalInformationSystem.Models.MedicalRecords;
-using HospitalInformationSystem.Models.MedicalWorkers;
-using ContractStatus = HospitalInformationSystem.Models.MedicalRecords.LaboratoryAnalysisRequestStatus;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using ContractStatus = HospitalInformationSystem.Application.Models.MedicalRecords.LaboratoryAnalysisRequestStatus;
 
 namespace HospitalInformationSystem.UnitTests;
 
@@ -54,8 +54,11 @@ public sealed class LaboratoryAnalysisSnapshotTests
         var (record, request) = Scenario();
         var historicalRecord = new MedicalRecord
         {
-            Id = record.Id, PatientId = record.PatientId, CreatedAtUtc = record.CreatedAtUtc,
-            Version = record.Version, HistoryEvents = record.HistoryEvents
+            Id = record.Id,
+            PatientId = record.PatientId,
+            CreatedAtUtc = record.CreatedAtUtc,
+            Version = record.Version,
+            HistoryEvents = record.HistoryEvents
         };
 
         var before = MedicalRecordSnapshotReplay.Build(historicalRecord, historicalRecord.HistoryEvents,
@@ -236,7 +239,9 @@ public sealed class LaboratoryAnalysisSnapshotTests
         var target = invalid == "service-request" ? record.HistoryEvents.ElementAt(1) : record.HistoryEvents.Last();
         var corrupted = new MedicalRecordHistoryEvent
         {
-            Id = target.Id, MedicalRecordId = target.MedicalRecordId, Version = target.Version,
+            Id = target.Id,
+            MedicalRecordId = target.MedicalRecordId,
+            Version = target.Version,
             OccurredAtUtc = target.OccurredAtUtc,
             AuthorKind = invalid switch
             {
@@ -248,7 +253,9 @@ public sealed class LaboratoryAnalysisSnapshotTests
             PerformedByServiceAccountId = invalid is "human-result" or "none" ? null : ServiceId,
             PerformedByNameSnapshot = target.PerformedByNameSnapshot,
             PerformedByPositionSnapshot = target.PerformedByPositionSnapshot,
-            EventType = target.EventType, EntityId = target.EntityId, PayloadJson = target.PayloadJson
+            EventType = target.EventType,
+            EntityId = target.EntityId,
+            PayloadJson = target.PayloadJson
         };
         var history = record.HistoryEvents.Select(x => x.Id == target.Id ? corrupted : x);
 
@@ -296,13 +303,18 @@ public sealed class LaboratoryAnalysisSnapshotTests
 
     private static MedicalRecordHistoryEvent Copy(MedicalRecordHistoryEvent item, string? payload = null,
         Guid? entityId = null, long? version = null) => new()
-    {
-        Id = Guid.NewGuid(), MedicalRecordId = item.MedicalRecordId, Version = version ?? item.Version,
-        OccurredAtUtc = item.OccurredAtUtc, AuthorKind = item.AuthorKind,
-        PerformedByMedicalWorkerId = item.PerformedByMedicalWorkerId,
-        PerformedByServiceAccountId = item.PerformedByServiceAccountId,
-        PerformedByNameSnapshot = item.PerformedByNameSnapshot,
-        PerformedByPositionSnapshot = item.PerformedByPositionSnapshot,
-        EventType = item.EventType, EntityId = entityId ?? item.EntityId, PayloadJson = payload ?? item.PayloadJson
-    };
+        {
+            Id = Guid.NewGuid(),
+            MedicalRecordId = item.MedicalRecordId,
+            Version = version ?? item.Version,
+            OccurredAtUtc = item.OccurredAtUtc,
+            AuthorKind = item.AuthorKind,
+            PerformedByMedicalWorkerId = item.PerformedByMedicalWorkerId,
+            PerformedByServiceAccountId = item.PerformedByServiceAccountId,
+            PerformedByNameSnapshot = item.PerformedByNameSnapshot,
+            PerformedByPositionSnapshot = item.PerformedByPositionSnapshot,
+            EventType = item.EventType,
+            EntityId = entityId ?? item.EntityId,
+            PayloadJson = payload ?? item.PayloadJson
+        };
 }

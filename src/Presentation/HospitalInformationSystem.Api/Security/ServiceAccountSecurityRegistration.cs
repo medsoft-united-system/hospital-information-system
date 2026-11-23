@@ -1,12 +1,12 @@
 using System.Threading.RateLimiting;
-using HospitalInformationSystem.Contracts.Abstractions;
-using HospitalInformationSystem.Contracts.Hl7Import;
-using HospitalInformationSystem.Contracts.ServiceAccounts;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Contracts.Hl7Import;
+using HospitalInformationSystem.Application.Contracts.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Hl7Import;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.ServiceAuth;
 using HospitalInformationSystem.Infrastructure.ServiceAccounts.Tokens;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Hl7Import;
-using HospitalInformationSystem.Models.ServiceAccounts;
-using HospitalInformationSystem.Models.ServiceAuth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -79,7 +79,10 @@ public static class ServiceAccountSecurityRegistration
             RateLimitPartition.GetSlidingWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "local",
                 _ => new SlidingWindowRateLimiterOptions
                 {
-                    PermitLimit = permitLimit, Window = TimeSpan.FromMinutes(5), SegmentsPerWindow = 5, QueueLimit = 0
+                    PermitLimit = permitLimit,
+                    Window = TimeSpan.FromMinutes(5),
+                    SegmentsPerWindow = 5,
+                    QueueLimit = 0
                 })));
         return services;
     }

@@ -326,11 +326,13 @@ public sealed class FhirObservationReaderTests
 
     private static JsonObject Valid() => new()
     {
-        ["resourceType"] = "Observation", ["status"] = "final",
+        ["resourceType"] = "Observation",
+        ["status"] = "final",
         ["code"] = JsonNode.Parse("""{"coding":[{"system":"http://loinc.org","code":"2345-7"}]}"""),
         ["subject"] = new JsonObject { ["reference"] = $"Patient/{PatientId:D}" },
         ["basedOn"] = new JsonArray(new JsonObject { ["reference"] = $"ServiceRequest/{RequestId:D}" }),
-        ["issued"] = "2026-11-09T10:05:00Z", ["valueString"] = "5.6"
+        ["issued"] = "2026-11-09T10:05:00Z",
+        ["valueString"] = "5.6"
     };
 
     private static Task<FhirObservationInput> Read(JsonObject body) =>

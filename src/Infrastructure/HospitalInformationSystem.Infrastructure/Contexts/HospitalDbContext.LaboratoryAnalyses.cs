@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Models.Persistence;
+using HospitalInformationSystem.Application.Models.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace HospitalInformationSystem.Infrastructure.Contexts;

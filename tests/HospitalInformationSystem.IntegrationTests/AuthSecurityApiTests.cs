@@ -5,21 +5,21 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using FluentAssertions;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Patients;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Identity;
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.MedicalRecords;
-using HospitalInformationSystem.Models.MedicalWorkers;
-using HospitalInformationSystem.Models.Patients;
-using HospitalInformationSystem.Models.Security;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
-using MedicalWorkerRole = HospitalInformationSystem.Models.Security.MedicalWorkerRole;
+using MedicalWorkerRole = HospitalInformationSystem.Application.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
@@ -255,7 +255,9 @@ public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : ICl
             .ConfigureServices(services => services.PostConfigure<JwtTokenOptions>(options => options.AllowEphemeralKeys = true)));
         using var client = productionFactory.CreateClient(new WebApplicationFactoryClientOptions
         {
-            BaseAddress = new Uri("http://localhost"), AllowAutoRedirect = false, HandleCookies = true
+            BaseAddress = new Uri("http://localhost"),
+            AllowAutoRedirect = false,
+            HandleCookies = true
         });
 
         var response = await client.GetAsync("/health/live");
@@ -271,7 +273,9 @@ public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : ICl
             .ConfigureServices(services => services.PostConfigure<JwtTokenOptions>(options => options.AllowEphemeralKeys = true)));
         using var client = productionFactory.CreateClient(new WebApplicationFactoryClientOptions
         {
-            BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false, HandleCookies = true
+            BaseAddress = new Uri("https://localhost"),
+            AllowAutoRedirect = false,
+            HandleCookies = true
         });
         using var csrf = await client.GetAsync("/api/auth/csrf");
         csrf.EnsureSuccessStatusCode();
@@ -300,7 +304,9 @@ public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : ICl
             builder.UseSetting("Security:LoginRateLimit:PermitLimit", "2"));
         using var client = limitedFactory.CreateClient(new WebApplicationFactoryClientOptions
         {
-            BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false, HandleCookies = true
+            BaseAddress = new Uri("https://localhost"),
+            AllowAutoRedirect = false,
+            HandleCookies = true
         });
         await RefreshCsrfAsync(client);
         var credentials = new LoginRequest("missing." + Guid.NewGuid().ToString("N")[..8], "Invalid.Password.123!");
@@ -331,7 +337,9 @@ public sealed class AuthSecurityApiTests(SecureHospitalApiFactory factory) : ICl
             builder.UseSetting("Cors:AllowedOrigins:0", allowedOrigin));
         using var client = corsFactory.CreateClient(new WebApplicationFactoryClientOptions
         {
-            BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false, HandleCookies = true
+            BaseAddress = new Uri("https://localhost"),
+            AllowAutoRedirect = false,
+            HandleCookies = true
         });
         using var allowed = new HttpRequestMessage(HttpMethod.Get, "/api/auth/csrf");
         allowed.Headers.Add("Origin", allowedOrigin);

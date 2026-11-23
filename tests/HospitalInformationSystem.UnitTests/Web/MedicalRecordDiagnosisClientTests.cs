@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 using HospitalInformationSystem.Web.ApiClients;
 
 namespace HospitalInformationSystem.UnitTests.Web;
@@ -66,7 +66,8 @@ public sealed class MedicalRecordDiagnosisClientTests
         serviceAuthor ? "I10" : null, serviceAuthor ? "U^Unspecified^99MEDSOFT" : null);
 
     private static HttpClient Client(string operation, MedicalRecordDiagnosisDto diagnosis) => new(
-        new ResponseHandler(operation, diagnosis)) { BaseAddress = new Uri("https://his.invalid/") };
+        new ResponseHandler(operation, diagnosis))
+    { BaseAddress = new Uri("https://his.invalid/") };
 
     private static async Task<MedicalRecordDiagnosisDto> ReadDiagnosisAsync(MedicalRecordsApiClient client,
         string operation)

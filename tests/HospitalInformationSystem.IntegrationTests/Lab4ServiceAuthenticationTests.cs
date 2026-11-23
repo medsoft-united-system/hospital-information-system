@@ -4,21 +4,20 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Abstractions;
-using HospitalInformationSystem.Contracts.Hl7Import;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Contracts.Hl7Import;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.Security;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.ServiceAuth;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Hl7Import;
-using HospitalInformationSystem.Models.Persistence;
-using HospitalInformationSystem.Models.Security;
-using HospitalInformationSystem.Models.ServiceAccounts;
-using HospitalInformationSystem.Models.ServiceAuth;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
-using ServiceRole = HospitalInformationSystem.Models.ServiceAccounts.ServiceAccountRole;
-using WorkerRole = HospitalInformationSystem.Models.MedicalWorkers.MedicalWorkerRole;
+using ServiceRole = HospitalInformationSystem.Application.Models.ServiceAccounts.ServiceAccountRole;
+using WorkerRole = HospitalInformationSystem.Application.Models.MedicalWorkers.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
@@ -355,8 +354,13 @@ public sealed class Lab4ServiceAuthenticationTests(ServiceAuthenticationApiFacto
         var now = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow();
         var worker = new MedicalWorkerDbo
         {
-            Id = Guid.NewGuid(), FirstName = "Проверка", LastName = "Подключения", Position = "Сотрудник",
-            Role = role, CreatedAtUtc = now, UpdatedAtUtc = now
+            Id = Guid.NewGuid(),
+            FirstName = "Проверка",
+            LastName = "Подключения",
+            Position = "Сотрудник",
+            Role = role,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
         };
         db.MedicalWorkers.Add(worker);
         await db.SaveChangesAsync();

@@ -1,6 +1,6 @@
-using HospitalInformationSystem.Contracts.Abstractions;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Queries.GetMedicalRecordSnapshot;

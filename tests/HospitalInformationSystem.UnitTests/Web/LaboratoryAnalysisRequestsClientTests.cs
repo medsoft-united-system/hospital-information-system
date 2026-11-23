@@ -3,9 +3,9 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.MedicalRecords;
-using HospitalInformationSystem.Models.Security;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Authentication;
 using HospitalInformationSystem.Web.Gateways;
@@ -236,7 +236,7 @@ public sealed class LaboratoryAnalysisRequestsClientTests
     }
 
     private static HttpResponseMessage Created<T>(T value) => new(HttpStatusCode.Created)
-        { Content = JsonContent.Create(value) };
+    { Content = JsonContent.Create(value) };
 
     private static HttpClient Client(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send) =>
         new(new DelegateHandler(send)) { BaseAddress = new Uri("https://localhost/") };

@@ -1,11 +1,11 @@
 using System.Text.Json;
 using FluentAssertions;
 using HospitalInformationSystem.Application.Audit.Services;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Audit;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Models.Audit;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.Security;
 using Microsoft.EntityFrameworkCore;
 
 namespace HospitalInformationSystem.UnitTests;
@@ -25,8 +25,11 @@ public sealed class AuditEventFactoryTests
         var entry = _factory.Create(AuditEventType.AccountChanged, "Пароль аккаунта сброшен.", actor,
             new AuditMetadata
             {
-                Action = "password-reset", TargetId = targetId, AccountId = targetId,
-                RevokedRefreshTokenCount = 0, RevokeReason = "password-reset"
+                Action = "password-reset",
+                TargetId = targetId,
+                AccountId = targetId,
+                RevokedRefreshTokenCount = 0,
+                RevokeReason = "password-reset"
             });
 
         entry.EventId.Should().NotBeEmpty();

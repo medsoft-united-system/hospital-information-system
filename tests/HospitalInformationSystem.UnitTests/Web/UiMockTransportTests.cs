@@ -3,15 +3,15 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Threading;
 using FluentAssertions;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.MedicalWorkers;
-using HospitalInformationSystem.Models.Patients;
-using HospitalInformationSystem.Models.Security;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Patients;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Authentication;
 using HospitalInformationSystem.Web.Development;
 using HospitalInformationSystem.Web.Gateways;
-using MedicalWorkerRole = HospitalInformationSystem.Models.Security.MedicalWorkerRole;
+using MedicalWorkerRole = HospitalInformationSystem.Application.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.UnitTests.Web;
 
@@ -318,7 +318,8 @@ public sealed class UiMockTransportTests
             Http = new HttpClient(new BrowserSessionHandler(Session, tokens, operations)
             {
                 InnerHandler = new UiMockHttpMessageHandler(State)
-            }) { BaseAddress = new Uri("https://ui-mock.invalid/") };
+            })
+            { BaseAddress = new Uri("https://ui-mock.invalid/") };
             Auth = new AuthenticationGateway(Http, new SessionApiClient(Http, Session, tokens, operations), Session);
         }
 

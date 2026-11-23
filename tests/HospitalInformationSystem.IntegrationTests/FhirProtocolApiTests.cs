@@ -2,14 +2,14 @@ using System.Net;
 using FluentAssertions;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
-using HospitalInformationSystem.Abstractions.Repositories;
-using HospitalInformationSystem.Models.Fhir;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Models.Fhir;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using DomainPatient = HospitalInformationSystem.Models.Patients.Patient;
-using DomainStatus = HospitalInformationSystem.Models.MedicalRecords.LaboratoryAnalysisRequestStatus;
-using DomainWorker = HospitalInformationSystem.Models.MedicalWorkers.MedicalWorker;
+using DomainPatient = HospitalInformationSystem.Application.Models.Patients.Patient;
+using DomainStatus = HospitalInformationSystem.Application.Models.MedicalRecords.LaboratoryAnalysisRequestStatus;
+using DomainWorker = HospitalInformationSystem.Application.Models.MedicalWorkers.MedicalWorker;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
@@ -40,7 +40,7 @@ public sealed class FhirProtocolApiTests(FhirReadApiFactory factory) : IClassFix
             services.AddScoped<IFhirReadRepository>(_ => new ThrowingRepository());
         }));
         using var client = observed.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
-            { BaseAddress = new Uri("https://his-api:5201"), AllowAutoRedirect = false });
+        { BaseAddress = new Uri("https://his-api:5201"), AllowAutoRedirect = false });
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("FhirTest", "lis");
 
         using var response = await client.GetAsync($"/fhir/Patient/{factory.PatientId:D}");
@@ -59,7 +59,7 @@ public sealed class FhirProtocolApiTests(FhirReadApiFactory factory) : IClassFix
     {
         using var client = factory.CreateServiceClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, "/fhir/metadata")
-            { Content = new ByteArrayContent(new byte[128 * 1024]) };
+        { Content = new ByteArrayContent(new byte[128 * 1024]) };
         using var response = await client.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.RequestEntityTooLarge);

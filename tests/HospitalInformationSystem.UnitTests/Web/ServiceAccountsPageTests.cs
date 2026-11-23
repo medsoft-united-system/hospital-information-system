@@ -3,7 +3,7 @@ using System.Net;
 using System.Reflection;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Models.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 using HospitalInformationSystem.Web;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Forms;
@@ -81,7 +81,7 @@ public sealed class ServiceAccountsPageTests
     {
         var account = ServiceAccountsApiClientTests.Account() with { Role = role };
         var services = new ServiceCollection().AddLogging().AddSingleton<IServiceAccountsGateway>(new StubGateway
-            { List = _ => Task.FromResult<IReadOnlyList<ServiceAccountDto>>([account]) })
+        { List = _ => Task.FromResult<IReadOnlyList<ServiceAccountDto>>([account]) })
             .AddSingleton(Mock.Of<IJSRuntime>());
         await using var provider = services.BuildServiceProvider();
         await using var renderer = new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>());
@@ -320,7 +320,8 @@ public sealed class ServiceAccountsPageTests
         var original = ServiceAccountsApiClientTests.Account() with { IsActive = originallyActive };
         var current = original with
         {
-            Name = "Актуальная карточка", Version = original.Version + 1,
+            Name = "Актуальная карточка",
+            Version = original.Version + 1,
             IsActive = alreadyApplied ? !originallyActive : originallyActive,
             UpdatedAtUtc = original.UpdatedAtUtc.AddSeconds(1)
         };
@@ -464,7 +465,7 @@ public sealed class ServiceAccountsPageTests
         var account = ServiceAccountsApiClientTests.Account();
         var inactive = account with { Id = Guid.NewGuid(), Name = "Резервная LIS", IsActive = false };
         var services = new ServiceCollection().AddLogging().AddSingleton<IServiceAccountsGateway>(new StubGateway
-            { List = _ => Task.FromResult<IReadOnlyList<ServiceAccountDto>>([account, inactive]) })
+        { List = _ => Task.FromResult<IReadOnlyList<ServiceAccountDto>>([account, inactive]) })
             .AddSingleton(Mock.Of<IJSRuntime>());
         await using var provider = services.BuildServiceProvider();
         await using var renderer = new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>());

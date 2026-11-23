@@ -1,6 +1,6 @@
 using System.Security.Claims;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 using HospitalInformationSystem.Application.ServiceAccounts;
-using HospitalInformationSystem.Models.ServiceAccounts;
 
 namespace HospitalInformationSystem.Api.Security;
 

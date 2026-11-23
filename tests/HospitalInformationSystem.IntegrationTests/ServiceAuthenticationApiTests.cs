@@ -5,10 +5,10 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.ServiceAuth;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Models.ServiceAccounts;
-using HospitalInformationSystem.Models.ServiceAuth;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 

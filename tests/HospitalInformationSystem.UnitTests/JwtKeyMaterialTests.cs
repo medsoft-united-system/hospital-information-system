@@ -2,8 +2,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using FluentAssertions;
+using HospitalInformationSystem.Application.Models.Auth;
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
-using HospitalInformationSystem.Models.Auth;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -68,7 +68,7 @@ public sealed class JwtKeyMaterialTests(JwtSigningKeyFixture fixture) : IClassFi
     public void ValidateToken_UnknownKid_ShouldRejectBeforeTryingUnrelatedKeys()
     {
         var credentials = new SigningCredentials(new RsaSecurityKey(((RsaSecurityKey)fixture.Keys.SigningCredentials.Key).Rsa)
-            { KeyId = "unknown-key" }, SecurityAlgorithms.RsaSha256);
+        { KeyId = "unknown-key" }, SecurityAlgorithms.RsaSha256);
         var token = CreateToken(fixture.Options.Issuer, fixture.Options.Audience, DateTime.UtcNow.AddMinutes(1), credentials);
 
         Action validate = () => Handler().ValidateToken(token, fixture.Keys.ValidationParameters, out _);

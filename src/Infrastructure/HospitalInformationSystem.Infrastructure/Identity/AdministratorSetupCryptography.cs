@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
 using Microsoft.AspNetCore.DataProtection;
 
 namespace HospitalInformationSystem.Infrastructure.Identity;

@@ -1,16 +1,16 @@
-using HospitalInformationSystem.Abstractions.Identity;
-using HospitalInformationSystem.Abstractions.Repositories;
-using HospitalInformationSystem.Abstractions.Transactions;
-using HospitalInformationSystem.Abstractions.UnitOfWork;
-using HospitalInformationSystem.Contracts.Abstractions;
-using HospitalInformationSystem.Contracts.Audit;
-using HospitalInformationSystem.Models.Audit;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.MedicalWorkers;
-using HospitalInformationSystem.Models.Security;
-using SessionWorkerRole = HospitalInformationSystem.Models.Security.MedicalWorkerRole;
-using WorkerRole = HospitalInformationSystem.Models.MedicalWorkers.MedicalWorkerRole;
+using HospitalInformationSystem.Application.Abstractions.Identity;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.Transactions;
+using HospitalInformationSystem.Application.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Contracts.Audit;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Security;
+using SessionWorkerRole = HospitalInformationSystem.Application.Models.Security.MedicalWorkerRole;
+using WorkerRole = HospitalInformationSystem.Application.Models.MedicalWorkers.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.Application.Auth.Services;
 
@@ -81,8 +81,14 @@ public sealed class AccountService(
             request.Role == ApplicationRoles.Administrator, true, null, now, now, [request.Role]);
         await accounts.CreateAsync(account, request.Password, cancellationToken);
         audit.Append(AuditEventType.AccountCreated, "Создана учётная запись.",
-            new AuditMetadata { Action = "created", TargetId = account.Id, AccountId = account.Id,
-                MedicalWorkerId = account.MedicalWorkerId, RevokedRefreshTokenCount = 0 });
+            new AuditMetadata
+            {
+                Action = "created",
+                TargetId = account.Id,
+                AccountId = account.Id,
+                MedicalWorkerId = account.MedicalWorkerId,
+                RevokedRefreshTokenCount = 0
+            });
         await unitOfWork.SaveChangesAsync(cancellationToken);
         account = await accounts.FindAsync(account.Id, cancellationToken)
             ?? throw new EntityNotFoundException("Учётная запись не найдена.");
@@ -186,8 +192,12 @@ public sealed class AccountService(
 
     private static AuditMetadata Metadata(AccountIdentity account, string action, int revoked, string? reason) => new()
     {
-        Action = action, TargetId = account.Id, AccountId = account.Id, MedicalWorkerId = account.MedicalWorkerId,
-        RevokedRefreshTokenCount = revoked, RevokeReason = reason
+        Action = action,
+        TargetId = account.Id,
+        AccountId = account.Id,
+        MedicalWorkerId = account.MedicalWorkerId,
+        RevokedRefreshTokenCount = revoked,
+        RevokeReason = reason
     };
 
     private static AccountDto ToDto(AccountIdentity account, string role, DateTimeOffset now) =>

@@ -1,6 +1,7 @@
 using FluentAssertions;
-using HospitalInformationSystem.Abstractions.Repositories;
-using HospitalInformationSystem.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
 using HospitalInformationSystem.Application.DI;
 using HospitalInformationSystem.Application.LaboratoryTests.Factories;
 using HospitalInformationSystem.Application.MedicalRecords;
@@ -10,15 +11,14 @@ using HospitalInformationSystem.Application.MedicalRecords.Factories;
 using HospitalInformationSystem.Application.MedicalRecords.Mapping;
 using HospitalInformationSystem.Application.MedicalRecords.Services;
 using HospitalInformationSystem.Application.MedicalWorkers.Factories;
-using HospitalInformationSystem.Contracts.Abstractions;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.LaboratoryTests;
-using HospitalInformationSystem.Models.MedicalRecords;
-using HospitalInformationSystem.Models.MedicalWorkers;
-using HospitalInformationSystem.Models.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
-using ContractTypes = HospitalInformationSystem.Models.MedicalRecords;
+using ContractTypes = HospitalInformationSystem.Application.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.UnitTests;
 

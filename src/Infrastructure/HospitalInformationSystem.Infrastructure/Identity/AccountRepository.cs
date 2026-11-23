@@ -1,10 +1,10 @@
 using System.Security.Claims;
-using HospitalInformationSystem.Abstractions.Identity;
+using HospitalInformationSystem.Application.Abstractions.Identity;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Persistence.Mappings;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.MedicalWorkers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,10 +15,10 @@ public sealed class AccountRepository(HospitalDbContext db, UserManager<Hospital
     public async Task<IReadOnlyList<AccountIdentity>> ListAsync(CancellationToken cancellationToken)
     {
         var rows = await (from user in db.Users.AsNoTracking()
-            join userRole in db.UserRoles on user.Id equals userRole.UserId
-            join role in db.Roles on userRole.RoleId equals role.Id
-            orderby user.UserName
-            select new { User = user, Role = role.Name! }).ToArrayAsync(cancellationToken);
+                          join userRole in db.UserRoles on user.Id equals userRole.UserId
+                          join role in db.Roles on userRole.RoleId equals role.Id
+                          orderby user.UserName
+                          select new { User = user, Role = role.Name! }).ToArrayAsync(cancellationToken);
         return rows.GroupBy(row => row.User.Id)
             .Select(group => ToIdentity(group.First().User, group.Select(row => row.Role).ToArray()))
             .ToArray();
@@ -55,9 +55,14 @@ public sealed class AccountRepository(HospitalDbContext db, UserManager<Hospital
         cancellationToken.ThrowIfCancellationRequested();
         var user = new HospitalUser
         {
-            Id = account.Id, UserName = account.UserName, MedicalWorkerId = account.MedicalWorkerId,
-            LockoutEnabled = true, IsAdministrator = account.IsAdministrator, IsActive = account.IsActive,
-            CreatedAtUtc = account.CreatedAtUtc, UpdatedAtUtc = account.UpdatedAtUtc
+            Id = account.Id,
+            UserName = account.UserName,
+            MedicalWorkerId = account.MedicalWorkerId,
+            LockoutEnabled = true,
+            IsAdministrator = account.IsAdministrator,
+            IsActive = account.IsActive,
+            CreatedAtUtc = account.CreatedAtUtc,
+            UpdatedAtUtc = account.UpdatedAtUtc
         };
         RequireSuccess(await users.CreateAsync(user, password));
         foreach (var role in account.Roles)
@@ -100,9 +105,9 @@ public sealed class AccountRepository(HospitalDbContext db, UserManager<Hospital
 
     private Task<string?[]> GetRolesAsync(Guid accountId, CancellationToken cancellationToken) =>
         (from userRole in db.UserRoles
-            join role in db.Roles on userRole.RoleId equals role.Id
-            where userRole.UserId == accountId
-            select role.Name).ToArrayAsync(cancellationToken);
+         join role in db.Roles on userRole.RoleId equals role.Id
+         where userRole.UserId == accountId
+         select role.Name).ToArrayAsync(cancellationToken);
 
     private static AccountIdentity ToIdentity(HospitalUser user, IEnumerable<string?> roles) =>
         new(user.Id, user.UserName, user.MedicalWorkerId, user.IsAdministrator, user.IsActive,

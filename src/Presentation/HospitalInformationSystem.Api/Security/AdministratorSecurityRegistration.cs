@@ -1,8 +1,8 @@
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Identity;
-using HospitalInformationSystem.Models.Security;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
 

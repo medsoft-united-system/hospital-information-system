@@ -1,6 +1,6 @@
 using System.Security.Claims;
-using HospitalInformationSystem.Contracts.Abstractions;
-using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Models.Auth;
 
 namespace HospitalInformationSystem.Api.Security;
 

@@ -1,8 +1,8 @@
-using HospitalInformationSystem.Abstractions.Identity;
-using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Abstractions.Identity;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Models.Auth;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Identity;
-using HospitalInformationSystem.Models.Auth;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

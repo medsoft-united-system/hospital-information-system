@@ -4,18 +4,18 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FluentAssertions;
+using HospitalInformationSystem.Application.Contracts.Hl7Import;
 using HospitalInformationSystem.Application.Hl7Import;
 using HospitalInformationSystem.Application.MedicalRecords.Queries.GetMedicalRecord;
 using HospitalInformationSystem.Application.MedicalRecords.Queries.GetMedicalRecordSnapshot;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Hl7Import;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.Patients;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 using HospitalInformationSystem.Application.Patients.Commands.DeletePatient;
-using HospitalInformationSystem.Contracts.Hl7Import;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.Hl7Import;
-using HospitalInformationSystem.Models.MedicalRecords;
-using HospitalInformationSystem.Models.Patients;
-using HospitalInformationSystem.Models.Persistence;
-using HospitalInformationSystem.Models.ServiceAccounts;
 using MediatR;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
@@ -24,7 +24,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
-using ServiceRole = HospitalInformationSystem.Models.ServiceAccounts.ServiceAccountRole;
+using ServiceRole = HospitalInformationSystem.Application.Models.ServiceAccounts.ServiceAccountRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
@@ -208,8 +208,11 @@ public sealed class Lab4PatientImportTests(ServiceAuthenticationApiFactory facto
             var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
             db.DiagnosisDefinitions.Add(new DiagnosisDefinitionDbo
             {
-                Id = Guid.NewGuid(), Code = diagnosis.Code, Name = canonicalTitle,
-                CreatedAtUtc = connection.ReceivedAtUtc, UpdatedAtUtc = connection.ReceivedAtUtc
+                Id = Guid.NewGuid(),
+                Code = diagnosis.Code,
+                Name = canonicalTitle,
+                CreatedAtUtc = connection.ReceivedAtUtc,
+                UpdatedAtUtc = connection.ReceivedAtUtc
             });
             await db.SaveChangesAsync();
         }
@@ -236,8 +239,11 @@ public sealed class Lab4PatientImportTests(ServiceAuthenticationApiFactory facto
             var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
             db.DiagnosisDefinitions.Add(new DiagnosisDefinitionDbo
             {
-                Id = Guid.NewGuid(), Code = existing.Code, Name = existing.Title,
-                CreatedAtUtc = connection.ReceivedAtUtc, UpdatedAtUtc = connection.ReceivedAtUtc
+                Id = Guid.NewGuid(),
+                Code = existing.Code,
+                Name = existing.Title,
+                CreatedAtUtc = connection.ReceivedAtUtc,
+                UpdatedAtUtc = connection.ReceivedAtUtc
             });
             await db.SaveChangesAsync();
         }
@@ -469,8 +475,12 @@ public sealed class Lab4PatientImportTests(ServiceAuthenticationApiFactory facto
     {
         SourceSystem = "LAB4_XML",
         ExternalPatientId = Guid.NewGuid().ToString("N"),
-        FirstName = "Алексей", LastName = "Проверочный", MiddleName = "Петрович",
-        BirthDate = new DateOnly(1984, 2, 29), Sex = AdministrativeSex.Male, Diagnoses = diagnoses
+        FirstName = "Алексей",
+        LastName = "Проверочный",
+        MiddleName = "Петрович",
+        BirthDate = new DateOnly(1984, 2, 29),
+        Sex = AdministrativeSex.Male,
+        Diagnoses = diagnoses
     };
 
     private static ImportedDiagnosisInput Diagnosis()
@@ -479,7 +489,9 @@ public sealed class Lab4PatientImportTests(ServiceAuthenticationApiFactory facto
         var code = "Z" + sequence[..2] + "." + sequence[2..];
         return new ImportedDiagnosisInput
         {
-            Code = code, Title = "Название импортированного диагноза " + code, CodingSystem = "I10",
+            Code = code,
+            Title = "Название импортированного диагноза " + code,
+            CodingSystem = "I10",
             DiagnosedAt = new DateTimeOffset(2023, 5, 14, 10, 20, 0, TimeSpan.FromHours(3)),
             DiagnosisType = "U"
         };

@@ -1,1 +1,1 @@
-global using MedicalWorkerRole = HospitalInformationSystem.Models.Security.MedicalWorkerRole;
+global using MedicalWorkerRole = HospitalInformationSystem.Application.Models.Security.MedicalWorkerRole;

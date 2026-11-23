@@ -1,10 +1,10 @@
 using System.Security.Claims;
 using HospitalInformationSystem.Api.Security;
-using HospitalInformationSystem.Contracts.Abstractions;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Hl7Import;
-using HospitalInformationSystem.Models.ServiceAccounts;
-using HospitalInformationSystem.Models.ServiceAuth;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Hl7Import;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.ServiceAuth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;

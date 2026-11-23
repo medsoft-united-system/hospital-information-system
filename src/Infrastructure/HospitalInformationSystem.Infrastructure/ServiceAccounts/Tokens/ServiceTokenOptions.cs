@@ -1,5 +1,5 @@
+using HospitalInformationSystem.Application.Models.ServiceAuth;
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
-using HospitalInformationSystem.Models.ServiceAuth;
 using Microsoft.Extensions.Options;
 
 namespace HospitalInformationSystem.Infrastructure.ServiceAccounts.Tokens;

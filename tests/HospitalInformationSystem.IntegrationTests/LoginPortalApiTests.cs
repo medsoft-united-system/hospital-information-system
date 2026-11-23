@@ -2,13 +2,10 @@ using System;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
-using System.Threading.Tasks;
 using FluentAssertions;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.MedicalWorkers;
-using HospitalInformationSystem.Models.Security;
-using Xunit;
-using MedicalWorkerRole = HospitalInformationSystem.Models.Security.MedicalWorkerRole;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Security;
 
 namespace HospitalInformationSystem.IntegrationTests;
 

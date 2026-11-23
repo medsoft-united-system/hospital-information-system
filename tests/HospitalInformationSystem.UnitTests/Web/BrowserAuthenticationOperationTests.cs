@@ -3,8 +3,8 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Security;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Authentication;
 
@@ -209,7 +209,8 @@ public sealed class BrowserAuthenticationOperationTests
         new(new BrowserSessionHandler(state, tokens, operations, new Uri("https://localhost:5201/"))
         {
             InnerHandler = new ResponseHandler(send)
-        }) { BaseAddress = new Uri("https://localhost:5201/") };
+        })
+        { BaseAddress = new Uri("https://localhost:5201/") };
 
     private static HttpResponseMessage Json<T>(T value) => new(HttpStatusCode.OK) { Content = JsonContent.Create(value) };
 

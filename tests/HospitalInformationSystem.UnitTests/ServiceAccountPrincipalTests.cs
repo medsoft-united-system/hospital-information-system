@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using FluentAssertions;
 using HospitalInformationSystem.Api.Security;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.ServiceAuth;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.ServiceAuth;
 using Microsoft.AspNetCore.Http;
 
 namespace HospitalInformationSystem.UnitTests;
@@ -25,7 +25,7 @@ public sealed class ServiceAccountPrincipalTests
         identity.Name.Should().Be("go-lis");
         identity.AuthenticationVersion.Should().Be(3);
         new CurrentServiceAccount(new HttpContextAccessor
-            { HttpContext = new DefaultHttpContext { User = principal } }).RequireIdentity().Should().Be(identity);
+        { HttpContext = new DefaultHttpContext { User = principal } }).RequireIdentity().Should().Be(identity);
     }
 
     [Theory]

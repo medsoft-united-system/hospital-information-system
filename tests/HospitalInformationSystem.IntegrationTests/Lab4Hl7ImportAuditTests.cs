@@ -5,20 +5,20 @@ using System.Text;
 using System.Text.Json;
 using FluentAssertions;
 using HospitalInformationSystem.Api.Hl7;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
 using HospitalInformationSystem.Application.Hl7Import;
-using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Hl7Import;
+using HospitalInformationSystem.Application.Models.Persistence;
+using HospitalInformationSystem.Application.Models.Security;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Hl7Import;
-using HospitalInformationSystem.Models.Persistence;
-using HospitalInformationSystem.Models.Security;
-using HospitalInformationSystem.Models.ServiceAccounts;
 using MediatR;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using WorkerRole = HospitalInformationSystem.Models.MedicalWorkers.MedicalWorkerRole;
+using WorkerRole = HospitalInformationSystem.Application.Models.MedicalWorkers.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
@@ -377,8 +377,13 @@ public sealed class Lab4Hl7ImportAuditTests(ServiceAuthenticationApiFactory fact
             var now = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow();
             var worker = new MedicalWorkerDbo
             {
-                Id = Guid.NewGuid(), FirstName = "Проверка", LastName = "Аудита", Position = "Сотрудник",
-                Role = WorkerRole.Doctor, CreatedAtUtc = now, UpdatedAtUtc = now
+                Id = Guid.NewGuid(),
+                FirstName = "Проверка",
+                LastName = "Аудита",
+                Position = "Сотрудник",
+                Role = WorkerRole.Doctor,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
             };
             db.MedicalWorkers.Add(worker);
             await db.SaveChangesAsync();
@@ -544,9 +549,14 @@ public sealed class Lab4Hl7ImportAuditTests(ServiceAuthenticationApiFactory fact
             var now = clock.GetUtcNow();
             db.Patients.Add(new PatientDbo
             {
-                Id = Guid.NewGuid(), FirstName = input.FirstName, LastName = input.LastName,
-                MiddleName = input.MiddleName, BirthDate = input.BirthDate, Sex = (int)input.Sex,
-                CreatedAtUtc = now, UpdatedAtUtc = now
+                Id = Guid.NewGuid(),
+                FirstName = input.FirstName,
+                LastName = input.LastName,
+                MiddleName = input.MiddleName,
+                BirthDate = input.BirthDate,
+                Sex = (int)input.Sex,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
             });
             throw new InvalidOperationException(HiddenException);
         }

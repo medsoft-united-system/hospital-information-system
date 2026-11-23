@@ -2,9 +2,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Reflection;
 using FluentAssertions;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.MedicalWorkers;
-using HospitalInformationSystem.Models.Security;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Components.Accounts;
 using HospitalInformationSystem.Web.Gateways;
@@ -15,7 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using Moq;
-using MedicalWorkerRole = HospitalInformationSystem.Models.Security.MedicalWorkerRole;
+using MedicalWorkerRole = HospitalInformationSystem.Application.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.UnitTests.Web;
 
@@ -30,7 +30,7 @@ public sealed class AccountUiLifecycleTests
         gateway.Setup(service => service.ListAsync(It.IsAny<CancellationToken>())).Returns(pending.Task);
         using var http = new HttpClient(new ResponseHandler((_, _) =>
             throw new InvalidOperationException("Workers must not load after page disposal.")))
-            { BaseAddress = new Uri("https://localhost/") };
+        { BaseAddress = new Uri("https://localhost/") };
         var page = new Accounts();
         Inject(page, "Gateway", gateway.Object);
         Inject(page, "Workers", new MedicalWorkersApiClient(http));
@@ -56,7 +56,7 @@ public sealed class AccountUiLifecycleTests
         gateway.Setup(service => service.ListAsync(It.IsAny<CancellationToken>())).Returns(pending.Task);
         using var http = new HttpClient(new ResponseHandler((_, _) =>
             throw new InvalidOperationException("An obsolete list must not continue loading.")))
-            { BaseAddress = new Uri("https://localhost/") };
+        { BaseAddress = new Uri("https://localhost/") };
         using var page = new Accounts();
         Inject(page, "Gateway", gateway.Object);
         Inject(page, "Workers", new MedicalWorkersApiClient(http));
@@ -249,7 +249,8 @@ public sealed class AccountUiLifecycleTests
                 Content = JsonContent.Create(new MedicalWorkerDto(id, id == first ? "Иван" : "Пётр",
                     "Иванов", "Врач", false, MedicalWorkerRole.Doctor))
             });
-        })) { BaseAddress = new Uri("https://localhost/") };
+        }))
+        { BaseAddress = new Uri("https://localhost/") };
         using var page = new MedicalWorkerEdit();
         Inject(page, "Api", new MedicalWorkersApiClient(http));
         SetProperty(page, "Id", first);

@@ -1,4 +1,0 @@
-namespace HospitalInformationSystem.Models.MedicalWorkers;
-
-public sealed record SaveMedicalWorkerRequest(string FirstName, string LastName, string Position,
-    Security.MedicalWorkerRole? Role = null);

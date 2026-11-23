@@ -1,6 +1,6 @@
 using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Factories;
 
@@ -10,8 +10,11 @@ public static class PrescriptionFactory
         Guid medicalRecordId, string text, Guid authorId, DateTimeOffset at, Guid? replacesPrescriptionId = null) =>
         new()
         {
-            Id = Guid.NewGuid(), MedicalRecordId = medicalRecordId, Text = NormalizeText(text),
-            CreatedAtUtc = at.ToUniversalTime(), CreatedByMedicalWorkerId = authorId,
+            Id = Guid.NewGuid(),
+            MedicalRecordId = medicalRecordId,
+            Text = NormalizeText(text),
+            CreatedAtUtc = at.ToUniversalTime(),
+            CreatedByMedicalWorkerId = authorId,
             ReplacesPrescriptionId = replacesPrescriptionId
         };
 

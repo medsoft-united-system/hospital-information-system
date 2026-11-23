@@ -1,13 +1,13 @@
-using HospitalInformationSystem.Abstractions.Repositories;
-using HospitalInformationSystem.Abstractions.Transactions;
-using HospitalInformationSystem.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.Transactions;
+using HospitalInformationSystem.Application.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Contracts.Audit;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Security;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 using HospitalInformationSystem.Application.ServiceAccounts.Factories;
-using HospitalInformationSystem.Contracts.Abstractions;
-using HospitalInformationSystem.Contracts.Audit;
-using HospitalInformationSystem.Models.Audit;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.Security;
-using HospitalInformationSystem.Models.ServiceAccounts;
 using DomainService = HospitalInformationSystem.Application.ServiceAccounts.Services.ServiceAccountDomainService;
 
 namespace HospitalInformationSystem.Application.ServiceAccounts.Services;
@@ -140,8 +140,11 @@ public sealed class ServiceAccountService(IServiceAccountRepository repository, 
 
     private static AuditMetadata Metadata(Guid id, string action, int revoked, string? reason = null) => new()
     {
-        Action = action, TargetId = id, ServiceAccountId = id,
-        RevokedServiceSessionCount = revoked, RevokeReason = reason
+        Action = action,
+        TargetId = id,
+        ServiceAccountId = id,
+        RevokedServiceSessionCount = revoked,
+        RevokeReason = reason
     };
 
     private static ServiceAccountRole ParseRole(string? role) => role switch

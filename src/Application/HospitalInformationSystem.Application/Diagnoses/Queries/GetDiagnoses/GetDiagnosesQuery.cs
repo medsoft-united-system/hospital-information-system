@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Models.Diagnoses;
+using HospitalInformationSystem.Application.Models.Diagnoses;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.Diagnoses.Queries.GetDiagnoses;

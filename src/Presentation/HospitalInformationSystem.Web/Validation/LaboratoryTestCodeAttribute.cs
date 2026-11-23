@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using HospitalInformationSystem.Models.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
 
 namespace HospitalInformationSystem.Web.Validation;
 

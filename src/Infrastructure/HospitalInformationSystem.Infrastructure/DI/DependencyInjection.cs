@@ -1,5 +1,5 @@
-using HospitalInformationSystem.Abstractions.Transactions;
-using HospitalInformationSystem.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.Abstractions.Transactions;
+using HospitalInformationSystem.Application.Abstractions.UnitOfWork;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Initializers;
 using HospitalInformationSystem.Infrastructure.Persistence;

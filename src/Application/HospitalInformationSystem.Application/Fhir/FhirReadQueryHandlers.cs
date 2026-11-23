@@ -1,8 +1,8 @@
-using HospitalInformationSystem.Abstractions.Repositories;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.Fhir;
-using HospitalInformationSystem.Models.MedicalWorkers;
-using HospitalInformationSystem.Models.Patients;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Fhir;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Patients;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.Fhir;

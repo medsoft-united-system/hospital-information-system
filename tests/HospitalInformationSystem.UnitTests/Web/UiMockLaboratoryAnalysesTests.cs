@@ -1,13 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Models.LaboratoryTests;
-using HospitalInformationSystem.Models.MedicalRecords;
-using HospitalInformationSystem.Models.MedicalWorkers;
-using HospitalInformationSystem.Models.Security;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Web.Authentication;
 using HospitalInformationSystem.Web.Development;
-using MedicalWorkerRole = HospitalInformationSystem.Models.Security.MedicalWorkerRole;
+using MedicalWorkerRole = HospitalInformationSystem.Application.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.UnitTests.Web;
 
@@ -46,7 +46,8 @@ public sealed class UiMockLaboratoryAnalysesTests
         var before = (await fixture.Http.GetFromJsonAsync<MedicalRecordDto>(path))!;
         using var response = await fixture.Http.PostAsJsonAsync(path + "/laboratory-analysis-requests", new
         {
-            LaboratoryTestDefinitionIds = definitions.Select(x => x.Id).ToArray(), Comment = " Контроль утром ",
+            LaboratoryTestDefinitionIds = definitions.Select(x => x.Id).ToArray(),
+            Comment = " Контроль утром ",
             ExpectedVersions = definitions.ToDictionary(x => x.Id, x => x.Version),
             RequestedByMedicalWorkerId = UiMockState.NurseId
         });
@@ -106,7 +107,8 @@ public sealed class UiMockLaboratoryAnalysesTests
         using var response = await fixture.Http.PostAsJsonAsync(path + "/laboratory-analysis-requests",
             new
             {
-                LaboratoryTestDefinitionIds = ids, Comment = comment,
+                LaboratoryTestDefinitionIds = ids,
+                Comment = comment,
                 ExpectedVersions = ids?.Distinct().ToDictionary(id => id,
                     id => definitions.FirstOrDefault(x => x.Id == id)?.Version ?? 1)
             });
@@ -231,8 +233,9 @@ public sealed class UiMockLaboratoryAnalysesTests
             State = new UiMockState(session) { EnableLiveAudit = false };
             State.SwitchPersona(persona);
             Http = new HttpClient(new BrowserSessionHandler(session, new AntiforgeryTokenStore(),
-                new AuthenticationOperationCoordinator()) { InnerHandler = new UiMockHttpMessageHandler(State) })
-                { BaseAddress = new Uri("https://ui-mock.invalid/") };
+                new AuthenticationOperationCoordinator())
+            { InnerHandler = new UiMockHttpMessageHandler(State) })
+            { BaseAddress = new Uri("https://ui-mock.invalid/") };
         }
 
         public void Dispose() => Http.Dispose();

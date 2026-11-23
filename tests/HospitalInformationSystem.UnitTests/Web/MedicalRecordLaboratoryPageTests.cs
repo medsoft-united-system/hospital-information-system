@@ -1,7 +1,7 @@
 using System.Net;
 using System.Reflection;
 using FluentAssertions;
-using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Components.MedicalRecords;
 using HospitalInformationSystem.Web.Gateways;
@@ -86,7 +86,8 @@ public sealed class MedicalRecordLaboratoryPageTests
         };
         var latest = record with { Version = record.Version + 1, LaboratoryAnalysisRequests = [completed] };
         var snapshot = new MedicalRecordSnapshotDto(record.Id, record.PatientId, active.AuthoredAtUtc,
-            record.Version, [], []) { LaboratoryAnalysisRequests = [active] };
+            record.Version, [], [])
+        { LaboratoryAnalysisRequests = [active] };
         var records = new Mock<IMedicalRecordsGateway>();
         records.Setup(gateway => gateway.FindForPatientAsync(record.PatientId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(latest);

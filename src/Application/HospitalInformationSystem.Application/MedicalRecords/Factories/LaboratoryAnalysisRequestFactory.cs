@@ -1,6 +1,6 @@
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.LaboratoryTests;
-using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Factories;
 
@@ -19,10 +19,15 @@ public static class LaboratoryAnalysisRequestFactory
             throw new DomainValidationException("В справочнике анализа некорректны код LOINC или название.");
         return new LaboratoryAnalysisRequest
         {
-            Id = Guid.NewGuid(), MedicalRecordId = medicalRecordId, PatientId = patientId,
-            RequestedByMedicalWorkerId = requesterId, LaboratoryTestDefinitionId = definition.Id,
-            LoincCodeSnapshot = definition.LoincCode.Trim(), DisplayNameSnapshot = definition.DisplayName.Trim(),
-            Comment = LaboratoryAnalysisRules.NormalizeComment(comment), AuthoredAtUtc = authoredAtUtc.ToUniversalTime()
+            Id = Guid.NewGuid(),
+            MedicalRecordId = medicalRecordId,
+            PatientId = patientId,
+            RequestedByMedicalWorkerId = requesterId,
+            LaboratoryTestDefinitionId = definition.Id,
+            LoincCodeSnapshot = definition.LoincCode.Trim(),
+            DisplayNameSnapshot = definition.DisplayName.Trim(),
+            Comment = LaboratoryAnalysisRules.NormalizeComment(comment),
+            AuthoredAtUtc = authoredAtUtc.ToUniversalTime()
         };
     }
 }

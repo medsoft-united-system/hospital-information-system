@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.Json;
-using HospitalInformationSystem.Models.Fhir;
-using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.Fhir;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 using Microsoft.AspNetCore.DataProtection;
 
 namespace HospitalInformationSystem.Api.Fhir;

@@ -1,7 +1,7 @@
 using HospitalInformationSystem.Application.MedicalRecords.Services;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.MedicalRecords;
-using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Factories;
 
@@ -18,7 +18,10 @@ public static class MedicalRecordFactory
             id, new MedicalRecordCreatedPayload(patientId), author, at);
         return new MedicalRecord
         {
-            Id = id, PatientId = patientId, CreatedAtUtc = at, Version = 1,
+            Id = id,
+            PatientId = patientId,
+            CreatedAtUtc = at,
+            Version = 1,
             HistoryEvents = Array.AsReadOnly([created])
         };
     }
@@ -35,7 +38,10 @@ public static class MedicalRecordFactory
             serviceAccountId, serviceAccountName, at);
         return new MedicalRecord
         {
-            Id = id, PatientId = patientId, CreatedAtUtc = at, Version = 1,
+            Id = id,
+            PatientId = patientId,
+            CreatedAtUtc = at,
+            Version = 1,
             HistoryEvents = Array.AsReadOnly([created])
         };
     }

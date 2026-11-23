@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Models.LaboratoryTests;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

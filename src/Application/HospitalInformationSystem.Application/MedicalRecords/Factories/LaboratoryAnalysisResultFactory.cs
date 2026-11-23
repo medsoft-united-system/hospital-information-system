@@ -1,5 +1,5 @@
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Factories;
 
@@ -16,8 +16,12 @@ public static class LaboratoryAnalysisResultFactory
         do { id = Guid.NewGuid(); } while (id == requestId);
         return new LaboratoryAnalysisResult
         {
-            Id = id, LaboratoryAnalysisRequestId = requestId, PatientId = patientId,
-            Value = normalizedValue, IssuedAtUtc = issued, ReceivedAtUtc = receivedAtUtc.ToUniversalTime(),
+            Id = id,
+            LaboratoryAnalysisRequestId = requestId,
+            PatientId = patientId,
+            Value = normalizedValue,
+            IssuedAtUtc = issued,
+            ReceivedAtUtc = receivedAtUtc.ToUniversalTime(),
             CreatedByServiceAccountId = serviceAccountId
         };
     }

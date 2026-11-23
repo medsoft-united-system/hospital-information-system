@@ -7,9 +7,9 @@ using HospitalInformationSystem.Application.MedicalRecords.Mapping;
 using HospitalInformationSystem.Application.MedicalRecords.Services;
 using HospitalInformationSystem.Application.MedicalWorkers.Factories;
 using HospitalInformationSystem.Application.MedicalWorkers.Services;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.MedicalRecords;
-using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
 using Xunit;
 using MedicalRecordMapping = HospitalInformationSystem.Application.MedicalRecords.Mapping.MedicalRecordMapping;
 

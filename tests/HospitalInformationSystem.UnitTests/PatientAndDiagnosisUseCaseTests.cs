@@ -4,19 +4,19 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
-using HospitalInformationSystem.Abstractions.Repositories;
-using HospitalInformationSystem.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.UnitOfWork;
 using HospitalInformationSystem.Application.Diagnoses.Commands.CreateDiagnosis;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Diagnoses;
+using HospitalInformationSystem.Application.Models.Patients;
 using HospitalInformationSystem.Application.Patients.Commands.DeletePatient;
 using HospitalInformationSystem.Application.Patients.Commands.UpdatePatient;
 using HospitalInformationSystem.Application.Patients.Factories;
 using HospitalInformationSystem.Application.Patients.Queries.GetPatients;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.Diagnoses;
-using HospitalInformationSystem.Models.Patients;
 using Moq;
 using Xunit;
-using ContractSex = HospitalInformationSystem.Models.Patients.AdministrativeSex;
+using ContractSex = HospitalInformationSystem.Application.Models.Patients.AdministrativeSex;
 
 namespace HospitalInformationSystem.UnitTests;
 

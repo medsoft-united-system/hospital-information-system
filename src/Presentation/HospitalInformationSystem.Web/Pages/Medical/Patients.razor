@@ -1,7 +1,7 @@
 @page "/medical/patients"
 @attribute [Authorize(Roles = ApplicationRoles.MedicalWorker)]
-@using HospitalInformationSystem.Models.Patients
-@using HospitalInformationSystem.Models.Security
+@using HospitalInformationSystem.Application.Models.Patients
+@using HospitalInformationSystem.Application.Models.Security
 @implements IDisposable
 @inject PatientsApiClient Api
 @inject SessionState Session

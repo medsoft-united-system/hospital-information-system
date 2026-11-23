@@ -1,12 +1,12 @@
 using System.Globalization;
 using System.Threading.RateLimiting;
-using HospitalInformationSystem.Contracts.Abstractions;
-using HospitalInformationSystem.Contracts.Audit;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Contracts.Audit;
+using HospitalInformationSystem.Application.Models.Audit;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Identity;
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
-using HospitalInformationSystem.Models.Audit;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
@@ -117,7 +117,8 @@ public static class ApiSecurityRegistration
                 context.Request.Path.StartsWithSegments("/api") || context.Request.Path.StartsWithSegments("/fhir")
                     ? RateLimitPartition.GetConcurrencyLimiter("api", _ => new ConcurrencyLimiterOptions
                     {
-                        PermitLimit = 32, QueueLimit = 0
+                        PermitLimit = 32,
+                        QueueLimit = 0
                     })
                     : RateLimitPartition.GetNoLimiter("other"));
             options.AddPolicy(ApiSecurityPolicies.LoginRateLimit, context =>

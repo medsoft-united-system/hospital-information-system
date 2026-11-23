@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Models.Patients;
+using HospitalInformationSystem.Application.Models.Patients;
 
 namespace HospitalInformationSystem.Web.ApiClients;
 

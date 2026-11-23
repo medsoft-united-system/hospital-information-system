@@ -1,8 +1,8 @@
+using HospitalInformationSystem.Application.Contracts.Hl7Import;
 using HospitalInformationSystem.Application.Hl7Import;
-using HospitalInformationSystem.Contracts.Hl7Import;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.Hl7Import;
-using HospitalInformationSystem.Models.ServiceAccounts;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.Hl7Import;
+using HospitalInformationSystem.Application.Models.ServiceAccounts;
 using MediatR;
 
 namespace HospitalInformationSystem.Api.Hl7;

@@ -1,8 +1,8 @@
-using HospitalInformationSystem.Abstractions.Hl7Import;
-using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Abstractions.Hl7Import;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Models.Hl7Import;
 using HospitalInformationSystem.Infrastructure.Hl7Import;
 using HospitalInformationSystem.Infrastructure.Persistence.Repositories;
-using HospitalInformationSystem.Models.Hl7Import;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace HospitalInformationSystem.Infrastructure.DI;

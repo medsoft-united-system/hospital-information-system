@@ -1,5 +1,5 @@
 using System.Buffers;
-using HospitalInformationSystem.Models.Hl7Import;
+using HospitalInformationSystem.Application.Models.Hl7Import;
 
 namespace HospitalInformationSystem.Api.Hl7.Transport;
 

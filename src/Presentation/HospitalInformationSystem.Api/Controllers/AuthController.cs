@@ -1,10 +1,10 @@
 using System.Security.Claims;
 using HospitalInformationSystem.Api.Security;
-using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Security;
 using HospitalInformationSystem.Infrastructure.Identity;
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Security;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;

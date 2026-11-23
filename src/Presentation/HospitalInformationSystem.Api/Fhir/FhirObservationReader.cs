@@ -4,8 +4,8 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Hl7.Fhir.Serialization;
 using HospitalInformationSystem.Api.Security;
-using HospitalInformationSystem.Models.LaboratoryTests;
-using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.LaboratoryTests;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 using Microsoft.Net.Http.Headers;
 using Observation = Hl7.Fhir.Model.Observation;
 

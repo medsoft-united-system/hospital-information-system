@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Models.ServiceAuth;
+using HospitalInformationSystem.Application.Models.ServiceAuth;
 
 namespace HospitalInformationSystem.Api.Security;
 

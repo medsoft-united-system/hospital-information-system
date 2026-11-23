@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text.Json;
-using HospitalInformationSystem.Models.Auth;
-using HospitalInformationSystem.Models.Security;
+using HospitalInformationSystem.Application.Models.Auth;
+using HospitalInformationSystem.Application.Models.Security;
 
 namespace HospitalInformationSystem.Web.Development;
 
@@ -139,9 +139,19 @@ public sealed partial class UiMockHttpMessageHandler
         var dto = AccountDto(account);
         return new
         {
-            dto.Id, dto.UserName, Role = dto.AccountRole, dto.AccountRole, dto.MedicalWorkerId,
-            dto.MedicalWorkerName, dto.MedicalWorkerRole, dto.IsActive, dto.IsLockedOut, dto.CreatedAt, dto.UpdatedAt,
-            CreatedAtUtc = dto.CreatedAt, UpdatedAtUtc = dto.UpdatedAt
+            dto.Id,
+            dto.UserName,
+            Role = dto.AccountRole,
+            dto.AccountRole,
+            dto.MedicalWorkerId,
+            dto.MedicalWorkerName,
+            dto.MedicalWorkerRole,
+            dto.IsActive,
+            dto.IsLockedOut,
+            dto.CreatedAt,
+            dto.UpdatedAt,
+            CreatedAtUtc = dto.CreatedAt,
+            UpdatedAtUtc = dto.UpdatedAt
         };
     }
 

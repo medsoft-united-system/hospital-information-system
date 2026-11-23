@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Models.Hl7Import;
+using HospitalInformationSystem.Application.Models.Hl7Import;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.Hl7Import;

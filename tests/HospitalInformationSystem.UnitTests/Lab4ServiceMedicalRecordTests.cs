@@ -5,8 +5,8 @@ using HospitalInformationSystem.Application.MedicalRecords.Mapping;
 using HospitalInformationSystem.Application.MedicalRecords.Services;
 using HospitalInformationSystem.Application.MedicalRecords.Snapshot;
 using HospitalInformationSystem.Application.MedicalWorkers.Factories;
-using HospitalInformationSystem.Models.Common;
-using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Application.Models.Common;
+using HospitalInformationSystem.Application.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.UnitTests;
 
@@ -230,13 +230,18 @@ public sealed class Lab4ServiceMedicalRecordTests
 
     private static MedicalRecordHistoryEvent CopyEvent(MedicalRecordHistoryEvent item, string payload,
         Guid? medicalWorkerId = null) => new()
-    {
-        Id = item.Id, MedicalRecordId = item.MedicalRecordId, Version = item.Version,
-        OccurredAtUtc = item.OccurredAtUtc, AuthorKind = item.AuthorKind,
-        PerformedByMedicalWorkerId = medicalWorkerId,
-        PerformedByServiceAccountId = item.PerformedByServiceAccountId,
-        PerformedByNameSnapshot = item.PerformedByNameSnapshot,
-        PerformedByPositionSnapshot = item.PerformedByPositionSnapshot,
-        EventType = item.EventType, EntityId = item.EntityId, PayloadJson = payload
-    };
+        {
+            Id = item.Id,
+            MedicalRecordId = item.MedicalRecordId,
+            Version = item.Version,
+            OccurredAtUtc = item.OccurredAtUtc,
+            AuthorKind = item.AuthorKind,
+            PerformedByMedicalWorkerId = medicalWorkerId,
+            PerformedByServiceAccountId = item.PerformedByServiceAccountId,
+            PerformedByNameSnapshot = item.PerformedByNameSnapshot,
+            PerformedByPositionSnapshot = item.PerformedByPositionSnapshot,
+            EventType = item.EventType,
+            EntityId = item.EntityId,
+            PayloadJson = payload
+        };
 }

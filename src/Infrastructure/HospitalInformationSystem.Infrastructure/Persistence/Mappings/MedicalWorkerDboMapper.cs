@@ -1,5 +1,5 @@
-using HospitalInformationSystem.Models.MedicalWorkers;
-using HospitalInformationSystem.Models.Persistence;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Persistence;
 using Riok.Mapperly.Abstractions;
 
 namespace HospitalInformationSystem.Infrastructure.Persistence.Mappings;

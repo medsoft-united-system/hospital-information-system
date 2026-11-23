@@ -1,8 +1,8 @@
 @page "/medical/patients/new"
 @page "/medical/patients/{Id:guid}"
 @attribute [Authorize(Roles = ApplicationRoles.MedicalWorker)]
-@using HospitalInformationSystem.Models.Patients
-@using HospitalInformationSystem.Models.Security
+@using HospitalInformationSystem.Application.Models.Patients
+@using HospitalInformationSystem.Application.Models.Security
 @implements IDisposable
 @inject PatientsApiClient Api
 @inject NavigationManager Navigation

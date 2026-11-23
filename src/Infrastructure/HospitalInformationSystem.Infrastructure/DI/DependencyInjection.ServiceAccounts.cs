@@ -1,5 +1,5 @@
-using HospitalInformationSystem.Abstractions.Repositories;
-using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Application.Abstractions.Repositories;
+using HospitalInformationSystem.Application.Contracts.Abstractions;
 using HospitalInformationSystem.Infrastructure.ServiceAccounts;
 using Microsoft.Extensions.DependencyInjection;
 

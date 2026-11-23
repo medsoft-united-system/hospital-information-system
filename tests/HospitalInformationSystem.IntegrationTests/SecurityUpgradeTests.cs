@@ -3,11 +3,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
+using HospitalInformationSystem.Application.Models.Maintenance;
+using HospitalInformationSystem.Application.Models.MedicalWorkers;
+using HospitalInformationSystem.Application.Models.Persistence;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Maintenance;
-using HospitalInformationSystem.Models.Maintenance;
-using HospitalInformationSystem.Models.MedicalWorkers;
-using HospitalInformationSystem.Models.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -138,8 +138,13 @@ public sealed class SecurityUpgradeTests
         var now = DateTimeOffset.UtcNow;
         var setup = new AdministratorSetupStateDbo
         {
-            Id = 1, AdministratorUserId = admin, IsCompleted = true, TotpSecretProtected = "synthetic-protected-value",
-            CreatedAtUtc = now, UpdatedAtUtc = now, CompletedAtUtc = now
+            Id = 1,
+            AdministratorUserId = admin,
+            IsCompleted = true,
+            TotpSecretProtected = "synthetic-protected-value",
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+            CompletedAtUtc = now
         };
         legacy.Db.AdministratorSetupStates.Add(setup);
         await legacy.Db.SaveChangesAsync();
