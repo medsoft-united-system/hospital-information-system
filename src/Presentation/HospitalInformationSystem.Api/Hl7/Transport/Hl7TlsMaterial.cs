@@ -3,7 +3,7 @@ using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using HospitalInformationSystem.Application.Hl7Import;
+using HospitalInformationSystem.Models.Hl7Import;
 
 namespace HospitalInformationSystem.Api.Hl7.Transport;
 

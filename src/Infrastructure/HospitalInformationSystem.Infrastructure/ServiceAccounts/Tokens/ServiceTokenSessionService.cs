@@ -1,16 +1,16 @@
 using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using HospitalInformationSystem.Application.Audit;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.ServiceAccounts;
-using HospitalInformationSystem.Contracts.Security;
-using HospitalInformationSystem.Contracts.ServiceAuth;
-using HospitalInformationSystem.Domain.ServiceAccounts;
+using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Contracts.Audit;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using HospitalInformationSystem.Infrastructure.Persistence.Configurations;
+using HospitalInformationSystem.Models.Audit;
+using HospitalInformationSystem.Models.Persistence;
+using HospitalInformationSystem.Models.Security;
+using HospitalInformationSystem.Models.ServiceAccounts;
+using HospitalInformationSystem.Models.ServiceAuth;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -18,7 +18,7 @@ namespace HospitalInformationSystem.Infrastructure.ServiceAccounts.Tokens;
 
 public sealed partial class ServiceTokenSessionService(HospitalDbContext db, JwtKeyMaterial keys,
     IOptions<ServiceTokenOptions> options, TimeProvider timeProvider, IAuditWriter audit, IAuditActorAccessor actors,
-    IServiceApiKeyGenerator apiKeys)
+    IServiceApiKeyGenerator apiKeys) : IServiceTokenSessionService
 {
     public async Task<ServiceTokenPairDto?> AuthenticateAsync(string? apiKey, CancellationToken cancellationToken)
     {

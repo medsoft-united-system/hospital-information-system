@@ -1,6 +1,6 @@
 using System.Net;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.MedicalRecords;
+using HospitalInformationSystem.Models.MedicalRecords;
 using HospitalInformationSystem.Web.Components.MedicalRecords;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;

@@ -1,8 +1,8 @@
 using System.Globalization;
 using System.Security.Claims;
-using HospitalInformationSystem.Contracts.ServiceAuth;
 using HospitalInformationSystem.Application.ServiceAccounts;
-using HospitalInformationSystem.Domain.ServiceAccounts;
+using HospitalInformationSystem.Models.ServiceAccounts;
+using HospitalInformationSystem.Models.ServiceAuth;
 using Microsoft.EntityFrameworkCore;
 
 namespace HospitalInformationSystem.Infrastructure.ServiceAccounts.Tokens;

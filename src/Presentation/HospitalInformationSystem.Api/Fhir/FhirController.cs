@@ -1,6 +1,7 @@
 using HospitalInformationSystem.Application.Fhir;
 using HospitalInformationSystem.Application.MedicalRecords.Commands.RecordLaboratoryAnalysisResult;
-using HospitalInformationSystem.Contracts.ServiceAuth;
+using HospitalInformationSystem.Models.Fhir;
+using HospitalInformationSystem.Models.ServiceAuth;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

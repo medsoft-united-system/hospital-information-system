@@ -5,11 +5,11 @@ using System.Security.Cryptography;
 using System.Text;
 using FluentAssertions;
 using HospitalInformationSystem.Api.Middleware;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
-using HospitalInformationSystem.Contracts.Patients;
-using HospitalInformationSystem.Contracts.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Models.Patients;
+using HospitalInformationSystem.Models.Security;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Authentication;
 using Microsoft.AspNetCore.Antiforgery;
@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using MedicalWorkerRole = HospitalInformationSystem.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 

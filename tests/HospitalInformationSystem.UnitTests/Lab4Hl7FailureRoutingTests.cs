@@ -3,9 +3,9 @@ using System.Text.Json;
 using FluentAssertions;
 using HospitalInformationSystem.Api.Hl7;
 using HospitalInformationSystem.Application.Hl7Import;
-using HospitalInformationSystem.Application.ServiceAccounts;
 using HospitalInformationSystem.Contracts.Hl7Import;
-using HospitalInformationSystem.Domain.ServiceAccounts;
+using HospitalInformationSystem.Models.Hl7Import;
+using HospitalInformationSystem.Models.ServiceAccounts;
 using MediatR;
 using Moq;
 

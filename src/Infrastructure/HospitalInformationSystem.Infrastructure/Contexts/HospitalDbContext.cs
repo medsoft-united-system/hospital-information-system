@@ -1,9 +1,10 @@
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Audit;
+using HospitalInformationSystem.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Contracts.Audit;
 using HospitalInformationSystem.Infrastructure.Audit;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using HospitalInformationSystem.Infrastructure.Identity;
+using HospitalInformationSystem.Models.Audit;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;

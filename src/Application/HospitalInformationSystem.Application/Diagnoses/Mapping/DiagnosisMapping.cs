@@ -1,5 +1,4 @@
-using HospitalInformationSystem.Contracts.Diagnoses;
-using HospitalInformationSystem.Domain.Diagnoses;
+using HospitalInformationSystem.Models.Diagnoses;
 using Riok.Mapperly.Abstractions;
 
 namespace HospitalInformationSystem.Application.Diagnoses.Mapping;

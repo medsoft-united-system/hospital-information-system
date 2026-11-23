@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Contracts.Auth;
+using HospitalInformationSystem.Models.Auth;
 using Microsoft.AspNetCore.Identity;
 
 namespace HospitalInformationSystem.Infrastructure.Identity;

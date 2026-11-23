@@ -9,15 +9,16 @@ using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
-using HospitalInformationSystem.Contracts.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Models.Security;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Xunit;
+using MedicalWorkerRole = HospitalInformationSystem.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 

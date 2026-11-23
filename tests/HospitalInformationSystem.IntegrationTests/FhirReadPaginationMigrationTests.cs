@@ -1,7 +1,7 @@
 using FluentAssertions;
-using HospitalInformationSystem.Application.Fhir;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Persistence.Repositories;
+using HospitalInformationSystem.Models.Fhir;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;

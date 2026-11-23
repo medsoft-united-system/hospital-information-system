@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Contracts.Diagnoses;
+using HospitalInformationSystem.Models.Diagnoses;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.Diagnoses.Commands.ImportDiagnoses;

@@ -1,5 +1,6 @@
-using HospitalInformationSystem.Contracts.Auth;
+using HospitalInformationSystem.Contracts.Abstractions;
 using HospitalInformationSystem.Infrastructure.Contexts;
+using HospitalInformationSystem.Models.Auth;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,7 +10,7 @@ public sealed class IdentityBootstrapper(
     HospitalDbContext db,
     RoleManager<IdentityRole<Guid>> roles,
     UserManager<HospitalUser> users,
-    AccountService accounts)
+    IAccountService accounts)
 {
     public async Task InitializeRolesAsync(CancellationToken cancellationToken)
     {

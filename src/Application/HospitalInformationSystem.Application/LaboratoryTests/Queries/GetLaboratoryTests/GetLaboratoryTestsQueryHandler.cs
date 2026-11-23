@@ -1,6 +1,6 @@
-using HospitalInformationSystem.Application.Abstractions;
+using HospitalInformationSystem.Abstractions.Repositories;
 using HospitalInformationSystem.Application.LaboratoryTests.Mapping;
-using HospitalInformationSystem.Contracts.LaboratoryTests;
+using HospitalInformationSystem.Models.LaboratoryTests;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.LaboratoryTests.Queries.GetLaboratoryTests;

@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Models.Security;
 using HospitalInformationSystem.Web.Gateways;
 
 namespace HospitalInformationSystem.Web.ApiClients;

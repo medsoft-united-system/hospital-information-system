@@ -1,12 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.LaboratoryTests;
-using HospitalInformationSystem.Contracts.MedicalRecords;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Models.LaboratoryTests;
+using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Models.Security;
 using HospitalInformationSystem.Web.Authentication;
 using HospitalInformationSystem.Web.Development;
+using MedicalWorkerRole = HospitalInformationSystem.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.UnitTests.Web;
 

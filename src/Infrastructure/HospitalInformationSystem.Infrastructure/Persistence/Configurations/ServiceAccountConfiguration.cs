@@ -1,5 +1,5 @@
-using HospitalInformationSystem.Domain.ServiceAccounts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Models.Persistence;
+using HospitalInformationSystem.Models.ServiceAccounts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

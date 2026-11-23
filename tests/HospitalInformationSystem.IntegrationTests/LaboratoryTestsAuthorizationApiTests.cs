@@ -1,14 +1,14 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.LaboratoryTests;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Contracts.Abstractions;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.LaboratoryTests;
+using HospitalInformationSystem.Models.Persistence;
+using HospitalInformationSystem.Models.Security;
 using Microsoft.Extensions.DependencyInjection;
-using WorkerRole = HospitalInformationSystem.Domain.MedicalWorkers.MedicalWorkerRole;
+using WorkerRole = HospitalInformationSystem.Models.MedicalWorkers.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 

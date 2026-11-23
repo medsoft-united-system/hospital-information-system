@@ -2,14 +2,14 @@ using System.Net;
 using FluentAssertions;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Fhir;
+using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Models.Fhir;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using DomainPatient = HospitalInformationSystem.Domain.Patients.Patient;
-using DomainWorker = HospitalInformationSystem.Domain.MedicalWorkers.MedicalWorker;
-using DomainStatus = HospitalInformationSystem.Domain.MedicalRecords.LaboratoryAnalysisRequestStatus;
+using DomainPatient = HospitalInformationSystem.Models.Patients.Patient;
+using DomainStatus = HospitalInformationSystem.Models.MedicalRecords.LaboratoryAnalysisRequestStatus;
+using DomainWorker = HospitalInformationSystem.Models.MedicalWorkers.MedicalWorker;
 
 namespace HospitalInformationSystem.IntegrationTests;
 

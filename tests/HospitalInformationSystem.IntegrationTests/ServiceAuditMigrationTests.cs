@@ -1,11 +1,11 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Audit;
-using HospitalInformationSystem.Contracts.Security;
 using HospitalInformationSystem.Infrastructure.Audit;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Models.Audit;
+using HospitalInformationSystem.Models.Persistence;
+using HospitalInformationSystem.Models.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;

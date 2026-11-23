@@ -1,21 +1,22 @@
-using HospitalInformationSystem.Domain.Patients.Factories;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
+using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Abstractions.UnitOfWork;
 using HospitalInformationSystem.Application.Diagnoses.Commands.CreateDiagnosis;
 using HospitalInformationSystem.Application.Patients.Commands.DeletePatient;
 using HospitalInformationSystem.Application.Patients.Commands.UpdatePatient;
+using HospitalInformationSystem.Application.Patients.Factories;
 using HospitalInformationSystem.Application.Patients.Queries.GetPatients;
-using HospitalInformationSystem.Domain.Diagnoses;
-using HospitalInformationSystem.Domain.Patients;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.Diagnoses;
+using HospitalInformationSystem.Models.Patients;
 using Moq;
 using Xunit;
-using ContractSex = HospitalInformationSystem.Contracts.Patients.AdministrativeSex;
+using ContractSex = HospitalInformationSystem.Models.Patients.AdministrativeSex;
 
 namespace HospitalInformationSystem.UnitTests;
 

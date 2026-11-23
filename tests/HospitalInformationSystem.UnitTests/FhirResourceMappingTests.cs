@@ -3,11 +3,11 @@ using FluentAssertions;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
 using HospitalInformationSystem.Api.Fhir;
-using HospitalInformationSystem.Application.Fhir;
-using DomainPatient = HospitalInformationSystem.Domain.Patients.Patient;
-using DomainSex = HospitalInformationSystem.Domain.Patients.AdministrativeSex;
-using DomainWorker = HospitalInformationSystem.Domain.MedicalWorkers.MedicalWorker;
-using DomainStatus = HospitalInformationSystem.Domain.MedicalRecords.LaboratoryAnalysisRequestStatus;
+using HospitalInformationSystem.Models.Fhir;
+using DomainPatient = HospitalInformationSystem.Models.Patients.Patient;
+using DomainSex = HospitalInformationSystem.Models.Patients.AdministrativeSex;
+using DomainStatus = HospitalInformationSystem.Models.MedicalRecords.LaboratoryAnalysisRequestStatus;
+using DomainWorker = HospitalInformationSystem.Models.MedicalWorkers.MedicalWorker;
 
 namespace HospitalInformationSystem.UnitTests;
 

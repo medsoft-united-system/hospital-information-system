@@ -1,12 +1,12 @@
 using System.Text.Json;
 using FluentAssertions;
+using HospitalInformationSystem.Application.MedicalRecords.Factories;
 using HospitalInformationSystem.Application.MedicalRecords.Mapping;
+using HospitalInformationSystem.Application.MedicalRecords.Services;
 using HospitalInformationSystem.Application.MedicalRecords.Snapshot;
-using HospitalInformationSystem.Domain.Common;
-using HospitalInformationSystem.Domain.MedicalRecords;
-using HospitalInformationSystem.Domain.MedicalRecords.Factories;
-using HospitalInformationSystem.Domain.MedicalRecords.Services;
-using HospitalInformationSystem.Domain.MedicalWorkers.Factories;
+using HospitalInformationSystem.Application.MedicalWorkers.Factories;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.UnitTests;
 

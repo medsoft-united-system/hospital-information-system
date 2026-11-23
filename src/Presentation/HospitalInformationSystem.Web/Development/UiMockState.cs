@@ -1,10 +1,10 @@
 using System.Net;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Diagnoses;
-using HospitalInformationSystem.Contracts.Security;
-using HospitalInformationSystem.Contracts.MedicalRecords;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
-using HospitalInformationSystem.Contracts.Patients;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.Diagnoses;
+using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Models.Patients;
+using HospitalInformationSystem.Models.Security;
 using HospitalInformationSystem.Web.Authentication;
 
 namespace HospitalInformationSystem.Web.Development;

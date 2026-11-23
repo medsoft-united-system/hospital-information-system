@@ -3,16 +3,17 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
-using HospitalInformationSystem.Contracts.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Identity;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Models.Security;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.PostgreSql;
+using MedicalWorkerRole = HospitalInformationSystem.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 

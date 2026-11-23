@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Contracts.MedicalRecords;
+using HospitalInformationSystem.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.Web.Development;
 

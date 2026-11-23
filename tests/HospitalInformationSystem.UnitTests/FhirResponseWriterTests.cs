@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 using FluentAssertions;
 using Hl7.Fhir.Serialization;
 using HospitalInformationSystem.Api.Fhir;
-using HospitalInformationSystem.Application.Fhir;
+using HospitalInformationSystem.Models.Fhir;
 using Microsoft.AspNetCore.Http;
 using Resource = Hl7.Fhir.Model.Resource;
 

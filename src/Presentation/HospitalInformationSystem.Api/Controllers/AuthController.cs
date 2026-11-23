@@ -1,10 +1,10 @@
 using System.Security.Claims;
 using HospitalInformationSystem.Api.Security;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Contracts.Auth;
+using HospitalInformationSystem.Contracts.Abstractions;
 using HospitalInformationSystem.Infrastructure.Identity;
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.Security;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -21,7 +21,7 @@ public sealed class AuthController(
     IAccountService accounts,
     FailedLoginPasswordVerifier failedLoginVerifier,
     AuthenticationAuditService audit,
-    TokenSessionService tokenSessions,
+    ITokenSessionService tokenSessions,
     RefreshCookieService refreshCookies,
     IAdministratorSetupService administratorSetup,
     AdministratorLoginChallenges administratorChallenges) : ControllerBase

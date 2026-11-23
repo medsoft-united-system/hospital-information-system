@@ -1,5 +1,5 @@
 using FluentValidation;
-using HospitalInformationSystem.Domain.MedicalRecords;
+using HospitalInformationSystem.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Commands.CreateLaboratoryAnalysisRequests;
 

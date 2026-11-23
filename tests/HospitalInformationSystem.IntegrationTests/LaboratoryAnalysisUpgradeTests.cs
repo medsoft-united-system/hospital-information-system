@@ -1,9 +1,9 @@
 using System.Text.Json;
 using FluentAssertions;
 using HospitalInformationSystem.Application.MedicalRecords.Snapshot;
-using HospitalInformationSystem.Domain.MedicalRecords;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Persistence.Repositories;
+using HospitalInformationSystem.Models.MedicalRecords;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;

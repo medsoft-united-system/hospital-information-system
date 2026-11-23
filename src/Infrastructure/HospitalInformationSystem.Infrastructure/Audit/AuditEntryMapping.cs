@@ -1,8 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using HospitalInformationSystem.Application.Audit;
-using HospitalInformationSystem.Contracts.Security;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Models.Audit;
+using HospitalInformationSystem.Models.Persistence;
+using HospitalInformationSystem.Models.Security;
 using Riok.Mapperly.Abstractions;
 
 namespace HospitalInformationSystem.Infrastructure.Audit;

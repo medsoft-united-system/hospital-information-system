@@ -1,7 +1,8 @@
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Contracts.Auth;
+using HospitalInformationSystem.Abstractions.Identity;
+using HospitalInformationSystem.Contracts.Abstractions;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Identity;
+using HospitalInformationSystem.Models.Auth;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -34,8 +35,9 @@ public static partial class DependencyInjection
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<Argon2idOptions>, Argon2idOptionsValidator>());
         services.AddScoped<IPasswordHasher<HospitalUser>, Argon2idPasswordHasher>();
         services.AddSingleton<IAccountPasswordGenerator, AccountPasswordGenerator>();
-        services.AddScoped<AccountService>();
-        services.AddScoped<IAccountService>(provider => provider.GetRequiredService<AccountService>());
+        services.AddScoped<IAccountRepository, AccountRepository>();
+        services.AddScoped<IAdministratorSetupStore, AdministratorSetupStore>();
+        services.AddScoped<IAdministratorSetupCryptography, AdministratorSetupCryptography>();
         services.AddScoped<IdentityBootstrapper>();
     }
 }

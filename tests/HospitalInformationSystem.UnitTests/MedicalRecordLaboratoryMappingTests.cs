@@ -1,10 +1,10 @@
 using FluentAssertions;
+using HospitalInformationSystem.Application.LaboratoryTests.Factories;
+using HospitalInformationSystem.Application.MedicalRecords.Factories;
 using HospitalInformationSystem.Application.MedicalRecords.Mapping;
-using HospitalInformationSystem.Domain.LaboratoryTests.Factories;
-using HospitalInformationSystem.Domain.MedicalRecords.Factories;
-using HospitalInformationSystem.Domain.MedicalRecords.Services;
-using HospitalInformationSystem.Domain.MedicalWorkers;
-using HospitalInformationSystem.Domain.MedicalWorkers.Factories;
+using HospitalInformationSystem.Application.MedicalRecords.Services;
+using HospitalInformationSystem.Application.MedicalWorkers.Factories;
+using HospitalInformationSystem.Models.MedicalWorkers;
 
 namespace HospitalInformationSystem.UnitTests;
 

@@ -2,16 +2,17 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Diagnoses;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
-using HospitalInformationSystem.Contracts.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.Diagnoses;
+using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Models.Persistence;
+using HospitalInformationSystem.Models.Security;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using MedicalWorkerRole = HospitalInformationSystem.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
@@ -209,7 +210,7 @@ public sealed class AuditBoundaryApiTests(SecureHospitalApiFactory factory) : IC
                 """, CancellationToken.None);
         }
         (await db.MedicalWorkers.AsNoTracking().SingleAsync(item => item.Id == worker.Id, CancellationToken.None))
-            .Role.Should().Be(Domain.MedicalWorkers.MedicalWorkerRole.Doctor);
+            .Role.Should().Be(Models.MedicalWorkers.MedicalWorkerRole.Doctor);
         (await db.Users.Where(user => user.Id == account.Account.Id).Select(user => user.SecurityStamp)
             .SingleAsync(CancellationToken.None)).Should().Be(stamp);
         (await db.RefreshSessions.CountAsync(session => session.UserId == account.Account.Id &&

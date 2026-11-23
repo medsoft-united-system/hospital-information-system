@@ -5,17 +5,16 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.ServiceAccounts;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Security;
-using HospitalInformationSystem.Contracts.ServiceAccounts;
+using HospitalInformationSystem.Contracts.Abstractions;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
 using HospitalInformationSystem.Infrastructure.ServiceAccounts;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.Persistence;
+using HospitalInformationSystem.Models.Security;
+using HospitalInformationSystem.Models.ServiceAccounts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using WorkerRole = HospitalInformationSystem.Domain.MedicalWorkers.MedicalWorkerRole;
+using WorkerRole = HospitalInformationSystem.Models.MedicalWorkers.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 

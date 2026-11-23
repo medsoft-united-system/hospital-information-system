@@ -1,10 +1,9 @@
 using System.Text.Json;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Contracts.MedicalRecords;
-using HospitalInformationSystem.Domain.MedicalRecords;
-using HospitalInformationSystem.Domain.LaboratoryTests;
-using ContractAnalysisStatus = HospitalInformationSystem.Contracts.MedicalRecords.LaboratoryAnalysisRequestStatus;
-using DomainAuthorKind = HospitalInformationSystem.Domain.MedicalRecords.MedicalRecordAuthorKind;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.LaboratoryTests;
+using HospitalInformationSystem.Models.MedicalRecords;
+using ContractAnalysisStatus = HospitalInformationSystem.Models.MedicalRecords.LaboratoryAnalysisRequestStatus;
+using DomainAuthorKind = HospitalInformationSystem.Models.MedicalRecords.MedicalRecordAuthorKind;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Snapshot;
 

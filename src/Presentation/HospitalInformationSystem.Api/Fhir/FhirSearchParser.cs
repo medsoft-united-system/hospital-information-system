@@ -1,5 +1,5 @@
 using System.Globalization;
-using HospitalInformationSystem.Domain.MedicalRecords;
+using HospitalInformationSystem.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.Api.Fhir;
 

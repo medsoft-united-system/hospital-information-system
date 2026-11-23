@@ -2,15 +2,16 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Diagnoses;
-using HospitalInformationSystem.Contracts.MedicalRecords;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
-using HospitalInformationSystem.Contracts.Patients;
-using HospitalInformationSystem.Contracts.Security;
 using HospitalInformationSystem.Infrastructure.Contexts;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.Diagnoses;
+using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Models.Patients;
+using HospitalInformationSystem.Models.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using MedicalWorkerRole = HospitalInformationSystem.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 

@@ -1,7 +1,7 @@
-using Microsoft.AspNetCore.Antiforgery;
 using HospitalInformationSystem.Api.Security;
-using HospitalInformationSystem.Contracts.ServiceAuth;
-using HospitalInformationSystem.Domain.ServiceAccounts;
+using HospitalInformationSystem.Models.ServiceAccounts;
+using HospitalInformationSystem.Models.ServiceAuth;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 

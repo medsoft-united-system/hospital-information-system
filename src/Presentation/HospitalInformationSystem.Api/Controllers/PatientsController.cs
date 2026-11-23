@@ -1,10 +1,10 @@
+using HospitalInformationSystem.Api.Security;
 using HospitalInformationSystem.Application.Patients.Commands.CreatePatient;
-using HospitalInformationSystem.Application.Patients.Commands.UpdatePatient;
 using HospitalInformationSystem.Application.Patients.Commands.DeletePatient;
+using HospitalInformationSystem.Application.Patients.Commands.UpdatePatient;
 using HospitalInformationSystem.Application.Patients.Queries.GetPatient;
 using HospitalInformationSystem.Application.Patients.Queries.GetPatients;
-using HospitalInformationSystem.Contracts.Patients;
-using HospitalInformationSystem.Api.Security;
+using HospitalInformationSystem.Models.Patients;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

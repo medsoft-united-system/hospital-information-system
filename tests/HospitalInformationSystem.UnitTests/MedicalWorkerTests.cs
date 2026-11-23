@@ -1,9 +1,9 @@
-using HospitalInformationSystem.Domain.MedicalWorkers.Factories;
-using HospitalInformationSystem.Domain.MedicalWorkers.Services;
 using System;
 using FluentAssertions;
-using HospitalInformationSystem.Domain.Common;
-using HospitalInformationSystem.Domain.MedicalWorkers;
+using HospitalInformationSystem.Application.MedicalWorkers.Factories;
+using HospitalInformationSystem.Application.MedicalWorkers.Services;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.MedicalWorkers;
 using Xunit;
 
 namespace HospitalInformationSystem.UnitTests;

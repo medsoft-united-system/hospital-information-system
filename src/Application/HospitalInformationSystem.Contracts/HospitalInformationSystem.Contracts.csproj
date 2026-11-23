@@ -1,8 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <Compile Include="../HospitalInformationSystem.Domain/LaboratoryTests/LoincCodeValidation.cs"
-             Link="LaboratoryTests/LoincCodeValidation.cs" />
-    <Compile Include="../HospitalInformationSystem.Domain/Diagnoses/DiagnosisTextLimits.cs"
-             Link="Diagnoses/DiagnosisTextLimits.cs" />
+    <ProjectReference Include="../HospitalInformationSystem.Models/HospitalInformationSystem.Models.csproj" />
   </ItemGroup>
 </Project>

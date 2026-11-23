@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Contracts.LaboratoryTests;
+using HospitalInformationSystem.Models.LaboratoryTests;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.LaboratoryTests.Commands.CreateLaboratoryTest;

@@ -1,9 +1,10 @@
-using HospitalInformationSystem.Application.Abstractions;
+using HospitalInformationSystem.Abstractions.Repositories;
 using HospitalInformationSystem.Application.Fhir;
-using HospitalInformationSystem.Domain.MedicalRecords;
-using HospitalInformationSystem.Domain.MedicalWorkers;
-using HospitalInformationSystem.Domain.Patients;
 using HospitalInformationSystem.Infrastructure.Contexts;
+using HospitalInformationSystem.Models.Fhir;
+using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Models.Patients;
 using Microsoft.EntityFrameworkCore;
 
 namespace HospitalInformationSystem.Infrastructure.Persistence.Repositories;

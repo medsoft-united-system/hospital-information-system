@@ -8,6 +8,6 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../../Application/HospitalInformationSystem.Contracts/HospitalInformationSystem.Contracts.csproj" />
+    <ProjectReference Include="../../Application/HospitalInformationSystem.Models/HospitalInformationSystem.Models.csproj" />
   </ItemGroup>
 </Project>

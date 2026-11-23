@@ -1,5 +1,5 @@
 using FluentValidation;
-using HospitalInformationSystem.Domain.LaboratoryTests;
+using HospitalInformationSystem.Models.LaboratoryTests;
 
 namespace HospitalInformationSystem.Application.LaboratoryTests.Commands.CreateLaboratoryTest;
 

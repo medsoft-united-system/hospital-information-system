@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.Security;
 using HospitalInformationSystem.Web.ApiClients;
 using Microsoft.AspNetCore.Components.WebAssembly.Http;
 

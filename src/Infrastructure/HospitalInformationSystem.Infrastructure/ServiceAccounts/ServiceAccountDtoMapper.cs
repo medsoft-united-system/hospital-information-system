@@ -1,6 +1,5 @@
-using HospitalInformationSystem.Contracts.ServiceAccounts;
-using HospitalInformationSystem.Domain.ServiceAccounts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Models.Persistence;
+using HospitalInformationSystem.Models.ServiceAccounts;
 using Riok.Mapperly.Abstractions;
 
 namespace HospitalInformationSystem.Infrastructure.ServiceAccounts;

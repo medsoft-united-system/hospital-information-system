@@ -1,7 +1,6 @@
 using FluentValidation;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Domain.Common;
-using HospitalInformationSystem.Domain.MedicalRecords;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.Api.Fhir;
 

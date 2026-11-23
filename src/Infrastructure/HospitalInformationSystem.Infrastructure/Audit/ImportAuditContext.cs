@@ -1,8 +1,9 @@
-using HospitalInformationSystem.Application.Audit;
+using HospitalInformationSystem.Contracts.Audit;
+using HospitalInformationSystem.Models.Audit;
 
 namespace HospitalInformationSystem.Infrastructure.Audit;
 
-public sealed class ImportAuditContext : IAuditActorAccessor
+public sealed class ImportAuditContext : IAuditActorAccessor, IAuditActorScope
 {
     private AuditActor? _actor;
     public bool IsActive => _actor is not null;

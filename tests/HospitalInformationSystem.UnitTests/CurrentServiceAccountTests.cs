@@ -1,8 +1,8 @@
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
 using HospitalInformationSystem.Application.DI;
-using HospitalInformationSystem.Application.ServiceAccounts;
+using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.ServiceAccounts;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace HospitalInformationSystem.UnitTests;

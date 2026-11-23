@@ -1,15 +1,16 @@
 using System.Net;
 using System.Reflection;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.MedicalRecords;
-using HospitalInformationSystem.Contracts.Patients;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Models.Patients;
+using HospitalInformationSystem.Models.Security;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Authentication;
 using HospitalInformationSystem.Web.Gateways;
 using HospitalInformationSystem.Web.Pages.Medical;
 using Moq;
+using MedicalRecord = HospitalInformationSystem.Web.Pages.Medical.MedicalRecord;
 
 namespace HospitalInformationSystem.UnitTests.Web;
 

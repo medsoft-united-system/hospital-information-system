@@ -1,6 +1,7 @@
-using HospitalInformationSystem.Application.Audit;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Contracts.Audit;
 using HospitalInformationSystem.Infrastructure.Contexts;
+using HospitalInformationSystem.Models.Audit;
+using HospitalInformationSystem.Models.Security;
 
 namespace HospitalInformationSystem.Api.Security;
 

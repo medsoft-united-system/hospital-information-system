@@ -1,10 +1,10 @@
+using HospitalInformationSystem.Api.Security;
 using HospitalInformationSystem.Application.MedicalWorkers.Commands.CreateMedicalWorker;
 using HospitalInformationSystem.Application.MedicalWorkers.Commands.DeleteMedicalWorker;
 using HospitalInformationSystem.Application.MedicalWorkers.Commands.UpdateMedicalWorker;
 using HospitalInformationSystem.Application.MedicalWorkers.Queries.GetMedicalWorker;
 using HospitalInformationSystem.Application.MedicalWorkers.Queries.GetMedicalWorkers;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
-using HospitalInformationSystem.Api.Security;
+using HospitalInformationSystem.Models.MedicalWorkers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

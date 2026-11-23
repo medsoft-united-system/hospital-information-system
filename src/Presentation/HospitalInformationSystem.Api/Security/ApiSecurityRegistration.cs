@@ -1,12 +1,13 @@
 using System.Globalization;
 using System.Threading.RateLimiting;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Audit;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Contracts.Audit;
 using HospitalInformationSystem.Infrastructure.Identity;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
+using HospitalInformationSystem.Models.Audit;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.Security;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
@@ -40,6 +41,7 @@ public static class ApiSecurityRegistration
             throw new InvalidOperationException("Временные JWT-ключи разрешены только в тестовой среде.");
         services.AddSingleton<JwtKeyMaterial>();
         services.AddScoped<TokenSessionService>();
+        services.AddScoped<ITokenSessionService>(provider => provider.GetRequiredService<TokenSessionService>());
         services.AddScoped<RefreshCookieService>();
         services.AddSingleton<AdministratorLoginChallenges>();
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
@@ -52,7 +54,7 @@ public static class ApiSecurityRegistration
                 {
                     OnTokenValidated = async context =>
                     {
-                        var sessions = context.HttpContext.RequestServices.GetRequiredService<TokenSessionService>();
+                        var sessions = context.HttpContext.RequestServices.GetRequiredService<ITokenSessionService>();
                         if (context.Principal is null || !await sessions.ValidatePrincipalAsync(context.Principal,
                                 context.HttpContext.RequestAborted))
                             context.Fail("Сессия завершена или права доступа изменены.");

@@ -1,6 +1,7 @@
-using HospitalInformationSystem.Domain.MedicalWorkers.Services;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
+using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.MedicalWorkers.Services;
+using HospitalInformationSystem.Models.Common;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.MedicalWorkers.Commands.DeleteMedicalWorker;

@@ -1,9 +1,10 @@
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using HospitalInformationSystem.Application.Abstractions;
 using HospitalInformationSystem.Infrastructure.Identity;
+using HospitalInformationSystem.Models.Security;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Options;
 
 namespace HospitalInformationSystem.Api.Security;
 
@@ -23,7 +24,7 @@ public static class AdministratorSecurityRegistration
             services.PostConfigure<AdministratorSetupOptions>(options => options.TokenSha256 = digest);
         }
         services.AddSingleton<TotpCodeService>();
-        services.AddScoped<IAdministratorSetupService, AdministratorSetupService>();
+        services.AddScoped(provider => provider.GetRequiredService<IOptions<AdministratorSetupOptions>>().Value);
         var protection = services.AddDataProtection().SetApplicationName("MedSoft");
         var directory = configuration["Security:DataProtection:KeyDirectory"];
         var certificatePath = configuration["Security:DataProtection:CertificatePath"];

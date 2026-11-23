@@ -1,10 +1,10 @@
 using System.Globalization;
 using Hl7.Fhir.Model;
-using HospitalInformationSystem.Application.Fhir;
-using DomainPatient = HospitalInformationSystem.Domain.Patients.Patient;
-using DomainSex = HospitalInformationSystem.Domain.Patients.AdministrativeSex;
-using DomainWorker = HospitalInformationSystem.Domain.MedicalWorkers.MedicalWorker;
-using DomainRequestStatus = HospitalInformationSystem.Domain.MedicalRecords.LaboratoryAnalysisRequestStatus;
+using HospitalInformationSystem.Models.Fhir;
+using DomainPatient = HospitalInformationSystem.Models.Patients.Patient;
+using DomainRequestStatus = HospitalInformationSystem.Models.MedicalRecords.LaboratoryAnalysisRequestStatus;
+using DomainSex = HospitalInformationSystem.Models.Patients.AdministrativeSex;
+using DomainWorker = HospitalInformationSystem.Models.MedicalWorkers.MedicalWorker;
 using FhirCapabilityStatement = Hl7.Fhir.Model.CapabilityStatement;
 using FhirOperationOutcome = Hl7.Fhir.Model.OperationOutcome;
 

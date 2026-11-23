@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text;
-using HospitalInformationSystem.Contracts.LaboratoryTests;
-using HospitalInformationSystem.Contracts.MedicalRecords;
+using HospitalInformationSystem.Models.LaboratoryTests;
+using HospitalInformationSystem.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.Web.Development;
 

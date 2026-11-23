@@ -2,14 +2,15 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Contracts.Security;
-using HospitalInformationSystem.Domain.Common;
+using HospitalInformationSystem.Application.Auth.Services;
+using HospitalInformationSystem.Application.DI;
+using HospitalInformationSystem.Contracts.Abstractions;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.DI;
 using HospitalInformationSystem.Infrastructure.Identity;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.Persistence;
+using HospitalInformationSystem.Models.Security;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -35,10 +36,14 @@ public sealed class AdministratorSetupServiceTests : IAsyncLifetime
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton<TimeProvider>(_clock);
+        services.AddApplication();
         services.AddInfrastructure(_postgres.GetConnectionString());
         services.AddDataProtection().UseEphemeralDataProtectionProvider();
         services.AddSingleton<TotpCodeService>();
         services.AddScoped<IAdministratorSetupService, AdministratorSetupService>();
+        services.AddScoped<HospitalInformationSystem.Contracts.Abstractions.IAdministratorSetupCryptography,
+            AdministratorSetupCryptography>();
+        services.AddSingleton(provider => provider.GetRequiredService<IOptions<AdministratorSetupOptions>>().Value);
         services.Configure<AdministratorSetupOptions>(options =>
             options.TokenSha256 = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(OwnerToken))));
         _services = services.BuildServiceProvider();

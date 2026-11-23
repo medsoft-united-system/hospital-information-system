@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Contracts.MedicalWorkers;
+using HospitalInformationSystem.Models.MedicalWorkers;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.MedicalWorkers.Queries.GetMedicalWorkers;

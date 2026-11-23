@@ -1,9 +1,9 @@
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
+using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Abstractions.UnitOfWork;
 using HospitalInformationSystem.Application.LaboratoryTests.Mapping;
-using HospitalInformationSystem.Contracts.LaboratoryTests;
-using HospitalInformationSystem.Domain.LaboratoryTests.Services;
-using HospitalInformationSystem.Domain.Common;
+using HospitalInformationSystem.Application.LaboratoryTests.Services;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.LaboratoryTests;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.LaboratoryTests.Commands.SetLaboratoryTestActive;

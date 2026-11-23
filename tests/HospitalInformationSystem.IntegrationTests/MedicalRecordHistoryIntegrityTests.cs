@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using FluentAssertions;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Models.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 

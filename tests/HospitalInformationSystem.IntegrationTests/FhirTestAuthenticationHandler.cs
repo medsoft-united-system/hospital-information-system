@@ -1,9 +1,9 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
-using HospitalInformationSystem.Contracts.ServiceAuth;
+using HospitalInformationSystem.Models.ServiceAuth;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace HospitalInformationSystem.IntegrationTests;
 

@@ -1,7 +1,7 @@
 using FluentAssertions;
 using HospitalInformationSystem.Api.Fhir;
-using HospitalInformationSystem.Application.Fhir;
-using HospitalInformationSystem.Domain.MedicalRecords;
+using HospitalInformationSystem.Models.Fhir;
+using HospitalInformationSystem.Models.MedicalRecords;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;

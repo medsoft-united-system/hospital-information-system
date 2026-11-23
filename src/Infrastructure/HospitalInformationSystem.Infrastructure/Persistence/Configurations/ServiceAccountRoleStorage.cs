@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Domain.ServiceAccounts;
+using HospitalInformationSystem.Models.ServiceAccounts;
 
 namespace HospitalInformationSystem.Infrastructure.Persistence.Configurations;
 

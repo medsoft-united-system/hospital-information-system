@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Contracts.ServiceAccounts;
+using HospitalInformationSystem.Models.ServiceAccounts;
 
 namespace HospitalInformationSystem.Web.Gateways;
 

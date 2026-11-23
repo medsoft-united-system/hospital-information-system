@@ -1,14 +1,14 @@
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Audit;
+using HospitalInformationSystem.Abstractions.UnitOfWork;
 using HospitalInformationSystem.Application.Hl7Import;
-using HospitalInformationSystem.Application.ServiceAccounts;
-using HospitalInformationSystem.Contracts.Hl7Import;
-using HospitalInformationSystem.Contracts.Security;
-using HospitalInformationSystem.Domain.ServiceAccounts;
+using HospitalInformationSystem.Contracts.Audit;
 using HospitalInformationSystem.Infrastructure.Audit;
 using HospitalInformationSystem.Infrastructure.Hl7Import;
+using HospitalInformationSystem.Models.Audit;
+using HospitalInformationSystem.Models.Hl7Import;
+using HospitalInformationSystem.Models.Security;
+using HospitalInformationSystem.Models.ServiceAccounts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 

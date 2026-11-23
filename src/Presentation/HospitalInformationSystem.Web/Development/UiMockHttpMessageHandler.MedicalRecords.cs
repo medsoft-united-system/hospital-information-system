@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text.Json;
-using HospitalInformationSystem.Contracts.MedicalRecords;
+using HospitalInformationSystem.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.Web.Development;
 

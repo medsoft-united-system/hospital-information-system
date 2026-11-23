@@ -1,11 +1,11 @@
 using System.Data;
 using System.Linq.Expressions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Domain.MedicalRecords;
+using HospitalInformationSystem.Abstractions.Repositories;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Persistence.Mappings;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Models.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace HospitalInformationSystem.Infrastructure.Persistence.Repositories;

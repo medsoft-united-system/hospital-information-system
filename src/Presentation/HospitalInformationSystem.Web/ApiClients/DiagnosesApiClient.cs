@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Contracts.Diagnoses;
+using HospitalInformationSystem.Models.Diagnoses;
 
 namespace HospitalInformationSystem.Web.ApiClients;
 

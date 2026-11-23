@@ -2,12 +2,13 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Audit;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Contracts.Audit;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Models.Audit;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.Persistence;
+using HospitalInformationSystem.Models.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -15,7 +16,7 @@ using Microsoft.IdentityModel.Tokens;
 namespace HospitalInformationSystem.Infrastructure.Identity.Tokens;
 
 public sealed class TokenSessionService(HospitalDbContext db, IAccountService accounts, JwtKeyMaterial keys,
-    IOptions<JwtTokenOptions> options, TimeProvider timeProvider, IAuditWriter audit, IAuditActorAccessor actors)
+    IOptions<JwtTokenOptions> options, TimeProvider timeProvider, IAuditWriter audit, IAuditActorAccessor actors) : ITokenSessionService
 {
     public async Task<TokenSessionResult?> IssueAsync(Guid userId, string expectedAuthenticationVersion,
         CancellationToken cancellationToken)

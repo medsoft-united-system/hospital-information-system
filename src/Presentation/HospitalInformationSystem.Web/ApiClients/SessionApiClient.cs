@@ -1,6 +1,6 @@
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Security;
 using System.Net;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.Security;
 using HospitalInformationSystem.Web.Authentication;
 
 namespace HospitalInformationSystem.Web.ApiClients;

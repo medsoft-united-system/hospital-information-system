@@ -1,6 +1,6 @@
 using System.Net;
 using System.Security.Claims;
-using HospitalInformationSystem.Contracts.Auth;
+using HospitalInformationSystem.Models.Auth;
 using HospitalInformationSystem.Web.ApiClients;
 using Microsoft.AspNetCore.Components.Authorization;
 

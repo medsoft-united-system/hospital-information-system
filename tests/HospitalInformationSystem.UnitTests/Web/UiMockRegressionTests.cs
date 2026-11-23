@@ -1,11 +1,11 @@
-using System.Threading;
 using System.Net;
 using System.Net.Http.Json;
+using System.Threading;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Diagnoses;
-using HospitalInformationSystem.Contracts.Security;
-using HospitalInformationSystem.Contracts.MedicalRecords;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.Diagnoses;
+using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Models.Security;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Authentication;
 using HospitalInformationSystem.Web.Development;

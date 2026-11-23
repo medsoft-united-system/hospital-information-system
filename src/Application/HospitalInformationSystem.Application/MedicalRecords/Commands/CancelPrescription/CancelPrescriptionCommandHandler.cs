@@ -1,7 +1,6 @@
-using HospitalInformationSystem.Domain.MedicalRecords.Services;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Contracts.MedicalRecords;
+using HospitalInformationSystem.Application.MedicalRecords.Services;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.MedicalRecords;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Commands.CancelPrescription;

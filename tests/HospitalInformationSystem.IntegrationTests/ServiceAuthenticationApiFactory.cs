@@ -1,9 +1,9 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.ServiceAccounts;
-using HospitalInformationSystem.Contracts.ServiceAuth;
+using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.ServiceAccounts;
+using HospitalInformationSystem.Models.ServiceAuth;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;

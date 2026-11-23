@@ -1,6 +1,7 @@
 using HospitalInformationSystem.Api.Security;
-using HospitalInformationSystem.Application.Audit;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Contracts.Audit;
+using HospitalInformationSystem.Models.Audit;
+using HospitalInformationSystem.Models.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

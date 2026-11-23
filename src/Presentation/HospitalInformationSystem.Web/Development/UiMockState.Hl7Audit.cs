@@ -1,5 +1,5 @@
 using System.Text.Json;
-using HospitalInformationSystem.Contracts.Hl7Import;
+using HospitalInformationSystem.Models.Hl7Import;
 
 namespace HospitalInformationSystem.Web.Development;
 

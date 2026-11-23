@@ -1,5 +1,5 @@
 using FluentValidation;
-using HospitalInformationSystem.Contracts.Diagnoses;
+using HospitalInformationSystem.Models.Diagnoses;
 
 namespace HospitalInformationSystem.Application.Diagnoses.Commands.UpdateDiagnosis;
 

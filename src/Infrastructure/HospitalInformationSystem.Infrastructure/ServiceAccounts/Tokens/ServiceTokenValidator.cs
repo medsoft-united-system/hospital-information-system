@@ -1,14 +1,17 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using HospitalInformationSystem.Application.Hl7Import;
 using HospitalInformationSystem.Application.ServiceAccounts;
-using HospitalInformationSystem.Domain.ServiceAccounts;
+using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Contracts.Hl7Import;
+using HospitalInformationSystem.Contracts.ServiceAccounts;
+using HospitalInformationSystem.Models.Hl7Import;
+using HospitalInformationSystem.Models.ServiceAccounts;
 using Microsoft.IdentityModel.Tokens;
 
 namespace HospitalInformationSystem.Infrastructure.ServiceAccounts.Tokens;
 
 public sealed class ServiceTokenValidator(ServiceTokenValidationParameters validation,
-    ServiceTokenSessionService sessions) : IServiceTokenValidator, IHl7ImportTokenValidator
+    IServiceTokenSessionService sessions) : IServiceTokenValidator, IHl7ImportTokenValidator
 {
     private const int MaxTokenLength = 16 * 1024;
 

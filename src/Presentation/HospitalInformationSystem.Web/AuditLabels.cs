@@ -1,5 +1,5 @@
 using System.Text.Json;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Models.Security;
 
 namespace HospitalInformationSystem.Web;
 

@@ -1,5 +1,5 @@
 using System.Net;
-using HospitalInformationSystem.Contracts.Hl7Import;
+using HospitalInformationSystem.Models.Hl7Import;
 using Microsoft.Extensions.Options;
 
 namespace HospitalInformationSystem.Api.Hl7.Transport;

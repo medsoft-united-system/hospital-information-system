@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.MedicalRecords;
+using HospitalInformationSystem.Models.MedicalRecords;
 using HospitalInformationSystem.Web.ApiClients;
 
 namespace HospitalInformationSystem.UnitTests.Web;

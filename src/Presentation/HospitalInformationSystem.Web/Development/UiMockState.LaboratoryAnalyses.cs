@@ -1,7 +1,7 @@
 using System.Text.Json;
-using HospitalInformationSystem.Contracts.LaboratoryTests;
-using HospitalInformationSystem.Contracts.MedicalRecords;
-using HospitalInformationSystem.Contracts.Patients;
+using HospitalInformationSystem.Models.LaboratoryTests;
+using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Models.Patients;
 
 namespace HospitalInformationSystem.Web.Development;
 

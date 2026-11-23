@@ -1,11 +1,10 @@
 using System.Security.Cryptography;
 using System.Text;
-using HospitalInformationSystem.Domain.ServiceAccounts;
+using HospitalInformationSystem.Contracts.Abstractions;
 using HospitalInformationSystem.Infrastructure.Identity;
+using HospitalInformationSystem.Models.ServiceAccounts;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.ServiceAccounts;
 
 namespace HospitalInformationSystem.Infrastructure.ServiceAccounts;
 

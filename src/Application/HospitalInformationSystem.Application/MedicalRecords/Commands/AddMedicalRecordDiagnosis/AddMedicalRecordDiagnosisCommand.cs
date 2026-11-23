@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Contracts.MedicalRecords;
+using HospitalInformationSystem.Models.MedicalRecords;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Commands.AddMedicalRecordDiagnosis;

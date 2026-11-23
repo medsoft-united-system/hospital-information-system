@@ -1,6 +1,6 @@
 using System.Text.Json;
-using HospitalInformationSystem.Contracts.Hl7Import;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Models.Hl7Import;
+using HospitalInformationSystem.Models.Security;
 
 namespace HospitalInformationSystem.Web.Components.Audit;
 

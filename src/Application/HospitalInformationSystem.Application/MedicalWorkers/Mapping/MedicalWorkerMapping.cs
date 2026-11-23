@@ -1,5 +1,4 @@
-using HospitalInformationSystem.Contracts.MedicalWorkers;
-using HospitalInformationSystem.Domain.MedicalWorkers;
+using HospitalInformationSystem.Models.MedicalWorkers;
 using Riok.Mapperly.Abstractions;
 
 namespace HospitalInformationSystem.Application.MedicalWorkers.Mapping;
@@ -12,8 +11,8 @@ internal static partial class MedicalWorkerMapping
     public static partial MedicalWorkerDto ToDto(this MedicalWorker worker);
 
     [MapEnum(EnumMappingStrategy.ByName)]
-    public static partial MedicalWorkerRole ToDomain(this Contracts.Security.MedicalWorkerRole role);
+    public static partial MedicalWorkerRole ToDomain(this Models.Security.MedicalWorkerRole role);
 
     [MapEnum(EnumMappingStrategy.ByName)]
-    public static partial Contracts.Security.MedicalWorkerRole ToContract(this MedicalWorkerRole role);
+    public static partial Models.Security.MedicalWorkerRole ToContract(this MedicalWorkerRole role);
 }

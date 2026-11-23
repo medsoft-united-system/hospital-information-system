@@ -3,9 +3,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.ServiceAuth;
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
 using HospitalInformationSystem.Infrastructure.ServiceAccounts.Tokens;
+using HospitalInformationSystem.Models.ServiceAuth;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 

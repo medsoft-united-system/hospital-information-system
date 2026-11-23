@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using FluentAssertions;
 using HospitalInformationSystem.Api.Security;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Contracts.ServiceAuth;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.ServiceAuth;
 using Microsoft.AspNetCore.Http;
 
 namespace HospitalInformationSystem.UnitTests;

@@ -5,11 +5,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using FluentValidation;
-using HospitalInformationSystem.Application.Abstractions;
+using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Abstractions.UnitOfWork;
 using HospitalInformationSystem.Application.Diagnoses.Commands.ImportDiagnoses;
+using HospitalInformationSystem.Application.Diagnoses.Factories;
 using HospitalInformationSystem.Application.Diagnoses.Import;
-using HospitalInformationSystem.Contracts.Diagnoses;
-using HospitalInformationSystem.Domain.Diagnoses.Factories;
+using HospitalInformationSystem.Models.Diagnoses;
 using Moq;
 using Xunit;
 

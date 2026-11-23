@@ -1,8 +1,9 @@
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
+using HospitalInformationSystem.Abstractions.Repositories;
 using HospitalInformationSystem.Application.MedicalRecords.Mapping;
-using HospitalInformationSystem.Contracts.MedicalRecords;
-using HospitalInformationSystem.Domain.MedicalRecords.Services;
+using HospitalInformationSystem.Application.MedicalRecords.Services;
+using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.MedicalRecords;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Commands.RecordLaboratoryAnalysisResult;

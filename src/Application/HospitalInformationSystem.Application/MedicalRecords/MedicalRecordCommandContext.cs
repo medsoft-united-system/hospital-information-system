@@ -1,8 +1,8 @@
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Domain.Common;
-using HospitalInformationSystem.Domain.MedicalRecords;
-using HospitalInformationSystem.Domain.MedicalWorkers;
+using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Models.MedicalWorkers;
 
 namespace HospitalInformationSystem.Application.MedicalRecords;
 

@@ -1,4 +1,4 @@
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Models.Security;
 using Microsoft.AspNetCore.Authorization;
 
 namespace HospitalInformationSystem.Api.Security;

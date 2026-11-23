@@ -1,9 +1,9 @@
 using System.Net;
 using System.Text;
-using HospitalInformationSystem.Contracts.Diagnoses;
-using HospitalInformationSystem.Contracts.Security;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
-using HospitalInformationSystem.Contracts.Patients;
+using HospitalInformationSystem.Models.Diagnoses;
+using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Models.Patients;
+using HospitalInformationSystem.Models.Security;
 
 namespace HospitalInformationSystem.Web.Development;
 

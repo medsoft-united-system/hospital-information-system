@@ -1,7 +1,6 @@
 using System.Globalization;
-using HospitalInformationSystem.Application.Hl7Import;
-using HospitalInformationSystem.Contracts.Hl7Import;
-using HospitalInformationSystem.Domain.Patients;
+using HospitalInformationSystem.Models.Hl7Import;
+using HospitalInformationSystem.Models.Patients;
 using static HospitalInformationSystem.Api.Hl7.Hl7Profile;
 
 namespace HospitalInformationSystem.Api.Hl7;

@@ -1,8 +1,8 @@
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Domain.MedicalWorkers;
+using HospitalInformationSystem.Abstractions.Repositories;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Persistence.Mappings;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.MedicalWorkers;
 using Microsoft.EntityFrameworkCore;
 
 namespace HospitalInformationSystem.Infrastructure.Persistence.Repositories;

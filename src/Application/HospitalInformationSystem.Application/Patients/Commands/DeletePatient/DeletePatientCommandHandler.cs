@@ -1,5 +1,6 @@
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
+using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Models.Common;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.Patients.Commands.DeletePatient;

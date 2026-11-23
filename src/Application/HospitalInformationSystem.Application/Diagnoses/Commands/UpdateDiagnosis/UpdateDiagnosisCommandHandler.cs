@@ -1,7 +1,8 @@
-using HospitalInformationSystem.Domain.Diagnoses.Services;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Contracts.Diagnoses;
+using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.Diagnoses.Services;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.Diagnoses;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.Diagnoses.Commands.UpdateDiagnosis;

@@ -1,6 +1,6 @@
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
-using HospitalInformationSystem.Contracts.Auth;
+using HospitalInformationSystem.Models.Auth;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;

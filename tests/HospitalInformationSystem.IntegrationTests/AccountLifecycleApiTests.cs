@@ -7,18 +7,24 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Audit;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.MedicalWorkers;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Abstractions.Identity;
+using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Abstractions.Transactions;
+using HospitalInformationSystem.Abstractions.UnitOfWork;
+using HospitalInformationSystem.Application.Auth.Services;
+using HospitalInformationSystem.Contracts.Audit;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Identity;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Models.Audit;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Models.Persistence;
+using HospitalInformationSystem.Models.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using MedicalWorkerRole = HospitalInformationSystem.Models.Security.MedicalWorkerRole;
 
 namespace HospitalInformationSystem.IntegrationTests;
 
@@ -150,8 +156,10 @@ public sealed class AccountLifecycleApiTests(SecureHospitalApiFactory factory) :
         var worker = (await workerResponse.Content.ReadFromJsonAsync<MedicalWorkerDto>())!;
         await using (var scope = factory.Services.CreateAsyncScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
-            var service = new AccountService(db, scope.ServiceProvider.GetRequiredService<UserManager<HospitalUser>>(),
+            var service = new AccountService(scope.ServiceProvider.GetRequiredService<IAccountRepository>(),
+                scope.ServiceProvider.GetRequiredService<IMedicalWorkerRepository>(),
+                scope.ServiceProvider.GetRequiredService<IUnitOfWork>(),
+                scope.ServiceProvider.GetRequiredService<ITransactionManager>(),
                 TimeProvider.System, new AccountPasswordGenerator(), new ThrowingAuditWriter());
             Func<Task> create = () => service.CreateForWorkerAsync(worker.Id,
                 new CreateWorkerAccountRequest("roll." + Guid.NewGuid().ToString("N")[..11]), CancellationToken.None);

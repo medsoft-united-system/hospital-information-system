@@ -3,9 +3,9 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Security;
-using HospitalInformationSystem.Contracts.ServiceAccounts;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.Security;
+using HospitalInformationSystem.Models.ServiceAccounts;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Authentication;
 

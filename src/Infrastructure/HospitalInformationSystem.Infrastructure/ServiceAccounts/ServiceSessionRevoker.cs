@@ -1,6 +1,6 @@
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Domain.Common;
+using HospitalInformationSystem.Contracts.Abstractions;
 using HospitalInformationSystem.Infrastructure.Contexts;
+using HospitalInformationSystem.Models.Common;
 using Microsoft.EntityFrameworkCore;
 
 namespace HospitalInformationSystem.Infrastructure.ServiceAccounts;

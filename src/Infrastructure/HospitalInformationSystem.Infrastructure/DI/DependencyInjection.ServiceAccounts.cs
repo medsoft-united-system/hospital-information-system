@@ -1,4 +1,5 @@
-using HospitalInformationSystem.Application.Abstractions;
+using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Contracts.Abstractions;
 using HospitalInformationSystem.Infrastructure.ServiceAccounts;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -9,7 +10,7 @@ public static partial class DependencyInjection
     private static void AddServiceAccountPersistence(IServiceCollection services)
     {
         services.AddSingleton<IServiceApiKeyGenerator, ServiceApiKeyGenerator>();
-        services.AddScoped<IServiceAccountService, ServiceAccountService>();
+        services.AddScoped<IServiceAccountRepository, ServiceAccountRepository>();
         services.AddScoped<IServiceSessionRevoker, ServiceSessionRevoker>();
     }
 }

@@ -1,23 +1,24 @@
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
+using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Abstractions.UnitOfWork;
 using HospitalInformationSystem.Application.DI;
+using HospitalInformationSystem.Application.LaboratoryTests.Factories;
 using HospitalInformationSystem.Application.MedicalRecords;
 using HospitalInformationSystem.Application.MedicalRecords.Commands.CreateLaboratoryAnalysisRequests;
 using HospitalInformationSystem.Application.MedicalRecords.Commands.RecordLaboratoryAnalysisResult;
+using HospitalInformationSystem.Application.MedicalRecords.Factories;
 using HospitalInformationSystem.Application.MedicalRecords.Mapping;
-using HospitalInformationSystem.Application.ServiceAccounts;
-using HospitalInformationSystem.Domain.Common;
-using HospitalInformationSystem.Domain.LaboratoryTests;
-using HospitalInformationSystem.Domain.LaboratoryTests.Factories;
-using HospitalInformationSystem.Domain.MedicalRecords;
-using HospitalInformationSystem.Domain.MedicalRecords.Factories;
-using HospitalInformationSystem.Domain.MedicalRecords.Services;
-using HospitalInformationSystem.Domain.MedicalWorkers;
-using HospitalInformationSystem.Domain.MedicalWorkers.Factories;
+using HospitalInformationSystem.Application.MedicalRecords.Services;
+using HospitalInformationSystem.Application.MedicalWorkers.Factories;
+using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.LaboratoryTests;
+using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Models.MedicalWorkers;
+using HospitalInformationSystem.Models.ServiceAccounts;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
-using ContractTypes = HospitalInformationSystem.Contracts.MedicalRecords;
+using ContractTypes = HospitalInformationSystem.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.UnitTests;
 

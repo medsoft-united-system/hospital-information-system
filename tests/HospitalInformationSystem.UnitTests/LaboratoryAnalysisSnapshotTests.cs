@@ -1,13 +1,13 @@
 using System.Text.Json.Nodes;
 using FluentAssertions;
+using HospitalInformationSystem.Application.LaboratoryTests.Factories;
+using HospitalInformationSystem.Application.MedicalRecords.Factories;
+using HospitalInformationSystem.Application.MedicalRecords.Services;
 using HospitalInformationSystem.Application.MedicalRecords.Snapshot;
-using HospitalInformationSystem.Domain.LaboratoryTests.Factories;
-using HospitalInformationSystem.Domain.MedicalRecords;
-using HospitalInformationSystem.Domain.MedicalRecords.Factories;
-using HospitalInformationSystem.Domain.MedicalRecords.Services;
-using HospitalInformationSystem.Domain.MedicalWorkers;
-using HospitalInformationSystem.Domain.MedicalWorkers.Factories;
-using ContractStatus = HospitalInformationSystem.Contracts.MedicalRecords.LaboratoryAnalysisRequestStatus;
+using HospitalInformationSystem.Application.MedicalWorkers.Factories;
+using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Models.MedicalWorkers;
+using ContractStatus = HospitalInformationSystem.Models.MedicalRecords.LaboratoryAnalysisRequestStatus;
 
 namespace HospitalInformationSystem.UnitTests;
 

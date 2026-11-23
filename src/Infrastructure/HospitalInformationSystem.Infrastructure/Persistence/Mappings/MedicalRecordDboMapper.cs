@@ -1,5 +1,5 @@
-using HospitalInformationSystem.Domain.MedicalRecords;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Models.Persistence;
 using Riok.Mapperly.Abstractions;
 
 namespace HospitalInformationSystem.Infrastructure.Persistence.Mappings;

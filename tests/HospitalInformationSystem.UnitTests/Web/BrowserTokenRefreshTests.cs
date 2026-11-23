@@ -3,8 +3,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.Security;
 using HospitalInformationSystem.Web.Authentication;
 
 namespace HospitalInformationSystem.UnitTests.Web;

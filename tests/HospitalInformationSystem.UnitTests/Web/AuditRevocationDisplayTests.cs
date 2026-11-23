@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Models.Security;
 using HospitalInformationSystem.Web.Components.Audit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;

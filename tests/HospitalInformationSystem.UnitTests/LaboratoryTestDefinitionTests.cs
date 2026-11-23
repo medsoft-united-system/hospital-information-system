@@ -1,7 +1,7 @@
 using FluentAssertions;
-using HospitalInformationSystem.Domain.Common;
-using HospitalInformationSystem.Domain.LaboratoryTests.Factories;
-using HospitalInformationSystem.Domain.LaboratoryTests.Services;
+using HospitalInformationSystem.Application.LaboratoryTests.Factories;
+using HospitalInformationSystem.Application.LaboratoryTests.Services;
+using HospitalInformationSystem.Models.Common;
 
 namespace HospitalInformationSystem.UnitTests;
 

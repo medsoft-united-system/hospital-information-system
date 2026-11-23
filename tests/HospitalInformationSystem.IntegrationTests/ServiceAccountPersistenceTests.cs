@@ -1,8 +1,8 @@
 using FluentAssertions;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Domain.ServiceAccounts.Factories;
+using HospitalInformationSystem.Application.ServiceAccounts.Factories;
 using HospitalInformationSystem.Infrastructure.Contexts;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;

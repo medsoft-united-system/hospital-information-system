@@ -1,5 +1,5 @@
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.Security;
 
 namespace HospitalInformationSystem.Web.Authentication;
 

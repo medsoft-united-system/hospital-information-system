@@ -8,9 +8,8 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using FluentAssertions;
 using HospitalInformationSystem.Api.Hl7;
-using HospitalInformationSystem.Application.Hl7Import;
-using HospitalInformationSystem.Contracts.Hl7Import;
-using HospitalInformationSystem.Domain.Patients;
+using HospitalInformationSystem.Models.Hl7Import;
+using HospitalInformationSystem.Models.Patients;
 
 namespace HospitalInformationSystem.UnitTests;
 

@@ -1,6 +1,8 @@
-using HospitalInformationSystem.Application.Abstractions;
+using HospitalInformationSystem.Abstractions.Transactions;
+using HospitalInformationSystem.Abstractions.UnitOfWork;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Initializers;
+using HospitalInformationSystem.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,6 +20,7 @@ public static partial class DependencyInjection
         AddFhirReadPersistence(services);
         AddServiceAccountPersistence(services);
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<HospitalDbContext>());
+        services.AddScoped<ITransactionManager, EfTransactionManager>();
         services.AddScoped<DatabaseInitializer>();
         return services;
     }

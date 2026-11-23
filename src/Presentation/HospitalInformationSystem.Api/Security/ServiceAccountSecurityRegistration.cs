@@ -1,10 +1,12 @@
 using System.Threading.RateLimiting;
-using HospitalInformationSystem.Application.Hl7Import;
-using HospitalInformationSystem.Application.ServiceAccounts;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Domain.ServiceAccounts;
-using HospitalInformationSystem.Contracts.ServiceAuth;
+using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Contracts.Hl7Import;
+using HospitalInformationSystem.Contracts.ServiceAccounts;
 using HospitalInformationSystem.Infrastructure.ServiceAccounts.Tokens;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.Hl7Import;
+using HospitalInformationSystem.Models.ServiceAccounts;
+using HospitalInformationSystem.Models.ServiceAuth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -24,6 +26,7 @@ public static class ServiceAccountSecurityRegistration
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<ServiceTokenOptions>, ServiceTokenOptionsValidator>());
         services.AddSingleton<ServiceTokenValidationParameters>();
         services.AddScoped<ServiceTokenSessionService>();
+        services.AddScoped<IServiceTokenSessionService>(provider => provider.GetRequiredService<ServiceTokenSessionService>());
         services.AddScoped<ServiceTokenValidator>();
         services.AddScoped<IServiceTokenValidator>(provider => provider.GetRequiredService<ServiceTokenValidator>());
         services.AddScoped<IHl7ImportTokenValidator>(provider => provider.GetRequiredService<ServiceTokenValidator>());
@@ -40,7 +43,7 @@ public static class ServiceAccountSecurityRegistration
                 {
                     OnTokenValidated = async context =>
                     {
-                        var sessions = context.HttpContext.RequestServices.GetRequiredService<ServiceTokenSessionService>();
+                        var sessions = context.HttpContext.RequestServices.GetRequiredService<IServiceTokenSessionService>();
                         if (context.Principal is null || !await sessions.ValidatePrincipalAsync(context.Principal,
                                 context.HttpContext.RequestAborted))
                             context.Fail("Сервисная сессия недействительна.");

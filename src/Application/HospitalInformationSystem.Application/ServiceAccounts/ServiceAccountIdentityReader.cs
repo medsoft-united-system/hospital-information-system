@@ -1,8 +1,7 @@
 using System.Globalization;
 using System.Security.Claims;
-using HospitalInformationSystem.Contracts.ServiceAccounts;
-using HospitalInformationSystem.Contracts.ServiceAuth;
-using HospitalInformationSystem.Domain.ServiceAccounts;
+using HospitalInformationSystem.Models.ServiceAccounts;
+using HospitalInformationSystem.Models.ServiceAuth;
 
 namespace HospitalInformationSystem.Application.ServiceAccounts;
 

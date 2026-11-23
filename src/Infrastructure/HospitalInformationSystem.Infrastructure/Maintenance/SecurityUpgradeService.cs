@@ -1,7 +1,8 @@
-using HospitalInformationSystem.Contracts.Auth;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Persistence.Configurations;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.Maintenance;
+using HospitalInformationSystem.Models.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 

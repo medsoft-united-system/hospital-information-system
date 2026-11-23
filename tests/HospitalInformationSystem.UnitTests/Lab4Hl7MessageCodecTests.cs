@@ -4,8 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using FluentAssertions;
 using HospitalInformationSystem.Api.Hl7;
-using HospitalInformationSystem.Application.Hl7Import;
-using HospitalInformationSystem.Contracts.Hl7Import;
+using HospitalInformationSystem.Models.Hl7Import;
 
 namespace HospitalInformationSystem.UnitTests;
 
@@ -473,8 +472,8 @@ public sealed class Lab4Hl7MessageCodecTests
             .Append(patient.BirthDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture)).Append('|')
             .Append(patient.Sex switch
             {
-                Domain.Patients.AdministrativeSex.Male => 'M',
-                Domain.Patients.AdministrativeSex.Female => 'F',
+                Models.Patients.AdministrativeSex.Male => 'M',
+                Models.Patients.AdministrativeSex.Female => 'F',
                 _ => 'U'
             }).Append("\rPV1||N\r");
         for (var index = 0; index < patient.Diagnoses.Count; index++)

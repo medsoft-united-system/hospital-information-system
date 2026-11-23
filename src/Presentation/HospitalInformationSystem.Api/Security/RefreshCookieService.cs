@@ -1,4 +1,5 @@
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
+using HospitalInformationSystem.Models.Auth;
 
 namespace HospitalInformationSystem.Api.Security;
 

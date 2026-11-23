@@ -1,6 +1,6 @@
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Contracts.Diagnoses;
+using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.Diagnoses;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.Diagnoses.Queries.GetDiagnosis;

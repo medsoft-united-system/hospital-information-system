@@ -1,13 +1,13 @@
 using System.Net;
 using System.Reflection;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.MedicalRecords;
+using HospitalInformationSystem.Models.MedicalRecords;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Components.MedicalRecords;
 using HospitalInformationSystem.Web.Gateways;
-using HospitalInformationSystem.Web.Pages.Medical;
-using Moq;
 using Microsoft.AspNetCore.Components;
+using Moq;
+using MedicalRecord = HospitalInformationSystem.Web.Pages.Medical.MedicalRecord;
 
 namespace HospitalInformationSystem.UnitTests.Web;
 

@@ -1,11 +1,11 @@
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
+using HospitalInformationSystem.Abstractions.Repositories;
 using HospitalInformationSystem.Application.MedicalRecords.Mapping;
-using HospitalInformationSystem.Contracts.MedicalRecords;
-using HospitalInformationSystem.Domain.Common;
-using HospitalInformationSystem.Domain.LaboratoryTests;
-using HospitalInformationSystem.Domain.MedicalRecords.Services;
-using HospitalInformationSystem.Domain.MedicalWorkers;
+using HospitalInformationSystem.Application.MedicalRecords.Services;
+using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.LaboratoryTests;
+using HospitalInformationSystem.Models.MedicalRecords;
+using HospitalInformationSystem.Models.MedicalWorkers;
 using MediatR;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Commands.CreateLaboratoryAnalysisRequests;

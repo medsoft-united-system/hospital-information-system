@@ -1,7 +1,6 @@
 using FluentValidation;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Domain.Common;
 using HospitalInformationSystem.Api.Security;
+using HospitalInformationSystem.Models.Common;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 

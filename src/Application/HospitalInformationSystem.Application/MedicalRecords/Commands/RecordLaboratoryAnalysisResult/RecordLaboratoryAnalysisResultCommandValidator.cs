@@ -1,6 +1,6 @@
 using FluentValidation;
-using HospitalInformationSystem.Domain.LaboratoryTests;
-using HospitalInformationSystem.Domain.MedicalRecords;
+using HospitalInformationSystem.Models.LaboratoryTests;
+using HospitalInformationSystem.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.Application.MedicalRecords.Commands.RecordLaboratoryAnalysisResult;
 

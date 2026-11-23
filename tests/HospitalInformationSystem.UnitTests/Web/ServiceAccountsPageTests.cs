@@ -3,7 +3,7 @@ using System.Net;
 using System.Reflection;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.ServiceAccounts;
+using HospitalInformationSystem.Models.ServiceAccounts;
 using HospitalInformationSystem.Web;
 using HospitalInformationSystem.Web.ApiClients;
 using HospitalInformationSystem.Web.Forms;

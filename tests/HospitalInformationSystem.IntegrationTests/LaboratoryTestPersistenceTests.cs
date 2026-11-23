@@ -1,11 +1,11 @@
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Application.Common;
-using HospitalInformationSystem.Domain.LaboratoryTests.Factories;
-using HospitalInformationSystem.Domain.LaboratoryTests.Services;
+using HospitalInformationSystem.Abstractions.Repositories;
+using HospitalInformationSystem.Application.LaboratoryTests.Factories;
+using HospitalInformationSystem.Application.LaboratoryTests.Services;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Initializers;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;

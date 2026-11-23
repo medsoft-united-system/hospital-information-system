@@ -2,6 +2,7 @@ using System.Text.Json;
 using FluentAssertions;
 using HospitalInformationSystem.Infrastructure.Identity;
 using HospitalInformationSystem.Infrastructure.Maintenance;
+using HospitalInformationSystem.Models.Maintenance;
 
 namespace HospitalInformationSystem.UnitTests;
 

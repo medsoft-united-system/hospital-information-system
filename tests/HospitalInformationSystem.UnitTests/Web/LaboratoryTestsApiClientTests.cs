@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
-using HospitalInformationSystem.Contracts.LaboratoryTests;
+using HospitalInformationSystem.Models.LaboratoryTests;
 using HospitalInformationSystem.Web.ApiClients;
 
 namespace HospitalInformationSystem.UnitTests.Web;

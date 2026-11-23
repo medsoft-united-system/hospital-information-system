@@ -1,5 +1,5 @@
 using System.Net;
-using HospitalInformationSystem.Contracts.ServiceAccounts;
+using HospitalInformationSystem.Models.ServiceAccounts;
 
 namespace HospitalInformationSystem.Web.Development;
 

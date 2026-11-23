@@ -1,8 +1,8 @@
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
-using HospitalInformationSystem.Contracts.Diagnoses;
-using HospitalInformationSystem.Contracts.MedicalRecords;
+using HospitalInformationSystem.Models.Diagnoses;
+using HospitalInformationSystem.Models.MedicalRecords;
 
 namespace HospitalInformationSystem.Web.ApiClients;
 

@@ -36,8 +36,8 @@ public sealed class FhirEndpointOptions
             if (search.Status is { } status)
                 parameters.Add(new("status", status switch
                 {
-                    Domain.MedicalRecords.LaboratoryAnalysisRequestStatus.Active => "active",
-                    Domain.MedicalRecords.LaboratoryAnalysisRequestStatus.Completed => "completed",
+                    Models.MedicalRecords.LaboratoryAnalysisRequestStatus.Active => "active",
+                    Models.MedicalRecords.LaboratoryAnalysisRequestStatus.Completed => "completed",
                     _ => throw new InvalidOperationException("Неподдерживаемый статус поиска FHIR.")
                 }));
         }

@@ -5,12 +5,13 @@ using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
-using HospitalInformationSystem.Application.Abstractions;
-using HospitalInformationSystem.Contracts.Security;
+using HospitalInformationSystem.Contracts.Abstractions;
 using HospitalInformationSystem.Infrastructure.Contexts;
 using HospitalInformationSystem.Infrastructure.Identity;
 using HospitalInformationSystem.Infrastructure.Identity.Tokens;
-using HospitalInformationSystem.Infrastructure.Persistence.Models;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.Persistence;
+using HospitalInformationSystem.Models.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -169,7 +170,7 @@ public sealed class TokenSessionServiceTests(SecureHospitalApiFactory factory)
         var worker = new MedicalWorkerDbo
         {
             Id = Guid.NewGuid(), FirstName = "Лев", LastName = "Проверочный", Position = "Врач",
-            Role = Domain.MedicalWorkers.MedicalWorkerRole.Doctor,
+            Role = Models.MedicalWorkers.MedicalWorkerRole.Doctor,
             CreatedAtUtc = DateTimeOffset.UtcNow, UpdatedAtUtc = DateTimeOffset.UtcNow
         };
         db.MedicalWorkers.Add(worker);

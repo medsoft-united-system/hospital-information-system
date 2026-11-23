@@ -1,11 +1,12 @@
 using System.Text;
 using FluentAssertions;
 using HospitalInformationSystem.Api.Hl7;
-using HospitalInformationSystem.Application.Common;
 using HospitalInformationSystem.Application.Hl7Import;
-using HospitalInformationSystem.Application.ServiceAccounts;
-using HospitalInformationSystem.Domain.Patients;
-using HospitalInformationSystem.Domain.ServiceAccounts;
+using HospitalInformationSystem.Contracts.Hl7Import;
+using HospitalInformationSystem.Models.Common;
+using HospitalInformationSystem.Models.Hl7Import;
+using HospitalInformationSystem.Models.Patients;
+using HospitalInformationSystem.Models.ServiceAccounts;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;

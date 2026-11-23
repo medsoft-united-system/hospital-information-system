@@ -1,11 +1,10 @@
-using HospitalInformationSystem.Api.Security;
 using System.Security.Claims;
-using HospitalInformationSystem.Contracts.Auth;
-using HospitalInformationSystem.Contracts.Hl7Import;
-using HospitalInformationSystem.Contracts.ServiceAccounts;
-using HospitalInformationSystem.Domain.ServiceAccounts;
-using HospitalInformationSystem.Contracts.ServiceAuth;
-using HospitalInformationSystem.Infrastructure.ServiceAccounts.Tokens;
+using HospitalInformationSystem.Api.Security;
+using HospitalInformationSystem.Contracts.Abstractions;
+using HospitalInformationSystem.Models.Auth;
+using HospitalInformationSystem.Models.Hl7Import;
+using HospitalInformationSystem.Models.ServiceAccounts;
+using HospitalInformationSystem.Models.ServiceAuth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -14,7 +13,7 @@ namespace HospitalInformationSystem.Api.Controllers;
 
 [ApiController]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-public sealed class ServiceAuthController(ServiceTokenSessionService sessions, ServiceCredentialReader reader) : ControllerBase
+public sealed class ServiceAuthController(IServiceTokenSessionService sessions, ServiceCredentialReader reader) : ControllerBase
 {
     [HttpPost("api/service-auth/token")]
     [AllowAnonymous]
